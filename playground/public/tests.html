@@ -3,98 +3,156 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Moneyness Logic Tests</title>
+    <title>Mathematical Verification Tests</title>
     <style>
         body {
             background: #0f172a;
             color: #f1f5f9;
-            font-family: sans-serif;
+            font-family: monospace;
             padding: 2rem;
+            line-height: 1.5;
+        }
+
+        .test-group {
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+
+        .test-group h2 {
+            color: #38bdf8;
+            margin-top: 0;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 0.5rem;
         }
 
         .test-case {
-            margin-bottom: 1rem;
-            padding: 1rem;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
             background: #1e293b;
-            border-radius: 0.5rem;
+            border-radius: 0.25rem;
+            display: flex;
+            justify-content: space-between;
         }
 
         .pass {
             color: #10b981;
+            font-weight: bold;
         }
 
         .fail {
             color: #ef4444;
+            font-weight: bold;
+        }
+
+        .details {
+            color: #94a3b8;
+            font-size: 0.9em;
+            margin-left: 1rem;
         }
     </style>
 </head>
 
 <body>
-    <h1>Unit Tests: Moneyness Indicator</h1>
+    <h1>🛡️ options Math Verification Suite</h1>
     <div id="results"></div>
 
+    <!-- Import Calculator Logic -->
+    <script src="calculator.js"></script>
+
     <script>
-        // Mock State
-        const state = { spot: 100, strike: 100 };
-
-        // Logic to test (extracted from app.js)
-        function calculatePosition(spot, strike) {
-            const moneyness = spot / strike;
-            // Map 0.8 - 1.2 to 0 - 100%
-            const position = ((moneyness - 0.8) / 0.4) * 100;
-            return Math.max(0, Math.min(100, position));
-        }
-
-        const tests = [
-            {
-                name: "ATM (Spot = Strike)",
-                spot: 100, strike: 100,
-                expected: 50
-            },
-            {
-                name: "Deep OTM Call (Spot 80, Strike 100)",
-                spot: 80, strike: 100,
-                expected: 0 // (0.8 - 0.8)/0.4 = 0
-            },
-            {
-                name: "Deep ITM Call (Spot 120, Strike 100)",
-                spot: 120, strike: 100,
-                expected: 100 // (1.2 - 0.8)/0.4 = 100
-            },
-            {
-                name: "Slightly ITM (Spot 105, Strike 100)",
-                spot: 105, strike: 100,
-                expected: 62.5 // (1.05 - 0.8)/0.4 = 0.25/0.4 = 62.5%
-            },
-            {
-                name: "Extreme Low (Spot 50, Strike 100)",
-                spot: 50, strike: 100,
-                expected: 0 // Clamped
-            },
-            {
-                name: "Extreme High (Spot 150, Strike 100)",
-                spot: 150, strike: 100,
-                expected: 100 // Clamped
-            }
-        ];
-
         const resultsDiv = document.getElementById('results');
 
-        tests.forEach(test => {
-            const result = calculatePosition(test.spot, test.strike);
-            const passed = Math.abs(result - test.expected) < 0.01;
-
+        function assert(condition, message, details = "") {
             const div = document.createElement('div');
             div.className = 'test-case';
             div.innerHTML = `
-                <strong>${test.name}</strong><br>
-                Input: S=${test.spot}, K=${test.strike}<br>
-                Expected: ${test.expected}%<br>
-                Actual: ${result}%<br>
-                Status: <span class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</span>
+                <span>${message} <span class="details">${details}</span></span>
+                <span class="${condition ? 'pass' : 'fail'}">${condition ? 'PASS' : 'FAIL'}</span>
             `;
-            resultsDiv.appendChild(div);
-        });
+            return div;
+        }
+
+        function createGroup(title) {
+            const group = document.createElement('div');
+            group.className = 'test-group';
+            group.innerHTML = `<h2>${title}</h2>`;
+            resultsDiv.appendChild(group);
+            return group;
+        }
+
+        function runTests() {
+            // 1. Put-Call Parity Tests
+            const parityGroup = createGroup("1. Put-Call Parity (C + Ke⁻ʳᵀ = P + Se⁻qt)");
+            const parityTests = [
+                { S: 100, K: 100, T: 1, sigma: 0.2, r: 0.05, q: 0.0 }, // ATM
+                { S: 120, K: 100, T: 1, sigma: 0.2, r: 0.05, q: 0.0 }, // ITM Call
+                { S: 80, K: 100, T: 1, sigma: 0.2, r: 0.05, q: 0.0 },  // OTM Call
+                { S: 100, K: 100, T: 5, sigma: 0.5, r: 0.10, q: 0.05 }, // Long term, high vol/rate
+                { S: 500, K: 500, T: 0.1, sigma: 1.0, r: 0.0, q: 0.0 } // Crypto style
+            ];
+
+            parityTests.forEach((p, i) => {
+                const call = calculator.calculatePrice(p.S, p.K, p.T, p.sigma, p.r, p.q, true);
+                const put = calculator.calculatePrice(p.S, p.K, p.T, p.sigma, p.r, p.q, false);
+                const lhs = call + p.K * Math.exp(-p.r * p.T); // C + PV(K)
+                const rhs = put + p.S * Math.exp(-p.q * p.T);  // P + S_adj
+                const diff = Math.abs(lhs - rhs);
+
+                parityGroup.appendChild(assert(diff < 1e-6, `Test ${i + 1}: S=${p.S}, K=${p.K}, σ=${p.sigma}`, `Diff: ${diff.toExponential(2)}`));
+            });
+
+            // 2. Greeks Consistency (Analysis vs Finite Difference)
+            const greeksGroup = createGroup("2. Greeks Consistency");
+            const gBase = { S: 100, K: 100, T: 1, sigma: 0.25, r: 0.05, q: 0.0 };
+            const epsilon = 1e-4;
+            const analytical = calculator.calculateGreeks(gBase.S, gBase.K, gBase.T, gBase.sigma, gBase.r, gBase.q, true);
+
+            // Delta Check: (V(S+e) - V(S-e)) / 2e
+            const pUp = calculator.calculatePrice(gBase.S + epsilon, gBase.K, gBase.T, gBase.sigma, gBase.r, gBase.q, true);
+            const pDown = calculator.calculatePrice(gBase.S - epsilon, gBase.K, gBase.T, gBase.sigma, gBase.r, gBase.q, true);
+            const fdDelta = (pUp - pDown) / (2 * epsilon);
+            greeksGroup.appendChild(assert(Math.abs(analytical.delta - fdDelta) < 1e-4, "Delta Consistency", `Analytic: ${analytical.delta.toFixed(5)}, FD: ${fdDelta.toFixed(5)}`));
+
+            // Vega Check: (V(vol+e) - V(vol-e)) / 2e * 100 (since vega is per 1%)
+            const vUp = calculator.calculatePrice(gBase.S, gBase.K, gBase.T, gBase.sigma + epsilon, gBase.r, gBase.q, true);
+            const vDown = calculator.calculatePrice(gBase.S, gBase.K, gBase.T, gBase.sigma - epsilon, gBase.r, gBase.q, true);
+            const fdVega = ((vUp - vDown) / (2 * epsilon)) / 100;
+            greeksGroup.appendChild(assert(Math.abs(analytical.vega - fdVega) < 1e-4, "Vega Consistency", `Analytic: ${analytical.vega.toFixed(5)}, FD: ${fdVega.toFixed(5)}`));
+
+            // Theta Check: (V(T-dt) - V(T)) / dt (approx)
+            // Note: Theta is negative time derivative. calculator returns per day.
+            const tStep = 1 / 365;
+            const tNext = calculator.calculatePrice(gBase.S, gBase.K, gBase.T - tStep, gBase.sigma, gBase.r, gBase.q, true);
+            const tCurr = calculator.calculatePrice(gBase.S, gBase.K, gBase.T, gBase.sigma, gBase.r, gBase.q, true);
+            const fdTheta = (tNext - tCurr); // Price change for 1 day passing
+            greeksGroup.appendChild(assert(Math.abs(analytical.theta - fdTheta) < 1e-3, "Theta Consistency", `Analytic: ${analytical.theta.toFixed(5)}, FD: ${fdTheta.toFixed(5)}`));
+
+
+            // 3. Edge Cases
+            const edgeGroup = createGroup("3. Edge Cases & Bounds");
+
+            // Intrinsic Value Limit (Vol -> 0)
+            const lowVol = calculator.calculatePrice(100, 100, 1, 0.0001, 0.05, 0, true);
+            const intrinsic = Math.max(0, 100 - 100 * Math.exp(-0.05));
+            edgeGroup.appendChild(assert(Math.abs(lowVol - intrinsic) < 1e-2, "Zero Volatility Call", "Converges to Intrinsic"));
+
+            // Deep OTM (Price -> 0)
+            const deepOTM = calculator.calculatePrice(10, 100, 1, 0.2, 0.05, 0, true);
+            edgeGroup.appendChild(assert(deepOTM < 1e-5, "Deep OTM Call Value", `Value: ${deepOTM}`));
+
+            // Deep ITM Delta -> 1
+            const deepITM = calculator.calculateGreeks(200, 100, 0.1, 0.2, 0.05, 0, true);
+            edgeGroup.appendChild(assert(deepITM.delta > 0.99, "Deep ITM Delta -> 1", `Delta: ${deepITM.delta}`));
+        }
+
+        // Run all tests
+        if (typeof calculator !== 'undefined') {
+            runTests();
+        } else {
+            resultsDiv.innerHTML = "<h2 style='color:red'>Error: Calculator module not loaded</h2>";
+        }
     </script>
 </body>
 
