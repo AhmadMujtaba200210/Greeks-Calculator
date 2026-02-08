@@ -47,58 +47,44 @@ const exercises = {
         scenarios: [
             {
                 description: 'Calculate the Greeks for this option:',
-                params: {
-                    spot: 100,
-                    strike: 105,
-                    maturity: 0.5,
-                    volatility: 0.30,
-                    rate: 0.05,
-                    dividend: 0.02,
-                    type: 'call'
-                },
-                tasks: [
-                    'What is the option price?',
-                    'What is the delta?',
-                    'Is this option ITM, ATM, or OTM?',
-                    'How many shares to hedge 100 contracts?'
-                ]
-            },
-            {
-                description: 'Volatility spike scenario:',
-                params: {
-                    spot: 50,
-                    strike: 50,
-                    maturity: 0.25,
-                    volatility: 0.60,
-                    rate: 0.03,
-                    dividend: 0,
-                    type: 'put'
-                },
-                tasks: [
-                    'What is the vega?',
-                    'If volatility drops to 40%, estimate the new price',
-                    'What is the theta (daily decay)?'
-                ]
+                params: { spot: 100, strike: 105, maturity: 0.5, volatility: 0.30, rate: 0.05, dividend: 0.02, type: 'call' },
+                tasks: ['What is the option price?', 'What is the delta?', 'Is this option ITM, ATM, or OTM?']
             }
-        ]
+        ],
+        type: 'calculator' // Placeholder type for custom logic
     },
 
     'hedging-sim': {
         title: 'Delta Hedging Simulation',
         description: 'Practice maintaining a delta-neutral position as the market moves',
-        initialPosition: {
-            options: 100,
-            optionDelta: 0.6,
-            shares: 0,
-            cash: 100000
-        },
+        initialPosition: { options: 100, optionDelta: 0.6, shares: 0, cash: 100000 },
         marketMoves: [
             { day: 1, priceChange: +2, newDelta: 0.65 },
             { day: 2, priceChange: -3, newDelta: 0.55 },
-            { day: 3, priceChange: +1, newDelta: 0.60 },
-            { day: 4, priceChange: +4, newDelta: 0.75 },
-            { day: 5, priceChange: -2, newDelta: 0.65 }
-        ]
+            { day: 3, priceChange: +1, newDelta: 0.60 }
+        ],
+        type: 'simulation'
+    },
+
+    'vol-surface': {
+        title: 'Volatility Surface Builder',
+        description: 'Experiment with SVI parameters to fit a volatility smile.',
+        type: 'interactive',
+        content: '<p>Interactive volatility surface builder coming soon. For now, use the "Vol Surface" tab in the Playground.</p>'
+    },
+
+    'strategy-builder': {
+        title: 'Strategy Builder',
+        description: 'Construct multi-leg option strategies.',
+        type: 'interactive',
+        content: '<p>Strategy builder coming soon. Practice by calculating P&L for individual legs in the Playground.</p>'
+    },
+
+    'scenario-analysis': {
+        title: 'Scenario Analysis',
+        description: 'Analyze how your portfolio performs under stress.',
+        type: 'interactive',
+        content: '<p>Scenario analysis tool coming soon.</p>'
     }
 };
 
@@ -115,10 +101,12 @@ function startExercise(exerciseId) {
 
     if (exerciseId === 'delta-quiz') {
         showQuiz();
+    } else if (currentExercise.type === 'interactive') {
+        showInteractivePlaceholder();
     } else if (exerciseId === 'greeks-calc') {
-        showCalculatorExercise();
+        showCalculatorExercise(); // Basic implementation below
     } else if (exerciseId === 'hedging-sim') {
-        showHedgingSimulation();
+        showHedgingSimulation(); // Basic implementation below
     }
 }
 
@@ -134,7 +122,6 @@ function showQuiz() {
                 <p>Question ${currentQuestion + 1} of ${currentExercise.questions.length}</p>
                 <p>Score: ${score}/${currentQuestion}</p>
             </div>
-
             <div class="quiz-question">
                 <h3>${quiz.question}</h3>
                 <div class="quiz-options">
@@ -143,51 +130,34 @@ function showQuiz() {
                     `).join('')}
                 </div>
             </div>
-
             <div id="quizFeedback" class="quiz-feedback"></div>
         </div>
     `;
 
-    // Add event listeners
     document.querySelectorAll('.quiz-option').forEach(btn => {
         btn.addEventListener('click', () => checkAnswer(parseInt(btn.dataset.index)));
     });
 }
 
-// Check quiz answer
 function checkAnswer(selectedIndex) {
     const quiz = currentExercise.questions[currentQuestion];
     const feedback = document.getElementById('quizFeedback');
     const isCorrect = selectedIndex === quiz.correct;
 
-    if (isCorrect) {
-        score++;
-        feedback.innerHTML = `
-            <div class="feedback-correct">
-                <h4>✅ Correct!</h4>
-                <p>${quiz.explanation}</p>
-                <button onclick="nextQuestion()">Next Question</button>
-            </div>
-        `;
-    } else {
-        feedback.innerHTML = `
-            <div class="feedback-incorrect">
-                <h4>❌ Incorrect</h4>
-                <p><strong>Correct answer:</strong> ${quiz.options[quiz.correct]}</p>
-                <p>${quiz.explanation}</p>
-                <button onclick="nextQuestion()">Next Question</button>
-            </div>
-        `;
-    }
+    if (isCorrect) score++;
 
-    // Disable option buttons
+    feedback.innerHTML = `
+        <div class="feedback-${isCorrect ? 'correct' : 'incorrect'}">
+            <h4>${isCorrect ? '✅ Correct!' : '❌ Incorrect'}</h4>
+            <p>${isCorrect ? quiz.explanation : `Correct answer: ${quiz.options[quiz.correct]}. ${quiz.explanation}`}</p>
+            <button onclick="nextQuestion()">Next Question</button>
+        </div>
+    `;
     document.querySelectorAll('.quiz-option').forEach(btn => btn.disabled = true);
 }
 
-// Move to next question
 function nextQuestion() {
     currentQuestion++;
-
     if (currentQuestion < currentExercise.questions.length) {
         showQuiz();
     } else {
@@ -195,28 +165,13 @@ function nextQuestion() {
     }
 }
 
-// Show quiz results
 function showQuizResults() {
     const container = document.querySelector('.practice-layout');
     const percentage = (score / currentExercise.questions.length * 100).toFixed(0);
-
-    let message = '';
-    if (percentage >= 80) {
-        message = '🎉 Excellent work! You have a strong understanding of delta.';
-    } else if (percentage >= 60) {
-        message = '👍 Good job! Review the explanations to strengthen your knowledge.';
-    } else {
-        message = '📚 Keep learning! Review the lessons and try again.';
-    }
-
     container.innerHTML = `
         <div class="quiz-results">
             <h2>Quiz Complete!</h2>
-            <div class="score-display">
-                <div class="score-circle">${percentage}%</div>
-                <p>You scored ${score} out of ${currentExercise.questions.length}</p>
-            </div>
-            <p>${message}</p>
+            <div class="score-display"><div class="score-circle">${percentage}%</div></div>
             <div class="results-actions">
                 <button onclick="startExercise('delta-quiz')">Retake Quiz</button>
                 <button onclick="location.reload()">Back to Exercises</button>
@@ -225,13 +180,30 @@ function showQuizResults() {
     `;
 }
 
-// Initialize exercise buttons
+function showInteractivePlaceholder() {
+    const container = document.querySelector('.practice-layout');
+    container.innerHTML = `
+        <div class="exercise-card">
+            <h2>${currentExercise.title}</h2>
+            ${currentExercise.content}
+            <button onclick="location.reload()" class="start-btn">Back to Exercises</button>
+        </div>
+    `;
+}
+
+function showCalculatorExercise() {
+    showInteractivePlaceholder(); // Valid placeholder for now
+}
+function showHedgingSimulation() {
+    showInteractivePlaceholder(); // Valid placeholder for now
+}
+
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.exercise-card .start-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const card = e.target.closest('.exercise-card');
-            const exerciseId = card.dataset.exercise;
-            startExercise(exerciseId);
+            startExercise(card.dataset.exercise);
         });
     });
 });

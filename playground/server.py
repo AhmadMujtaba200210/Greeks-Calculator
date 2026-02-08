@@ -11,7 +11,7 @@ import webbrowser
 from pathlib import Path
 
 # Configuration
-PORT = 8080
+PORT = 8085
 DIRECTORY = "public"
 
 class MyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -52,11 +52,11 @@ def main():
         print("=" * 60)
         
         # Open browser
-        try:
-            webbrowser.open(url)
-            print(f"\n🌐 Opening {url} in your browser...")
-        except:
-            print(f"\n🌐 Open {url} in your browser to get started")
+        # try:
+        #     webbrowser.open(url)
+        #     print(f"\n🌐 Opening {url} in your browser...")
+        # except:
+        #     print(f"\n🌐 Open {url} in your browser to get started")
         
         print("\n")
         

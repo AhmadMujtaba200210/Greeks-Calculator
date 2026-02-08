@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
+
 <body>
     <div class="container">
         <!-- Navigation -->
@@ -31,7 +33,7 @@
                     <!-- Left Panel: Controls -->
                     <div class="control-panel">
                         <h2>Option Parameters</h2>
-                        
+
                         <div class="control-group">
                             <label for="optionType">Option Type</label>
                             <select id="optionType">
@@ -51,7 +53,8 @@
                         </div>
 
                         <div class="control-group">
-                            <label for="maturity">Time to Maturity (T): <span id="maturityValue">1.0</span> years</label>
+                            <label for="maturity">Time to Maturity (T): <span id="maturityValue">1.0</span>
+                                years</label>
                             <input type="range" id="maturity" min="0.1" max="3" value="1" step="0.1">
                         </div>
 
@@ -76,7 +79,7 @@
                     <!-- Center Panel: Results -->
                     <div class="results-panel">
                         <h2>Option Valuation & Greeks</h2>
-                        
+
                         <div class="results-grid">
                             <div class="result-card price-card">
                                 <div class="result-label">Option Price</div>
@@ -317,8 +320,9 @@
                                 <h3>Challenge 1: The Perfect Hedge</h3>
                                 <span class="difficulty easy">Easy</span>
                             </div>
-                            <p>You have a portfolio of 100 call options. Calculate the delta and determine how many shares you need to buy/sell to achieve delta neutrality.</p>
-                            <button class="challenge-btn">Start Challenge</button>
+                            <p>You have a portfolio of 100 call options. Calculate the delta and determine how many
+                                shares you need to buy/sell to achieve delta neutrality.</p>
+                            <button class="challenge-btn" data-challenge="hedging-sim">Start Challenge</button>
                         </div>
 
                         <div class="challenge-item">
@@ -326,8 +330,9 @@
                                 <h3>Challenge 2: Volatility Spike</h3>
                                 <span class="difficulty medium">Medium</span>
                             </div>
-                            <p>The market expects a major announcement. Implied volatility jumps from 20% to 40%. Calculate the P&L on your option positions.</p>
-                            <button class="challenge-btn">Start Challenge</button>
+                            <p>The market expects a major announcement. Implied volatility jumps from 20% to 40%.
+                                Calculate the P&L on your option positions.</p>
+                            <button class="challenge-btn" data-challenge="scenario-analysis">Start Challenge</button>
                         </div>
 
                         <div class="challenge-item">
@@ -335,8 +340,9 @@
                                 <h3>Challenge 3: Gamma Scalping</h3>
                                 <span class="difficulty hard">Hard</span>
                             </div>
-                            <p>Execute a gamma scalping strategy over 5 days. Rebalance your delta hedge as the underlying moves and maximize your P&L.</p>
-                            <button class="challenge-btn">Start Challenge</button>
+                            <p>Execute a gamma scalping strategy over 5 days. Rebalance your delta hedge as the
+                                underlying moves and maximize your P&L.</p>
+                            <button class="challenge-btn" data-challenge="hedging-sim">Start Challenge</button>
                         </div>
 
                         <div class="challenge-item">
@@ -344,8 +350,9 @@
                                 <h3>Challenge 4: Earnings Trade</h3>
                                 <span class="difficulty hard">Hard</span>
                             </div>
-                            <p>A stock is trading at $100 with earnings in 3 days. Design a strategy to profit from the volatility crush after earnings.</p>
-                            <button class="challenge-btn">Start Challenge</button>
+                            <p>A stock is trading at $100 with earnings in 3 days. Design a strategy to profit from the
+                                volatility crush after earnings.</p>
+                            <button class="challenge-btn" data-challenge="scenario-analysis">Start Challenge</button>
                         </div>
                     </div>
                 </div>
@@ -358,4 +365,5 @@
     <script src="exercises.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>

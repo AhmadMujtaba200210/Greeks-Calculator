@@ -475,3 +475,20 @@ function drawTimeDecayChart() {
         }
     });
 }
+
+// Initialize challenge buttons
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.challenge-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const challengeId = e.target.dataset.challenge;
+            
+            // Switch to practice tab
+            document.querySelector('.nav-btn[data-section="practice"]').click();
+            
+            // Allow time for tab switch, then start exercise
+            setTimeout(() => {
+                startExercise(challengeId);
+            }, 100);
+        });
+    });
+});
