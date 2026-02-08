@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Moneyness Logic Tests</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: #f1f5f9;
+            font-family: sans-serif;
+            padding: 2rem;
+        }
+
+        .test-case {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #1e293b;
+            border-radius: 0.5rem;
+        }
+
+        .pass {
+            color: #10b981;
+        }
+
+        .fail {
+            color: #ef4444;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Unit Tests: Moneyness Indicator</h1>
+    <div id="results"></div>
+
+    <script>
+        // Mock State
+        const state = { spot: 100, strike: 100 };
+
+        // Logic to test (extracted from app.js)
+        function calculatePosition(spot, strike) {
+            const moneyness = spot / strike;
+            // Map 0.8 - 1.2 to 0 - 100%
+            const position = ((moneyness - 0.8) / 0.4) * 100;
+            return Math.max(0, Math.min(100, position));
+        }
+
+        const tests = [
+            {
+                name: "ATM (Spot = Strike)",
+                spot: 100, strike: 100,
+                expected: 50
+            },
+            {
+                name: "Deep OTM Call (Spot 80, Strike 100)",
+                spot: 80, strike: 100,
+                expected: 0 // (0.8 - 0.8)/0.4 = 0
+            },
+            {
+                name: "Deep ITM Call (Spot 120, Strike 100)",
+                spot: 120, strike: 100,
+                expected: 100 // (1.2 - 0.8)/0.4 = 100
+            },
+            {
+                name: "Slightly ITM (Spot 105, Strike 100)",
+                spot: 105, strike: 100,
+                expected: 62.5 // (1.05 - 0.8)/0.4 = 0.25/0.4 = 62.5%
+            },
+            {
+                name: "Extreme Low (Spot 50, Strike 100)",
+                spot: 50, strike: 100,
+                expected: 0 // Clamped
+            },
+            {
+                name: "Extreme High (Spot 150, Strike 100)",
+                spot: 150, strike: 100,
+                expected: 100 // Clamped
+            }
+        ];
+
+        const resultsDiv = document.getElementById('results');
+
+        tests.forEach(test => {
+            const result = calculatePosition(test.spot, test.strike);
+            const passed = Math.abs(result - test.expected) < 0.01;
+
+            const div = document.createElement('div');
+            div.className = 'test-case';
+            div.innerHTML = `
+                <strong>${test.name}</strong><br>
+                Input: S=${test.spot}, K=${test.strike}<br>
+                Expected: ${test.expected}%<br>
+                Actual: ${result}%<br>
+                Status: <span class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</span>
+            `;
+            resultsDiv.appendChild(div);
+        });
+    </script>
+</body>
+
+</html>

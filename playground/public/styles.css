@@ -296,11 +296,15 @@ body {
     content: '';
     position: absolute;
     top: -5px;
-    left: 50%;
-    width: 3px;
+    left: var(--position, 50%);
+    width: 4px;
+    /* Slightly thicker for visibility */
     height: 40px;
     background: white;
     transform: translateX(-50%);
+    transition: left 0.3s ease;
+    /* Smooth transition */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
 .moneyness-labels {
