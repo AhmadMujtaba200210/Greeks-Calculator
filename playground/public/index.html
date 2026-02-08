@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Greeks Interactive Playground</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <h1>📊 Options Greeks Playground</h1>
+            </div>
+            <div class="nav-links">
+                <button class="nav-btn active" data-section="playground">Playground</button>
+                <button class="nav-btn" data-section="learn">Learn</button>
+                <button class="nav-btn" data-section="practice">Practice</button>
+                <button class="nav-btn" data-section="challenges">Challenges</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Playground Section -->
+            <section id="playground" class="section active">
+                <div class="playground-layout">
+                    <!-- Left Panel: Controls -->
+                    <div class="control-panel">
+                        <h2>Option Parameters</h2>
+                        
+                        <div class="control-group">
+                            <label for="optionType">Option Type</label>
+                            <select id="optionType">
+                                <option value="call">Call</option>
+                                <option value="put">Put</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label for="spot">Spot Price (S): <span id="spotValue">100</span></label>
+                            <input type="range" id="spot" min="50" max="150" value="100" step="1">
+                        </div>
+
+                        <div class="control-group">
+                            <label for="strike">Strike Price (K): <span id="strikeValue">100</span></label>
+                            <input type="range" id="strike" min="50" max="150" value="100" step="1">
+                        </div>
+
+                        <div class="control-group">
+                            <label for="maturity">Time to Maturity (T): <span id="maturityValue">1.0</span> years</label>
+                            <input type="range" id="maturity" min="0.1" max="3" value="1" step="0.1">
+                        </div>
+
+                        <div class="control-group">
+                            <label for="volatility">Volatility (σ): <span id="volatilityValue">25</span>%</label>
+                            <input type="range" id="volatility" min="5" max="100" value="25" step="1">
+                        </div>
+
+                        <div class="control-group">
+                            <label for="rate">Risk-Free Rate (r): <span id="rateValue">5.0</span>%</label>
+                            <input type="range" id="rate" min="0" max="20" value="5" step="0.5">
+                        </div>
+
+                        <div class="control-group">
+                            <label for="dividend">Dividend Yield (q): <span id="dividendValue">0.0</span>%</label>
+                            <input type="range" id="dividend" min="0" max="10" value="0" step="0.5">
+                        </div>
+
+                        <button class="reset-btn" id="resetBtn">Reset to Defaults</button>
+                    </div>
+
+                    <!-- Center Panel: Results -->
+                    <div class="results-panel">
+                        <h2>Option Valuation & Greeks</h2>
+                        
+                        <div class="results-grid">
+                            <div class="result-card price-card">
+                                <div class="result-label">Option Price</div>
+                                <div class="result-value" id="priceResult">$0.00</div>
+                                <div class="result-desc">Fair value of the option</div>
+                            </div>
+
+                            <div class="result-card">
+                                <div class="result-label">Delta (Δ)</div>
+                                <div class="result-value" id="deltaResult">0.000</div>
+                                <div class="result-desc">Price sensitivity to spot</div>
+                            </div>
+
+                            <div class="result-card">
+                                <div class="result-label">Gamma (Γ)</div>
+                                <div class="result-value" id="gammaResult">0.000</div>
+                                <div class="result-desc">Rate of change of delta</div>
+                            </div>
+
+                            <div class="result-card">
+                                <div class="result-label">Vega (ν)</div>
+                                <div class="result-value" id="vegaResult">0.000</div>
+                                <div class="result-desc">Sensitivity to volatility</div>
+                            </div>
+
+                            <div class="result-card">
+                                <div class="result-label">Theta (Θ)</div>
+                                <div class="result-value" id="thetaResult">0.000</div>
+                                <div class="result-desc">Time decay per day</div>
+                            </div>
+
+                            <div class="result-card">
+                                <div class="result-label">Rho (ρ)</div>
+                                <div class="result-value" id="rhoResult">0.000</div>
+                                <div class="result-desc">Interest rate sensitivity</div>
+                            </div>
+                        </div>
+
+                        <!-- Visualization Tabs -->
+                        <div class="viz-tabs">
+                            <button class="viz-tab active" data-viz="price">Price vs Spot</button>
+                            <button class="viz-tab" data-viz="greeks">Greeks vs Spot</button>
+                            <button class="viz-tab" data-viz="volatility">Vol Surface</button>
+                            <button class="viz-tab" data-viz="time">Time Decay</button>
+                        </div>
+
+                        <div class="chart-container">
+                            <canvas id="mainChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Insights -->
+                    <div class="insights-panel">
+                        <h2>💡 Insights</h2>
+                        <div id="insights" class="insights-content">
+                            <p>Adjust the parameters to see how Greeks change!</p>
+                        </div>
+
+                        <h3>Moneyness</h3>
+                        <div class="moneyness-indicator">
+                            <div id="moneynessBar" class="moneyness-bar"></div>
+                            <div class="moneyness-labels">
+                                <span>OTM</span>
+                                <span>ATM</span>
+                                <span>ITM</span>
+                            </div>
+                        </div>
+
+                        <h3>Quick Facts</h3>
+                        <div id="quickFacts" class="quick-facts"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Learn Section -->
+            <section id="learn" class="section">
+                <div class="learn-layout">
+                    <aside class="course-sidebar">
+                        <h2>Course Modules</h2>
+                        <div class="module-list">
+                            <div class="module" data-module="1">
+                                <div class="module-header">
+                                    <span class="module-number">1</span>
+                                    <span class="module-title">Introduction to Options</span>
+                                </div>
+                                <ul class="lesson-list">
+                                    <li data-lesson="1-1">What are Options?</li>
+                                    <li data-lesson="1-2">Call vs Put Options</li>
+                                    <li data-lesson="1-3">Payoff Diagrams</li>
+                                    <li data-lesson="1-4">Intrinsic vs Extrinsic Value</li>
+                                </ul>
+                            </div>
+
+                            <div class="module" data-module="2">
+                                <div class="module-header">
+                                    <span class="module-number">2</span>
+                                    <span class="module-title">Black-Scholes Model</span>
+                                </div>
+                                <ul class="lesson-list">
+                                    <li data-lesson="2-1">The Black-Scholes Formula</li>
+                                    <li data-lesson="2-2">Model Assumptions</li>
+                                    <li data-lesson="2-3">d1 and d2 Explained</li>
+                                    <li data-lesson="2-4">Put-Call Parity</li>
+                                </ul>
+                            </div>
+
+                            <div class="module" data-module="3">
+                                <div class="module-header">
+                                    <span class="module-number">3</span>
+                                    <span class="module-title">The Greeks</span>
+                                </div>
+                                <ul class="lesson-list">
+                                    <li data-lesson="3-1">Delta: Price Sensitivity</li>
+                                    <li data-lesson="3-2">Gamma: Delta's Rate of Change</li>
+                                    <li data-lesson="3-3">Vega: Volatility Sensitivity</li>
+                                    <li data-lesson="3-4">Theta: Time Decay</li>
+                                    <li data-lesson="3-5">Rho: Interest Rate Risk</li>
+                                </ul>
+                            </div>
+
+                            <div class="module" data-module="4">
+                                <div class="module-header">
+                                    <span class="module-number">4</span>
+                                    <span class="module-title">Volatility Surface</span>
+                                </div>
+                                <ul class="lesson-list">
+                                    <li data-lesson="4-1">Implied Volatility</li>
+                                    <li data-lesson="4-2">The Volatility Smile</li>
+                                    <li data-lesson="4-3">SVI Parameterization</li>
+                                    <li data-lesson="4-4">Arbitrage-Free Surfaces</li>
+                                </ul>
+                            </div>
+
+                            <div class="module" data-module="5">
+                                <div class="module-header">
+                                    <span class="module-number">5</span>
+                                    <span class="module-title">Trading Strategies</span>
+                                </div>
+                                <ul class="lesson-list">
+                                    <li data-lesson="5-1">Delta Hedging</li>
+                                    <li data-lesson="5-2">Gamma Scalping</li>
+                                    <li data-lesson="5-3">Volatility Trading</li>
+                                    <li data-lesson="5-4">Spreads and Combinations</li>
+                                </ul>
+                            </div>
+
+                            <div class="module" data-module="6">
+                                <div class="module-header">
+                                    <span class="module-number">6</span>
+                                    <span class="module-title">Advanced Topics</span>
+                                </div>
+                                <ul class="lesson-list">
+                                    <li data-lesson="6-1">Automatic Differentiation</li>
+                                    <li data-lesson="6-2">Numerical Methods</li>
+                                    <li data-lesson="6-3">Risk Management</li>
+                                    <li data-lesson="6-4">Real-World Applications</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <div class="lesson-content">
+                        <div id="lessonDisplay">
+                            <h2>Welcome to the Options Greeks Course!</h2>
+                            <p>Select a lesson from the sidebar to begin your learning journey.</p>
+                            <div class="welcome-cards">
+                                <div class="welcome-card">
+                                    <h3>📚 Comprehensive Curriculum</h3>
+                                    <p>6 modules covering everything from basics to advanced topics</p>
+                                </div>
+                                <div class="welcome-card">
+                                    <h3>🎮 Interactive Learning</h3>
+                                    <p>Hands-on exercises and real-time visualizations</p>
+                                </div>
+                                <div class="welcome-card">
+                                    <h3>🏆 Practice Challenges</h3>
+                                    <p>Test your knowledge with quizzes and trading simulations</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Practice Section -->
+            <section id="practice" class="section">
+                <div class="practice-layout">
+                    <h2>Practice Exercises</h2>
+                    <div class="exercise-grid">
+                        <div class="exercise-card" data-exercise="delta-quiz">
+                            <h3>🎯 Delta Quiz</h3>
+                            <p>Test your understanding of delta and hedging</p>
+                            <button class="start-btn">Start Exercise</button>
+                        </div>
+
+                        <div class="exercise-card" data-exercise="greeks-calc">
+                            <h3>🧮 Greeks Calculator</h3>
+                            <p>Calculate Greeks for various scenarios</p>
+                            <button class="start-btn">Start Exercise</button>
+                        </div>
+
+                        <div class="exercise-card" data-exercise="vol-surface">
+                            <h3>📈 Volatility Surface</h3>
+                            <p>Build and analyze volatility surfaces</p>
+                            <button class="start-btn">Start Exercise</button>
+                        </div>
+
+                        <div class="exercise-card" data-exercise="hedging-sim">
+                            <h3>🛡️ Hedging Simulation</h3>
+                            <p>Practice delta and gamma hedging strategies</p>
+                            <button class="start-btn">Start Exercise</button>
+                        </div>
+
+                        <div class="exercise-card" data-exercise="strategy-builder">
+                            <h3>🎲 Strategy Builder</h3>
+                            <p>Create and analyze option strategies</p>
+                            <button class="start-btn">Start Exercise</button>
+                        </div>
+
+                        <div class="exercise-card" data-exercise="scenario-analysis">
+                            <h3>🔍 Scenario Analysis</h3>
+                            <p>Analyze P&L under different market conditions</p>
+                            <button class="start-btn">Start Exercise</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Challenges Section -->
+            <section id="challenges" class="section">
+                <div class="challenges-layout">
+                    <h2>Trading Challenges</h2>
+                    <p class="subtitle">Test your skills with real-world scenarios</p>
+
+                    <div class="challenge-list">
+                        <div class="challenge-item">
+                            <div class="challenge-header">
+                                <h3>Challenge 1: The Perfect Hedge</h3>
+                                <span class="difficulty easy">Easy</span>
+                            </div>
+                            <p>You have a portfolio of 100 call options. Calculate the delta and determine how many shares you need to buy/sell to achieve delta neutrality.</p>
+                            <button class="challenge-btn">Start Challenge</button>
+                        </div>
+
+                        <div class="challenge-item">
+                            <div class="challenge-header">
+                                <h3>Challenge 2: Volatility Spike</h3>
+                                <span class="difficulty medium">Medium</span>
+                            </div>
+                            <p>The market expects a major announcement. Implied volatility jumps from 20% to 40%. Calculate the P&L on your option positions.</p>
+                            <button class="challenge-btn">Start Challenge</button>
+                        </div>
+
+                        <div class="challenge-item">
+                            <div class="challenge-header">
+                                <h3>Challenge 3: Gamma Scalping</h3>
+                                <span class="difficulty hard">Hard</span>
+                            </div>
+                            <p>Execute a gamma scalping strategy over 5 days. Rebalance your delta hedge as the underlying moves and maximize your P&L.</p>
+                            <button class="challenge-btn">Start Challenge</button>
+                        </div>
+
+                        <div class="challenge-item">
+                            <div class="challenge-header">
+                                <h3>Challenge 4: Earnings Trade</h3>
+                                <span class="difficulty hard">Hard</span>
+                            </div>
+                            <p>A stock is trading at $100 with earnings in 3 days. Design a strategy to profit from the volatility crush after earnings.</p>
+                            <button class="challenge-btn">Start Challenge</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="calculator.js"></script>
+    <script src="lessons.js"></script>
+    <script src="exercises.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
