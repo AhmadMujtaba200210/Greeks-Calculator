@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Advice Logic Tests</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: #f1f5f9;
+            font-family: monospace;
+            padding: 2rem;
+        }
+
+        .test-case {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: #1e293b;
+            border-radius: 0.25rem;
+        }
+
+        .pass {
+            color: #10b981;
+        }
+
+        .fail {
+            color: #ef4444;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🤖 Advice Logic Verification</h1>
+    <div id="results"></div>
+
+    <script src="calculator.js"></script>
+    <script src="advice.js"></script>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+
+        function assertContains(adviceList, keyword, testName) {
+            const json = JSON.stringify(adviceList).toLowerCase();
+            const passed = json.includes(keyword.toLowerCase());
+
+            const div = document.createElement('div');
+            div.className = 'test-case';
+            div.innerHTML = `
+                <strong>${testName}</strong>: 
+                Looking for "${keyword}"... 
+                <span class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</span>
+            `;
+            resultsDiv.appendChild(div);
+        }
+
+        function runTests() {
+            // Test 1: Deep OTM Call (Lotto Ticket)
+            const stateOTM = { spot: 80, strike: 100, maturity: 0.1, volatility: 0.25, optionType: 'call', rate: 0.05 };
+            const greeksOTM = calculator.calculateGreeks(80, 100, 0.1, 0.25, 0.05, 0, true);
+            const adviceOTM = AdviceGenerator.generate(stateOTM, greeksOTM);
+            assertContains(adviceOTM, "Lotto Ticket", "Deep OTM Call Advice");
+
+            // Test 2: Gamma Risk (ATM, Short Expiry)
+            const stateGamma = { spot: 100, strike: 100, maturity: 0.02, volatility: 0.2, optionType: 'call', rate: 0.05 }; // ~1 week
+            const greeksGamma = calculator.calculateGreeks(100, 100, 0.02, 0.2, 0.05, 0, true);
+            const adviceGamma = AdviceGenerator.generate(stateGamma, greeksGamma);
+            assertContains(adviceGamma, "Gamma Risk", "High Gamma Warning");
+
+            // Test 3: Theta Decay (Approaching Expiry)
+            // Increased Vol to 0.4 to ensure Theta is high enough (>0.05)
+            const stateTheta = { spot: 100, strike: 100, maturity: 0.04, volatility: 0.4, optionType: 'call', rate: 0.05 };
+            const greeksTheta = calculator.calculateGreeks(100, 100, 0.04, 0.4, 0.05, 0, true);
+            const adviceTheta = AdviceGenerator.generate(stateTheta, greeksTheta);
+            assertContains(adviceTheta, "Theta Cliff", "Theta Acceleration Warning");
+
+            // Test 4: High Volatility
+            // High Vol (1.5) should now trigger "Extreme Volatility" first
+            const stateVol = { spot: 100, strike: 100, maturity: 0.5, volatility: 1.5, optionType: 'call', rate: 0.05 };
+            const greeksVol = calculator.calculateGreeks(100, 100, 0.5, 1.5, 0.05, 0, true);
+            const adviceVol = AdviceGenerator.generate(stateVol, greeksVol);
+            assertContains(adviceVol, "Extreme Volatility", "High Volatility Warning");
+
+            // Test 5: Deep ITM Call (Stock Replacement)
+            const stateITM = { spot: 150, strike: 100, maturity: 0.5, volatility: 0.25, optionType: 'call', rate: 0.05 };
+            const greeksITM = calculator.calculateGreeks(150, 100, 0.5, 0.25, 0.05, 0, true);
+            const adviceITM = AdviceGenerator.generate(stateITM, greeksITM);
+            assertContains(adviceITM, "Stock Replacement", "Deep ITM Strategy");
+        }
+
+        if (typeof AdviceGenerator !== 'undefined') {
+            runTests();
+        } else {
+            resultsDiv.innerHTML = "Error: AdviceGenerator not loaded";
+        }
+    </script>
+</body>
+
+</html>

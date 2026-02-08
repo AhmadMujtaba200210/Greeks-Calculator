@@ -197,6 +197,28 @@ function updateInsights(greeks) {
         <p><strong>Days to Expiry:</strong> ${Math.round(maturity * 365)}</p>
     `;
     document.getElementById('quickFacts').innerHTML = facts;
+
+    // Update Advice
+    updateAdvice(greeks);
+}
+
+function updateAdvice(greeks) {
+    if (typeof AdviceGenerator === 'undefined') return;
+
+    const adviceList = AdviceGenerator.generate(state, greeks);
+    const container = document.getElementById('traderAdvice');
+
+    if (adviceList.length === 0) {
+        container.innerHTML = '<p class="advice-empty">No specific alerts for current parameters.</p>';
+        return;
+    }
+
+    container.innerHTML = adviceList.map(item => `
+        <div class="advice-card advice-${item.type}">
+            <h4>${item.title}</h4>
+            <p>${item.text}</p>
+        </div>
+    `).join('');
 }
 
 // Update moneyness indicator
@@ -481,10 +503,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.challenge-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const challengeId = e.target.dataset.challenge;
-            
+
             // Switch to practice tab
             document.querySelector('.nav-btn[data-section="practice"]').click();
-            
+
             // Allow time for tab switch, then start exercise
             setTimeout(() => {
                 startExercise(challengeId);
