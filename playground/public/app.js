@@ -205,20 +205,16 @@ function updateInsights(greeks) {
 function updateAdvice(greeks) {
     if (typeof AdviceGenerator === 'undefined') return;
 
-    const adviceList = AdviceGenerator.generate(state, greeks);
+    const advice = AdviceGenerator.generate(state, greeks);
     const container = document.getElementById('traderAdvice');
 
-    if (adviceList.length === 0) {
-        container.innerHTML = '<p class="advice-empty">No specific alerts for current parameters.</p>';
-        return;
-    }
-
-    container.innerHTML = adviceList.map(item => `
-        <div class="advice-card advice-${item.type}">
-            <h4>${item.title}</h4>
-            <p>${item.text}</p>
+    container.className = `advice-panel advice-${advice.type}`;
+    container.innerHTML = `
+        <div class="advice-header">
+            <h4>${advice.title}</h4>
         </div>
-    `).join('');
+        <p>${advice.text}</p>
+    `;
 }
 
 // Update moneyness indicator

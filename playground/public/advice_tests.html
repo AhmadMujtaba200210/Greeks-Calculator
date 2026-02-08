@@ -39,8 +39,8 @@
     <script>
         const resultsDiv = document.getElementById('results');
 
-        function assertContains(adviceList, keyword, testName) {
-            const json = JSON.stringify(adviceList).toLowerCase();
+        function assertContains(adviceObj, keyword, testName) {
+            const json = JSON.stringify(adviceObj).toLowerCase();
             const passed = json.includes(keyword.toLowerCase());
 
             const div = document.createElement('div');

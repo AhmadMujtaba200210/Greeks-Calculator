@@ -321,33 +321,36 @@ body {
 
 /* Trader Advice Panel */
 .advice-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.advice-card {
     padding: 1rem;
     border-radius: 0.5rem;
-    border-left: 4px solid;
+    border-left: 4px solid var(--text-secondary);
     background: var(--bg-dark);
+    transition: all 0.3s ease;
 }
 
-.advice-card h4 {
-    margin-bottom: 0.5rem;
-    font-size: 0.95rem;
+.advice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.advice-panel h4 {
+    font-size: 0.9rem;
     font-weight: 700;
 }
 
-.advice-card p {
-    font-size: 0.85rem;
-    color: #cbd5e1;
-    line-height: 1.5;
+.advice-panel p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin: 0;
 }
 
+/* Advice Types */
 .advice-info {
     border-color: #3b82f6;
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(59, 130, 246, 0.05);
 }
 
 .advice-info h4 {
@@ -356,7 +359,7 @@ body {
 
 .advice-warning {
     border-color: #f59e0b;
-    background: rgba(245, 158, 11, 0.1);
+    background: rgba(245, 158, 11, 0.05);
 }
 
 .advice-warning h4 {
@@ -365,7 +368,7 @@ body {
 
 .advice-danger {
     border-color: #ef4444;
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(239, 68, 68, 0.05);
 }
 
 .advice-danger h4 {
@@ -374,17 +377,20 @@ body {
 
 .advice-success {
     border-color: #10b981;
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(16, 185, 129, 0.05);
 }
 
 .advice-success h4 {
     color: #34d399;
 }
 
-.advice-empty {
-    font-style: italic;
+.advice-neutral {
+    border-color: var(--text-secondary);
+    background: var(--bg-dark);
+}
+
+.advice-neutral h4 {
     color: var(--text-secondary);
-    text-align: center;
 }
 
 /* Learn Section */
