@@ -19,6 +19,7 @@
             </div>
             <div class="nav-links">
                 <button class="nav-btn active" data-section="playground">Playground</button>
+                <button class="nav-btn" data-section="builder">Builder</button>
                 <button class="nav-btn" data-section="learn">Learn</button>
                 <button class="nav-btn" data-section="practice">Practice</button>
                 <button class="nav-btn" data-section="challenges">Challenges</button>
@@ -404,7 +405,88 @@
                     </div>
                 </div>
             </section>
+            <!-- Strategy Builder Section -->
+            <section id="builder" class="section">
+                <div class="builder-layout">
+                    <div class="builder-header">
+                        <h2>Strategy Builder</h2>
+                        <div class="header-actions">
+                            <button class="guide-btn" id="builderGuideBtn">? Guide</button>
+                            <button class="add-leg-btn" id="addLegBtn">+ Add Leg</button>
+                        </div>
+                    </div>
+
+                    <div class="strategy-content">
+                        <!-- Chart -->
+                        <div class="strategy-chart-container">
+                            <canvas id="strategyChart"></canvas>
+                        </div>
+
+                        <!-- Leg Manager -->
+                        <div class="legs-container" id="legsContainer">
+                            <!-- Legs injected here -->
+                        </div>
+                    </div>
+
+                    <div class="strategy-info">
+                        <div class="info-card">
+                            <h3>Max Profit</h3>
+                            <span id="maxProfit">--</span>
+                        </div>
+                        <div class="info-card">
+                            <h3>Max Loss</h3>
+                            <span id="maxLoss">--</span>
+                        </div>
+                        <div class="info-card">
+                            <h3>Breakevens</h3>
+                            <span id="breakevens">--</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
+    </div>
+
+    <!-- Strategy Builder Guide Modal -->
+    <div id="guideModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>📘 Strategy Builder Guide</h2>
+
+            <div class="guide-section">
+                <h3>🎯 Objective</h3>
+                <p>Visualize the Profit & Loss (P&L) of multi-leg option strategies at expiration. Understand how
+                    different combinations of calls and puts create risk profiles like Straddles, Iron Condors, or
+                    Spreads.</p>
+            </div>
+
+            <div class="guide-section">
+                <h3>🛠️ How to Use</h3>
+                <ol>
+                    <li><strong>Add Legs:</strong> Click <span class="badge">+ Add Leg</span> to add option contracts.
+                    </li>
+                    <li><strong>Configure:</strong> Set <strong>Buy/Sell</strong>, <strong>Call/Put</strong>,
+                        <strong>Strike</strong>, and <strong>Quantity</strong> for each leg.</li>
+                    <li><strong>Analyze:</strong> Watch the chart update instantly. The green/red line shows your P&L at
+                        expiration.</li>
+                </ol>
+            </div>
+
+            <div class="guide-section">
+                <h3>📊 Key Metrics</h3>
+                <ul>
+                    <li><strong>Max Profit:</strong> The theoretical maximum gain.</li>
+                    <li><strong>Max Loss:</strong> The maximum you can lose (risk).</li>
+                    <li><strong>Breakevens:</strong> Price points where P&L is zero.</li>
+                </ul>
+            </div>
+
+            <div class="pro-tip">
+                <h4>💡 Tip</h4>
+                <p>Try building a "Long Straddle" by buying a Call and a Put at the same strike to profit from high
+                    volatility!</p>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts -->
@@ -413,7 +495,8 @@
     <script src="js/advice.js"></script>
     <script src="js/lessons.js"></script>
     <script src="js/exercises.js"></script>
-    <script src="js/app.js"></script>
+    <script type="module" src="js/strategy.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 
 </html>

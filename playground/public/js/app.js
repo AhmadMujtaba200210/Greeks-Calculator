@@ -10,15 +10,36 @@ const state = {
     rate: 0.05,
     dividend: 0.0,
     currentViz: 'price',
-    currentChart: null
+    currentChart: null,
+    wasmLoaded: false
 };
 
+// Import WASM module
+import init, { calculate_greeks_wasm } from '../pkg/greeks_calculator.js';
+import { addLeg } from './strategy.js';
+
 // Initialize the application
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        await init();
+        state.wasmLoaded = true;
+        console.log('🚀 WASM Backend Initialized');
+    } catch (e) {
+        console.error('Failed to load WASM backend:', e);
+    }
+
     initializeControls();
     initializeNavigation();
     initializeVisualization();
     updateCalculations();
+
+    // Initialize Strategy Builder
+    const addLegBtn = document.getElementById('addLegBtn');
+    if (addLegBtn) {
+        addLegBtn.addEventListener('click', () => addLeg());
+        // Defaults
+        addLeg({ type: 'call', action: 'buy', strike: 100 });
+    }
 });
 
 // Initialize control panel
@@ -124,11 +145,17 @@ function initializeVisualization() {
 
 // Update all calculations and display
 function updateCalculations() {
-    const { spot, strike, maturity, volatility, rate, dividend, optionType } = state;
+    const { spot, strike, maturity, volatility, rate, dividend, optionType, wasmLoaded } = state;
     const isCall = optionType === 'call';
+    let greeks;
 
-    // Calculate Greeks
-    const greeks = calculator.calculateGreeks(spot, strike, maturity, volatility, rate, dividend, isCall);
+    if (wasmLoaded) {
+        // Use high-performance Rust backend
+        greeks = calculate_greeks_wasm(spot, strike, maturity, volatility, rate, dividend, isCall);
+    } else {
+        // Fallback to JS (or if WASM failed to load)
+        greeks = calculator.calculateGreeks(spot, strike, maturity, volatility, rate, dividend, isCall);
+    }
 
     // Update display
     document.getElementById('priceResult').textContent = `$${greeks.price.toFixed(4)}`;

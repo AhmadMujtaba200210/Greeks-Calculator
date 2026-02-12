@@ -5,10 +5,19 @@ edition = "2021"
 authors = ["Greeks Calculator Team"]
 description = "High-performance options Greeks calculator with real-time volatility surface construction"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
 [dependencies]
 ndarray = "0.16"
 rayon = "1.10"
 approx = "0.5"
+wasm-bindgen = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

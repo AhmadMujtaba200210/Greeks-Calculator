@@ -31,6 +31,7 @@ pub mod ad;
 pub mod pricing;
 pub mod types;
 pub mod volatility;
+pub mod wasm;
 
 pub use types::{Greeks, OptionData, OptionType};
 pub use pricing::{BlackScholesParams, calculate_greeks};
