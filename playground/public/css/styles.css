@@ -191,6 +191,8 @@ body {
     padding: 1rem;
     border-radius: 0.75rem;
     border: 1px solid var(--border);
+    position: relative;
+    /* Context for absolute positioning of icons */
 }
 
 .result-card.price-card {
@@ -198,6 +200,88 @@ body {
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     border: none;
 }
+
+/* Info Icons & Tooltips */
+.info-icon {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    cursor: help;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    transition: color 0.2s ease;
+    z-index: 10;
+    line-height: 1;
+}
+
+.info-icon:hover {
+    color: var(--primary);
+}
+
+/* Tooltip Container */
+.tooltip-text {
+    visibility: hidden;
+    width: 240px;
+    background-color: var(--bg-card);
+    /* Dark background matching card */
+    color: var(--text-primary);
+    text-align: left;
+    padding: 12px;
+    border-radius: 8px;
+
+    /* Position above the icon */
+    position: absolute;
+    z-index: 1000;
+    bottom: 150%;
+    left: 50%;
+    transform: translateX(-85%) translateY(10px);
+    /* Center align relative to icon, start slightly lower */
+
+    /* Style */
+    font-size: 0.85rem;
+    line-height: 1.5;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    /* Prevent hovering strictly on tooltip from keeping it open if not desired, but usually we want it accessible */
+}
+
+.tooltip-text strong {
+    color: var(--primary);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+}
+
+/* Show the tooltip on hover */
+.info-icon:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-85%) translateY(0);
+    /* Animate up */
+}
+
+/* Triangle/Arrow for tooltip pointing down */
+.tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    /* At the bottom of tooltip */
+    right: 15px;
+    /* Aligned with the icon roughly */
+    margin-left: -6px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: var(--bg-card) transparent transparent transparent;
+    /* Arrow color same as bg */
+}
+
+/* Ensure the border of the arrow matches too slightly complex with border. 
+   Simplification: just use background color. */
 
 .result-label {
     font-size: 0.85rem;

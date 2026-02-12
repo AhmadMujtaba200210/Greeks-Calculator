@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Options Greeks Interactive Playground</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -88,30 +88,70 @@
                             </div>
 
                             <div class="result-card">
+                                <div class="info-icon">
+                                    ⓘ
+                                    <div class="tooltip-text">
+                                        <strong>Delta (Δ)</strong><br>
+                                        Measures an option's sensitivity to the underlying asset's price ($1 move).
+                                        Helps estimate probability of ITM and hedge directional risk.
+                                    </div>
+                                </div>
                                 <div class="result-label">Delta (Δ)</div>
                                 <div class="result-value" id="deltaResult">0.000</div>
                                 <div class="result-desc">Price sensitivity to spot</div>
                             </div>
 
                             <div class="result-card">
+                                <div class="info-icon">
+                                    ⓘ
+                                    <div class="tooltip-text">
+                                        <strong>Gamma (Γ)</strong><br>
+                                        Rate of change of Delta for a $1 move in stock. Indicates position stability.
+                                        High Gamma means explosive P&L swings.
+                                    </div>
+                                </div>
                                 <div class="result-label">Gamma (Γ)</div>
                                 <div class="result-value" id="gammaResult">0.000</div>
                                 <div class="result-desc">Rate of change of delta</div>
                             </div>
 
                             <div class="result-card">
+                                <div class="info-icon">
+                                    ⓘ
+                                    <div class="tooltip-text">
+                                        <strong>Vega (ν)</strong><br>
+                                        Sensitivity to Implied Volatility (IV). Change in option price for a 1% change
+                                        in IV. Critical for earnings plays and volatility traders.
+                                    </div>
+                                </div>
                                 <div class="result-label">Vega (ν)</div>
                                 <div class="result-value" id="vegaResult">0.000</div>
                                 <div class="result-desc">Sensitivity to volatility</div>
                             </div>
 
                             <div class="result-card">
+                                <div class="info-icon">
+                                    ⓘ
+                                    <div class="tooltip-text">
+                                        <strong>Theta (Θ)</strong><br>
+                                        Time decay per day. Dollar amount lost daily as expiration approaches ('time
+                                        burn'). Sellers collect theta; buyers pay it.
+                                    </div>
+                                </div>
                                 <div class="result-label">Theta (Θ)</div>
                                 <div class="result-value" id="thetaResult">0.000</div>
                                 <div class="result-desc">Time decay per day</div>
                             </div>
 
                             <div class="result-card">
+                                <div class="info-icon">
+                                    ⓘ
+                                    <div class="tooltip-text">
+                                        <strong>Rho (ρ)</strong><br>
+                                        Sensitivity to interest rates (1% change). Primarily impacts LEAPS and long-term
+                                        cost of carry.
+                                    </div>
+                                </div>
                                 <div class="result-label">Rho (ρ)</div>
                                 <div class="result-value" id="rhoResult">0.000</div>
                                 <div class="result-desc">Interest rate sensitivity</div>
@@ -367,11 +407,13 @@
         </main>
     </div>
 
-    <script src="calculator.js"></script>
-    <script src="advice.js"></script>
-    <script src="lessons.js"></script>
-    <script src="exercises.js"></script>
-    <script src="app.js"></script>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/calculator.js"></script>
+    <script src="js/advice.js"></script>
+    <script src="js/lessons.js"></script>
+    <script src="js/exercises.js"></script>
+    <script src="js/app.js"></script>
 </body>
 
 </html>
