@@ -141,10 +141,12 @@ export function updateStrategyChart() {
         data.push(totalPayoff);
     }
 
+    updateStrategyStats(data, start, end, stepSize);
+
     if (strategyState.chart) {
         strategyState.chart.destroy();
     }
-
+    // ... (chart rendering logic continues)
     strategyState.chart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -184,6 +186,133 @@ export function updateStrategyChart() {
             }
         }
     });
+}
+
+// Calculate and Update Stats Cards
+function updateStrategyStats(payoffs, start, end, stepSize) {
+    const maxProfitEl = document.getElementById('maxProfit');
+    const maxLossEl = document.getElementById('maxLoss');
+    const breakevensEl = document.getElementById('breakevens');
+
+    if (!maxProfitEl || !maxLossEl || !breakevensEl) return;
+
+    let maxVal = Math.max(...payoffs);
+    let minVal = Math.min(...payoffs);
+
+    // Check for Infinite/Unlimited at boundaries
+    const isRisingAtEnd = payoffs[payoffs.length - 1] > payoffs[payoffs.length - 2];
+    const isFallingAtEnd = payoffs[payoffs.length - 1] < payoffs[payoffs.length - 2];
+    const isRisingAtStart = payoffs[0] > payoffs[1];
+    const isFallingAtStart = payoffs[0] < payoffs[1];
+
+    // Simplistic infinite detection: if the value at the very end is the max/min and it was moving in that direction
+    let maxProfitText = "";
+    let maxLossText = "";
+
+    if (isRisingAtEnd || isRisingAtStart) {
+        maxProfitText = "Infinite ♾️";
+    } else {
+        maxProfitText = `$${maxVal.toFixed(2)}`;
+    }
+
+    if (isFallingAtEnd || isFallingAtStart) {
+        maxLossText = "Unlimited ⚠️";
+    } else {
+        maxLossText = `$${Math.abs(minVal).toFixed(2)}`;
+    }
+
+    maxProfitEl.innerText = maxProfitText;
+    maxProfitEl.style.color = maxProfitText.includes('Infinite') ? '#10b981' : (maxVal > 0 ? '#10b981' : '#94a3b8');
+
+    maxLossEl.innerText = maxLossText;
+    maxLossEl.style.color = maxLossText.includes('Unlimited') ? '#ef4444' : (minVal < 0 ? '#ef4444' : '#94a3b8');
+
+    // Find Breakevens (Crossings of zero)
+    const bePoints = [];
+    for (let i = 0; i < payoffs.length - 1; i++) {
+        if (payoffs[i] * payoffs[i + 1] <= 0) {
+            // Found a crossing between i and i+1
+            // Linear interpolation: y = mx + c => 0 = m*x + payoffs[i]
+            const x1 = start + (i * stepSize);
+            const x2 = start + ((i + 1) * stepSize);
+            const y1 = payoffs[i];
+            const y2 = payoffs[i + 1];
+
+            if (y1 === y2) continue; // Horizontal on 0
+
+            const breakPrice = x1 + (0 - y1) * (x2 - x1) / (y2 - y1);
+            bePoints.push(breakPrice.toFixed(1));
+        }
+    }
+
+    breakevensEl.innerText = bePoints.length > 0 ? bePoints.join(', ') : 'None';
+}
+
+// Initialize Guide Modal with Carousel logic
+export function initStrategyGuide() {
+    const modal = document.getElementById('guideModal');
+    const btn = document.getElementById('builderGuideBtn');
+    const closeBtn = document.querySelector('.close-modal');
+    const finishBtn = document.getElementById('closeGuideFinal');
+
+    const steps = document.querySelectorAll('.guide-step');
+    const dots = document.querySelectorAll('.dot');
+    const nextBtn = document.getElementById('nextStep');
+    const prevBtn = document.getElementById('prevStep');
+
+    if (!modal || !btn || !closeBtn) return;
+
+    let currentStep = 1;
+
+    function updateStep(newStep) {
+        currentStep = newStep;
+
+        // Update steps
+        steps.forEach(step => {
+            step.classList.toggle('active', parseInt(step.dataset.step) === currentStep);
+        });
+
+        // Update dots
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index + 1 === currentStep);
+        });
+
+        // Update buttons
+        prevBtn.disabled = currentStep === 1;
+        if (currentStep === steps.length) {
+            nextBtn.innerText = 'Finish ✓';
+            nextBtn.onclick = closeModal;
+        } else {
+            nextBtn.innerText = 'Next →';
+            nextBtn.onclick = () => updateStep(currentStep + 1);
+        }
+    }
+
+    function closeModal() {
+        modal.classList.remove('show');
+    }
+
+    btn.onclick = () => {
+        updateStep(1); // Reset to first step
+        modal.classList.add('show');
+    };
+
+    closeBtn.onclick = closeModal;
+    if (finishBtn) finishBtn.onclick = closeModal;
+
+    prevBtn.onclick = () => {
+        if (currentStep > 1) updateStep(currentStep - 1);
+    };
+
+    nextBtn.onclick = () => {
+        if (currentStep < steps.length) updateStep(currentStep + 1);
+    };
+
+    window.onclick = (event) => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
 }
 
 // Global exposure for UI onclick handlers

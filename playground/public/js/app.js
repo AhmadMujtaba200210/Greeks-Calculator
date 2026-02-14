@@ -16,7 +16,7 @@ const state = {
 
 // Import WASM module
 import init, { calculate_greeks_wasm } from '../pkg/greeks_calculator.js';
-import { addLeg } from './strategy.js';
+import { addLeg, initStrategyGuide } from './strategy.js';
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         addLegBtn.addEventListener('click', () => addLeg());
         // Defaults
         addLeg({ type: 'call', action: 'buy', strike: 100 });
+        initStrategyGuide();
     }
 });
 

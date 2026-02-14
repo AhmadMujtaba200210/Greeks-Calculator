@@ -449,42 +449,119 @@
 
     <!-- Strategy Builder Guide Modal -->
     <div id="guideModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content tutorial-mode">
             <span class="close-modal">&times;</span>
-            <h2>📘 Strategy Builder Guide</h2>
 
-            <div class="guide-section">
-                <h3>🎯 Objective</h3>
-                <p>Visualize the Profit & Loss (P&L) of multi-leg option strategies at expiration. Understand how
-                    different combinations of calls and puts create risk profiles like Straddles, Iron Condors, or
-                    Spreads.</p>
+            <div class="guide-carousel">
+                <!-- Step 1: Welcome -->
+                <div class="guide-step active" data-step="1">
+                    <div class="step-icon">🏗️</div>
+                    <h2>Welcome to the Builder</h2>
+                    <p>The Strategy Builder lets you combine multiple options to create complex portfolios. Think of it
+                        as "Option Legos".</p>
+                    <div class="feature-highlight">
+                        <strong>Goal:</strong> Visualize exactly how much you'll make or lose at different stock prices.
+                    </div>
+                </div>
+
+                <!-- Step 2: Payoff Chart -->
+                <div class="guide-step" data-step="2">
+                    <div class="step-icon">📈</div>
+                    <h2>Reading the Chart</h2>
+                    <p>The line shows your <strong>Profit or Loss at Expiration</strong>.</p>
+                    <ul>
+                        <li><span class="text-green">Green Zone</span>: You are making money.</li>
+                        <li><span class="text-red">Red Zone</span>: You are losing money.</li>
+                        <li>The "Point" is your strike price where the behavior changes.</li>
+                    </ul>
+                </div>
+
+                <!-- Step 3: Leg Manager -->
+                <div class="guide-step" data-step="3">
+                    <div class="step-icon">🎛️</div>
+                    <h2>Managing Legs</h2>
+                    <p>On the right, you can add and customize your layers:</p>
+                    <ul>
+                        <li><strong>Buy/Sell</strong>: Are you paying or receiving cash?</li>
+                        <li><strong>Call/Put</strong>: Right to buy vs right to sell.</li>
+                        <li><strong>Strike</strong>: The "line in the sand" for that option.</li>
+                    </ul>
+                </div>
+
+                <!-- Step 4: Common Strategies -->
+                <div class="guide-step" data-step="4">
+                    <div class="step-icon">🍴</div>
+                    <h2>Quick Recipes</h2>
+                    <p>Try these classic setups to learn the shapes:</p>
+                    <div class="recipe-grid">
+                        <div class="recipe"><strong>Straddle</strong>: Buy 1 Call + Buy 1 Put at same strike. (Profits
+                            from big moves)</div>
+                        <div class="recipe"><strong>Bull Spread</strong>: Buy Low Strike Call + Sell High Strike Call.
+                            (Cheaper directional bet)</div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Decision Metrics -->
+                <div class="guide-step" data-step="5">
+                    <div class="step-icon">🏁</div>
+                    <h2>Quick Summary</h2>
+                    <p>Check the bottom cards for your final stats. The next few slides explain exactly what they mean!
+                    </p>
+                </div>
+
+                <!-- Step 6: Max Profit -->
+                <div class="guide-step" data-step="6">
+                    <div class="step-icon">💰</div>
+                    <h2>Max Profit</h2>
+                    <p>This is your **"Best Case Scenario"**.</p>
+                    <ul>
+                        <li>If it shows <strong>Infinite ♾️</strong>, your potential gain has no limit (e.g., a Long
+                            Call).</li>
+                        <li>It reflects the highest point on the green line of your chart.</li>
+                    </ul>
+                </div>
+
+                <!-- Step 7: Max Loss -->
+                <div class="guide-step" data-step="7">
+                    <div class="step-icon">🛡️</div>
+                    <h2>Max Loss</h2>
+                    <p>This is your **"Worst Case Scenario"** or Total Risk.</p>
+                    <ul>
+                        <li>If it shows <strong>Unlimited ⚠️</strong>, be careful! Your potential loss has no cap (e.g.,
+                            a Short Call).</li>
+                        <li>It reflects the lowest point on the red line of your chart.</li>
+                    </ul>
+                </div>
+
+                <!-- Step 8: Breakevens -->
+                <div class="guide-step" data-step="8">
+                    <div class="step-icon">🎯</div>
+                    <h2>Breakevens</h2>
+                    <p>The price where you have **Exactly $0 Profit/Loss**.</p>
+                    <ul>
+                        <li>It's where the line crosses the center (Zero) on the chart.</li>
+                        <li><strong>Why it matters:</strong> It tells you exactly where the stock needs to go for you to
+                            start winning.</li>
+                    </ul>
+                    <button class="finish-tutorial-btn" id="closeGuideFinal">Let's Build! 🚀</button>
+                </div>
             </div>
 
-            <div class="guide-section">
-                <h3>🛠️ How to Use</h3>
-                <ol>
-                    <li><strong>Add Legs:</strong> Click <span class="badge">+ Add Leg</span> to add option contracts.
-                    </li>
-                    <li><strong>Configure:</strong> Set <strong>Buy/Sell</strong>, <strong>Call/Put</strong>,
-                        <strong>Strike</strong>, and <strong>Quantity</strong> for each leg.</li>
-                    <li><strong>Analyze:</strong> Watch the chart update instantly. The green/red line shows your P&L at
-                        expiration.</li>
-                </ol>
-            </div>
-
-            <div class="guide-section">
-                <h3>📊 Key Metrics</h3>
-                <ul>
-                    <li><strong>Max Profit:</strong> The theoretical maximum gain.</li>
-                    <li><strong>Max Loss:</strong> The maximum you can lose (risk).</li>
-                    <li><strong>Breakevens:</strong> Price points where P&L is zero.</li>
-                </ul>
-            </div>
-
-            <div class="pro-tip">
-                <h4>💡 Tip</h4>
-                <p>Try building a "Long Straddle" by buying a Call and a Put at the same strike to profit from high
-                    volatility!</p>
+            <div class="guide-footer">
+                <div class="guide-nav">
+                    <button id="prevStep" class="nav-arrow" disabled>← Prev</button>
+                    <div class="step-dots">
+                        <span class="dot active"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </div>
+                    <button id="nextStep" class="nav-arrow">Next →</button>
+                </div>
             </div>
         </div>
     </div>
