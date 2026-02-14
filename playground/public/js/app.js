@@ -14,9 +14,10 @@ const state = {
     wasmLoaded: false
 };
 
-// Import WASM module
+// Import WASM module and UI utilities
 import init, { calculate_greeks_wasm } from '../pkg/greeks_calculator.js';
 import { addLeg, initStrategyGuide } from './strategy.js';
+import { customTooltip } from './ui_utils.js';
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
@@ -313,8 +314,8 @@ function drawPriceChart() {
                     labels: { color: '#f1f5f9' }
                 },
                 tooltip: {
-                    mode: 'index',
-                    intersect: false
+                    enabled: false,
+                    external: customTooltip
                 }
             },
             scales: {
@@ -393,6 +394,10 @@ function drawGreeksChart() {
             plugins: {
                 legend: {
                     labels: { color: '#f1f5f9' }
+                },
+                tooltip: {
+                    enabled: false,
+                    external: customTooltip
                 }
             },
             scales: {
@@ -452,6 +457,10 @@ function drawVolatilityChart() {
             plugins: {
                 legend: {
                     labels: { color: '#f1f5f9' }
+                },
+                tooltip: {
+                    enabled: false,
+                    external: customTooltip
                 }
             },
             scales: {
@@ -503,6 +512,10 @@ function drawTimeDecayChart() {
             plugins: {
                 legend: {
                     labels: { color: '#f1f5f9' }
+                },
+                tooltip: {
+                    enabled: false,
+                    external: customTooltip
                 }
             },
             scales: {

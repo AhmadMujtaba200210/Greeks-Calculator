@@ -103,7 +103,7 @@
                             </div>
 
                             <div class="result-card">
-                                <div class="info-icon">
+                                <div class="info-icon" aria-label="Gamma Information" title="What is Gamma?">
                                     ⓘ
                                     <div class="tooltip-text">
                                         <strong>Gamma (Γ)</strong><br>
@@ -117,7 +117,7 @@
                             </div>
 
                             <div class="result-card">
-                                <div class="info-icon">
+                                <div class="info-icon" aria-label="Vega Information" title="What is Vega?">
                                     ⓘ
                                     <div class="tooltip-text">
                                         <strong>Vega (ν)</strong><br>
@@ -131,7 +131,7 @@
                             </div>
 
                             <div class="result-card">
-                                <div class="info-icon">
+                                <div class="info-icon" aria-label="Theta Information" title="What is Theta?">
                                     ⓘ
                                     <div class="tooltip-text">
                                         <strong>Theta (Θ)</strong><br>
@@ -145,7 +145,7 @@
                             </div>
 
                             <div class="result-card">
-                                <div class="info-icon">
+                                <div class="info-icon" aria-label="Rho Information" title="What is Rho?">
                                     ⓘ
                                     <div class="tooltip-text">
                                         <strong>Rho (ρ)</strong><br>
@@ -425,6 +425,12 @@
                         <!-- Leg Manager -->
                         <div class="legs-container" id="legsContainer">
                             <!-- Legs injected here -->
+                            <div class="empty-state" id="legsEmptyState">
+                                <div class="empty-state-icon">🧊</div>
+                                <h3>No Strategy Legs</h3>
+                                <p>Add a call or put option to start building your trading strategy and see the P&L
+                                    profile.</p>
+                            </div>
                         </div>
                     </div>
 
@@ -574,6 +580,7 @@
     <script src="js/exercises.js"></script>
     <script type="module" src="js/strategy.js"></script>
     <script type="module" src="js/app.js"></script>
+    <div id="chartjs-tooltip"></div>
 </body>
 
 </html>

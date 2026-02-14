@@ -1,4 +1,5 @@
 // Strategy Builder Module
+import { customTooltip } from './ui_utils.js';
 
 export const strategyState = {
     legs: [],
@@ -44,9 +45,25 @@ export function updateLeg(id, param, value) {
 // Render the list of legs in the UI
 function renderLegs() {
     const container = document.getElementById('legsContainer');
+    const emptyState = document.getElementById('legsEmptyState');
     if (!container) return;
 
-    container.innerHTML = '';
+    if (strategyState.legs.length === 0) {
+        if (emptyState) emptyState.style.display = 'flex';
+        // Clear anything else BUT the empty state
+        Array.from(container.children).forEach(child => {
+            if (child.id !== 'legsEmptyState') child.remove();
+        });
+        return;
+    }
+
+    if (emptyState) emptyState.style.display = 'none';
+
+    // Remove existing leg cards (but keep empty state div for future use)
+    Array.from(container.children).forEach(child => {
+        if (child.id !== 'legsEmptyState') child.remove();
+    });
+
     strategyState.legs.forEach(leg => {
         const div = document.createElement('div');
         div.className = 'leg-card';
@@ -168,8 +185,8 @@ export function updateStrategyChart() {
             plugins: {
                 legend: { labels: { color: '#f1f5f9' } },
                 tooltip: {
-                    mode: 'index',
-                    intersect: false
+                    enabled: false,
+                    external: customTooltip
                 }
             },
             scales: {

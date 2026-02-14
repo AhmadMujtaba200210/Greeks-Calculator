@@ -20,9 +20,9 @@
     --bg-card-glass: rgba(30, 41, 59, 0.8);
     --bg-hover: #334155;
 
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
 
     --border: #334155;
     --border-light: rgba(255, 255, 255, 0.1);
@@ -62,6 +62,13 @@ h1,
 h2,
 h3 {
     font-family: 'Outfit', sans-serif;
+}
+
+/* Accessibility Refinement */
+:focus-visible {
+    outline: 2px solid var(--primary-light);
+    outline-offset: 4px;
+    box-shadow: 0 0 0 4px var(--primary-glow);
 }
 
 /* Utilities */
@@ -141,14 +148,17 @@ h3 {
 }
 
 .nav-brand h1 {
-    font-size: 1.75rem;
-    font-weight: 800;
-    white-space: nowrap;
-    background: linear-gradient(135deg, white 0%, var(--text-secondary) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: 1.8rem;
+    font-weight: 900;
     letter-spacing: -0.04em;
+    background: linear-gradient(135deg, #f8fafc 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .nav-links {
@@ -203,8 +213,9 @@ h3 {
 /* Playground Layout */
 .playground-layout {
     display: grid;
-    grid-template-columns: 320px 1fr 320px;
-    gap: 1.5rem;
+    grid-template-columns: 350px 1fr 350px;
+    gap: 2rem;
+    align-items: start;
     min-height: calc(100vh - 160px);
 }
 
@@ -322,8 +333,8 @@ h3 {
 .results-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
-    margin-bottom: 1.75rem;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
 }
 
 .result-card {
@@ -599,6 +610,13 @@ h3 {
     box-shadow: var(--shadow);
 }
 
+.result-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    font-weight: 500;
+}
+
 .info-card h3 {
     font-size: 0.9rem;
     color: var(--text-secondary);
@@ -638,7 +656,7 @@ h3 {
 }
 
 .module {
-    margin-bottom: 1.25rem;
+    margin-bottom: 2rem;
 }
 
 .module-header {
@@ -745,13 +763,14 @@ h3 {
 }
 
 .lesson-content h2 {
-    font-size: 2.75rem;
+    font-size: 2.25rem;
     margin-bottom: 2rem;
     color: white;
-    letter-spacing: -0.03em;
-    background: linear-gradient(to bottom right, #fff 30%, var(--text-secondary));
+    background: linear-gradient(135deg, #fff 0%, var(--primary-light) 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
+    letter-spacing: -0.03em;
 }
 
 .lesson-content p {
@@ -1347,41 +1366,157 @@ h3 {
 /* Info Icon & Tooltips */
 .info-icon {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 10px;
+    right: 10px;
     cursor: help;
-    color: var(--text-secondary);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    transition: var(--transition);
+}
+
+.info-icon:hover {
+    color: var(--primary-light);
+    background: var(--primary-glow);
+    transform: scale(1.1);
 }
 
 .tooltip-text {
     visibility: hidden;
     opacity: 0;
-    background: var(--bg-card);
+    background: var(--bg-card-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     color: var(--text-primary);
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-luxury);
     position: absolute;
-    bottom: 150%;
+    bottom: 160%;
     left: 50%;
-    transform: translateX(-85%);
-    width: 240px;
+    transform: translateX(-50%) translateY(10px);
+    width: 260px;
     z-index: 100;
     font-size: 0.85rem;
-    transition: all 0.2s ease;
+    line-height: 1.5;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+.tooltip-text::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -8px;
+    border-width: 8px;
+    border-style: solid;
+    border-color: var(--border-light) transparent transparent transparent;
 }
 
 .info-icon:hover .tooltip-text {
     visibility: visible;
     opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
-/* Buttons & Common Elements */
+/* Empty States */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    background: rgba(30, 41, 59, 0.3);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-muted);
+    margin: 1rem 0;
+    transition: var(--transition);
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.5;
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.1));
+}
+
+.empty-state h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+.empty-state p {
+    max-width: 400px;
+    font-size: 1rem;
+}
+
+/* Custom Chart Tooltips (External) */
+#chartjs-tooltip {
+    opacity: 0;
+    position: absolute;
+    background: var(--bg-card-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: white;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-luxury);
+    padding: 12px 16px;
+    pointer-events: none;
+    transition: all 0.1s ease;
+    z-index: 1000;
+}
+
+#chartjs-tooltip table {
+    margin: 0;
+}
+
+#chartjs-tooltip .tooltip-title {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    color: var(--primary-light);
+}
+
+#chartjs-tooltip .tooltip-body {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+}
+
+/* Buttons & Common Elements Refinement */
 .reset-btn,
 .nav-btn,
 .add-leg-btn,
 .guide-btn,
 .finish-tutorial-btn {
-    border-radius: 8px;
-    font-weight: 600;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+.add-leg-btn {
+    background: var(--primary);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 4px 10px var(--primary-glow);
+}
+
+.add-leg-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+    box-shadow: 0 6px 15px var(--primary-glow);
 }
