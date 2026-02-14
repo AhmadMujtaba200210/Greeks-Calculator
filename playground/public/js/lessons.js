@@ -361,56 +361,147 @@ const lessons = {
             <p>This "Buy High, Sell Low" action is the cost of the short gamma position.</p>
         `
     },
-    '5-2': {
-        title: 'Gamma Scalping',
+    '5-1': {
+        title: 'Vertical Spreads',
         content: `
-            <h2>Gamma Scalping</h2>
-            <p>Turning volatility into cash. Requires a <strong>Long Gamma</strong> position (e.g., Long Straddle).</p>
+            <h2>Vertical Spreads (Directional)</h2>
+            <p>Vertical spreads are the bread and butter of option trading. They allow you to express a directional view while controlling cost and defining risk.</p>
 
-            <h3>The Mechanic</h3>
-            <enumerate>
-                <li>You own ATM Straddle (Delta 0).</li>
-                <li>Stock Rallies (+). Your Delta becomes positive (+0.10).</li>
-                <li>To get back to neutral, you <strong>Sell Shares</strong> (Sell High).</li>
-                <li>Stock Crashes (-). Your Delta becomes negative (-0.10).</li>
-                <li>To get back to neutral, you <strong>Buy Shares</strong> (Buy Low).</li>
-            </enumerate>
+            <h3>1. Bull Call Spread (Debit)</h3>
+            <p>You buy an ITM/ATM Call and sell an OTM Call. This reduces the cost of the trade but caps your maximum profit.</p>
+            <div class="example-box">
+                <h4>Example: Bullish on AAPL</h4>
+                <ul>
+                    <li><strong>Buy:</strong> $150 Call ($5.00)</li>
+                    <li><strong>Sell:</strong> $160 Call ($2.00)</li>
+                    <li><strong>Net Debit:</strong> $3.00 ($300 total)</li>
+                    <li><strong>Max Profit:</strong> Strike Width - Debit = $7.00 ($700)</li>
+                </ul>
+            </div>
 
             <div class="pro-tip">
-                <h4>The Goal</h4>
-                <p>Generate enough profit from scalping (trading the stock) to pay for the daily Theta burn of the options.</p>
+                <h4>Greeks Nuance</h4>
+                <p>Vertical spreads are <strong>Theta-neutral-ish</strong>. Since you are long one option and short another, the time decay of the short option partially offsets the decay of the long option.</p>
+            </div>
+
+            <h3>2. Bear Put Spread (Debit)</h3>
+            <p>The inverse of the bull call. Buy a high strike Put, sell a lower strike Put. Ideal for low-volatility bear environments.</p>
+        `
+    },
+    '5-2': {
+        title: 'Credit Spreads & Income',
+        content: `
+            <h2>Credit Spreads & Income</h2>
+            <p>Instead of paying to enter a trade, you are <strong>paid</strong> to take on the risk. This is the foundation of high-probability income trading.</p>
+
+            <h3>Bull Put Spread (Credit)</h3>
+            <p>You sell a Put closer to the money and buy a Put further away for protection. You win if the stock is <strong>Above</strong> the short strike at expiration.</p>
+
+            <div class="formula-box">
+                Max Risk = Strike Width - Credit Received
+            </div>
+
+            <h3>Why Traders Love Credit Spreads</h3>
+            <ul>
+                <li><strong>Positive Theta:</strong> You profit as time passes.</li>
+                <li><strong>Probability:</strong> You can choose OTM strikes that have a 70-80% statistical chance of finishing worthless.</li>
+            </ul>
+
+            <div class="pro-tip">
+                <h4>The "IV Crush"</h4>
+                <p>Selling credit spreads before earnings can be highly profitable due to implied volatility crashing after the news, which collapses the value of the options you sold.</p>
             </div>
         `
     },
     '5-3': {
-        title: 'Volatility Trading',
+        title: 'Volatility: Straddles & Strangles',
         content: `
-            <h2>Volatility Trading</h2>
-            <p>Trading the "Fear" itself.</p>
+            <h2>Volatility: Straddles & Strangles</h2>
+            <p>Don't know which way the stock is going? Bet on the <strong>magnitude</strong> of the move instead of the direction.</p>
 
-            <h3>Long Vol (Straddles)</h3>
-            <p>Betting that the market move will be <em>larger</em> than what is priced in.</p>
+            <h3>The Long Straddle</h3>
+            <p>Buying both an ATM Call and an ATM Put. You profit if the stock explodes in <em>either</em> direction.</p>
 
-            <h3>Short Vol (Iron Condors / Short Strangles)</h3>
-            <p>Betting that the market is over-pricing fear. You profit if the stock stays within a range.</p>
+            <div class="example-box">
+                <h4>Earnings Play</h4>
+                <p>If you expect a 10% move but the market only prices in 5%, a Straddle is the tool. You need the move to be larger than the total premium paid.</p>
+            </div>
 
-            <div class="key-concept">Statistical Edge</div>
-            <p>Historically, Implied Volatility overstates Realized Volatility by ~1-2%. This "Variance Risk Premium" is why shorting volatility is a popular (but dangerous) strategy.</p>
+            <h3>The Long Strangle</h3>
+            <p>Buying OTM Call and OTM Put. Cheaper than a straddle, but requires a much larger move to become profitable.</p>
+
+            <div class="pro-tip">
+                <h4>Vega Risk</h4>
+                <p>Long vol strategies are <strong>Vega positive</strong>. If the stock doesn't move but volatility drops, you can lose money even if the price stays the same. This is "Vol Crush".</p>
+            </div>
         `
     },
     '5-4': {
-        title: 'Spreads and Combinations',
+        title: 'Range-Bound: Iron Condors',
         content: `
-            <h2>Defined Risk Spreads</h2>
-            <p>Never trade naked options unless you have a massive bankroll.</p>
+            <h2>Range-Bound: Iron Condors & Butterflies</h2>
+            <p>What if the stock stays boring? Iron Condors allow you to collect premium as long as the stock stays within a "Goal Post".</p>
 
-            <h3>Vertical Spreads</h3>
-            <p>Buy one Strike, Sell another.
-            <br><em>bull Call Spread:</em> Profit from up move, but cap max gain to reduce cost.</p>
+            <h3>The Iron Condor</h3>
+            <p>You sell OTM Call Spread and an OTM Put Spread. This is a <strong>Neutral</strong>, <strong>Positive Theta</strong>, and <strong>Negative Vega</strong> strategy.</p>
 
-            <h3>Iron Condor</h3>
-            <p>Sell a Call Spread AND Sell a Put Spread.
-            <br>Profit if stock stays boring. A pure "Theta" play.</p>
+            <div class="example-box">
+                <h4>Income Strategy</h4>
+                <ul>
+                    <li><strong>Sell 160 Call / Buy 165 Call</strong> (Bear Call Spread)</li>
+                    <li><strong>Sell 140 Put / Buy 135 Put</strong> (Bull Put Spread)</li>
+                    <li><strong>Net Credit:</strong> $1.50</li>
+                    <li><strong>Goal:</strong> Stock stays between $140 and $160 until expiration.</li>
+                </ul>
+            </div>
+
+            <div class="pro-tip">
+                <h4>Expert Nuance: Pin Risk</h4>
+                <p>If the stock is exactly at your short strike ($140 or $160) on Friday afternoon, you face <strong>Pin Risk</strong>. You might be assigned on the short leg after hours, leaving you with a massive stock position over the weekend. Pro traders often close these trades on Thursday.</p>
+            </div>
+        `
+    },
+    '5-5': {
+        title: 'Exotics: Calendars & Diagonals',
+        content: `
+            <h2>Exotics: Calendars & Diagonals</h2>
+            <p>Moving from the price-grid to the time-grid. Calendar spreads exploit the fact that front-month options decay faster than back-month options.</p>
+
+            <h3>The Calendar Spread</h3>
+            <p>Selling a short-term option and buying a long-term option at the same strike. You are essentially <strong>Long Volatility</strong> and <strong>Long Time</strong>.</p>
+
+            <div class="formula-box">
+                Max Profit @ Short Strike on Expiration 1
+            </div>
+
+            <div class="pro-tip">
+                <h4>Vega Nuance</h4>
+                <p>Calendar spreads are unique because they have <strong>Positive Vega</strong> but also <strong>Positive Theta</strong> (in certain conditions). They are a bet on volatility increasing while time passes.</p>
+            </div>
+        `
+    },
+    '5-6': {
+        title: 'Professional Hedging & Scalping',
+        content: `
+            <h2>Professional: Hedging & Scalping</h2>
+            <p>This is how market makers and institutional desks manage their books. It's not about guessing direction; it's about <strong>Inventory Management</strong>.</p>
+
+            <h3>1. Dynamic Delta Hedging</h3>
+            <p>If you are long options (Long Gamma), your delta changes as the stock moves. To stay "market neutral", you must trade the underlying stock.</p>
+
+            <div class="example-box">
+                <h4>Gamma Scalping Loop</h4>
+                <ol>
+                    <li>Stock goes UP -> Your Delta increases -> <strong>Sell Stock</strong> to hedge.</li>
+                    <li>Stock goes DOWN -> Your Delta decreases -> <strong>Buy Stock</strong> to hedge.</li>
+                    <li><em>Result:</em> You are "Buying Low" and "Selling High" automatically!</li>
+                </ol>
+            </div>
+
+            <div class="pro-tip">
+                <h4>The "Long Gamma" Edge</h4>
+                <p>The profit from scalping the stock must exceed the daily <strong>Theta decay</strong> of the options you hold. This is the constant battle between Gamma and Theta.</p>
+            </div>
         `
     },
 
