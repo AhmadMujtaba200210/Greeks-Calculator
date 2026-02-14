@@ -66,7 +66,7 @@ function renderLegs() {
 
     strategyState.legs.forEach(leg => {
         const div = document.createElement('div');
-        div.className = 'leg-card';
+        div.className = 'leg-card glass';
         div.innerHTML = `
             <div class="leg-header">
                 <select onchange="window.updateLeg('${leg.id}', 'action', this.value)" class="leg-select ${leg.action}">
