@@ -1,0 +1,18 @@
+<svg width="760" height="180" viewBox="0 0 760 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="760" height="180" rx="28" fill="#0B1224"/>
+  <g transform="translate(24,20)">
+    <rect width="140" height="140" rx="30" fill="#111C36"/>
+    <path d="M28 100L50 62L72 84L100 48L112 100" stroke="url(#c1)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="50" cy="62" r="5" fill="#60A5FA"/>
+    <circle cx="72" cy="84" r="5" fill="#34D399"/>
+    <circle cx="100" cy="48" r="5" fill="#93C5FD"/>
+  </g>
+  <text x="192" y="82" fill="#F8FAFC" font-size="44" font-family="Outfit, Inter, sans-serif" font-weight="800">Options Greeks</text>
+  <text x="192" y="118" fill="#93C5FD" font-size="24" font-family="Inter, sans-serif" font-weight="600">Quant Core</text>
+  <defs>
+    <linearGradient id="c1" x1="28" y1="48" x2="112" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+</svg>

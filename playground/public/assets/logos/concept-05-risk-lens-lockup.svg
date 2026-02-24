@@ -1,0 +1,12 @@
+<svg width="760" height="180" viewBox="0 0 760 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="760" height="180" rx="28" fill="#0B1420"/>
+  <g transform="translate(24,20)">
+    <rect width="140" height="140" rx="30" fill="#122331"/>
+    <circle cx="64" cy="64" r="34" stroke="#38BDF8" stroke-width="7"/>
+    <circle cx="64" cy="64" r="17" fill="#102231"/>
+    <path d="M88 88L118 118" stroke="#14B8A6" stroke-width="8" stroke-linecap="round"/>
+    <path d="M49 64L59 74L79 54" stroke="#22C55E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="192" y="82" fill="#F8FAFC" font-size="44" font-family="Outfit, Inter, sans-serif" font-weight="800">Options Greeks</text>
+  <text x="192" y="118" fill="#5EEAD4" font-size="24" font-family="Inter, sans-serif" font-weight="600">Risk Lens</text>
+</svg>

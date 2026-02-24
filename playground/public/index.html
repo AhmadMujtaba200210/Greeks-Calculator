@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Options Greeks Interactive Playground</title>
+    <link rel="icon" type="image/svg+xml" href="assets/logos/logo-favicon.svg">
+    <link rel="apple-touch-icon" href="assets/logos/logo-mark.svg">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -15,7 +17,8 @@
         <!-- Navigation -->
         <nav class="navbar">
             <div class="nav-brand">
-                <h1>📊 Options Greeks Playground</h1>
+                <img src="assets/logos/logo-mark.svg" alt="Options Greeks logo" class="brand-mark">
+                <h1>Options Greeks Playground</h1>
             </div>
             <div class="nav-links">
                 <button class="nav-btn active" data-section="playground">Playground</button>
@@ -353,44 +356,143 @@
 
             <!-- Practice Section -->
             <section id="practice" class="section">
-                <div class="practice-layout">
-                    <h2>Practice Exercises</h2>
-                    <div class="exercise-grid">
-                        <div class="exercise-card" data-exercise="delta-quiz">
-                            <h3>🎯 Delta Quiz</h3>
-                            <p>Test your understanding of delta and hedging</p>
-                            <button class="start-btn">Start Exercise</button>
+                <div class="practice-layout practice-hub">
+                    <div class="practice-hero">
+                        <div class="practice-hero-copy">
+                            <h2>Practice Lab</h2>
+                            <p class="subtitle">Run focused drills to build execution-quality intuition across Greeks, volatility, strategy, and risk.</p>
+                            <div class="hero-actions">
+                                <button class="start-btn" data-filter="core">Start Core Track</button>
+                                <button class="start-btn secondary" data-filter="execution">Execution Edge</button>
+                            </div>
+                            <div class="practice-kpis">
+                                <div class="kpi-pill">7 Active Drills</div>
+                                <div class="kpi-pill">5 Skill Tracks</div>
+                                <div class="kpi-pill">Execution + Risk Focus</div>
+                            </div>
                         </div>
+                    </div>
 
-                        <div class="exercise-card" data-exercise="greeks-calc">
-                            <h3>🧮 Greeks Calculator</h3>
-                            <p>Calculate Greeks for various scenarios</p>
-                            <button class="start-btn">Start Exercise</button>
+                    <div class="practice-controls">
+                        <div class="filter-tabs">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="core">Core Greeks</button>
+                            <button class="filter-btn" data-filter="vol">Volatility</button>
+                            <button class="filter-btn" data-filter="strategy">Strategies</button>
+                            <button class="filter-btn" data-filter="risk">Risk</button>
+                            <button class="filter-btn" data-filter="execution">Execution</button>
                         </div>
+                        <div class="practice-search">
+                            <input id="practiceSearch" type="search" placeholder="Search exercises, e.g. delta, volatility, liquidity">
+                        </div>
+                    </div>
 
-                        <div class="exercise-card" data-exercise="vol-surface">
-                            <h3>📈 Volatility Surface</h3>
-                            <p>Build and analyze volatility surfaces</p>
-                            <button class="start-btn">Start Exercise</button>
-                        </div>
+                    <div class="track-strip">
+                        <button class="track-chip" data-filter="core">Greek Mastery Sprint</button>
+                        <button class="track-chip" data-filter="vol">Volatility Lab</button>
+                        <button class="track-chip" data-filter="strategy">Strategy Construction</button>
+                        <button class="track-chip" data-filter="risk">Risk Simulator</button>
+                        <button class="track-chip" data-filter="execution">Execution Edge</button>
+                    </div>
 
-                        <div class="exercise-card" data-exercise="hedging-sim">
-                            <h3>🛡️ Hedging Simulation</h3>
-                            <p>Practice delta and gamma hedging strategies</p>
-                            <button class="start-btn">Start Exercise</button>
-                        </div>
+                    <div class="practice-grid">
+                        <article class="exercise-card" data-exercise="delta-quiz" data-category="core">
+                            <div class="exercise-card-top">
+                                <span class="pill core">Core</span>
+                                <span class="pill level">Beginner</span>
+                            </div>
+                            <h3>Delta Quiz</h3>
+                            <p>Test your understanding of delta, probability, and hedge ratios.</p>
+                            <div class="exercise-meta">
+                                <span>5 questions</span>
+                                <span>~5 min</span>
+                            </div>
+                            <button class="start-btn">Start Drill</button>
+                        </article>
 
-                        <div class="exercise-card" data-exercise="strategy-builder">
-                            <h3>🎲 Strategy Builder</h3>
-                            <p>Create and analyze option strategies</p>
-                            <button class="start-btn">Start Exercise</button>
-                        </div>
+                        <article class="exercise-card" data-exercise="greeks-calc" data-category="core">
+                            <div class="exercise-card-top">
+                                <span class="pill core">Core</span>
+                                <span class="pill level">Intermediate</span>
+                            </div>
+                            <h3>Greeks Calculator</h3>
+                            <p>Work through a guided pricing scenario and interpret the Greeks.</p>
+                            <div class="exercise-meta">
+                                <span>Scenario</span>
+                                <span>~8 min</span>
+                            </div>
+                            <button class="start-btn">Start Drill</button>
+                        </article>
 
-                        <div class="exercise-card" data-exercise="scenario-analysis">
-                            <h3>🔍 Scenario Analysis</h3>
-                            <p>Analyze P&L under different market conditions</p>
-                            <button class="start-btn">Start Exercise</button>
-                        </div>
+                        <article class="exercise-card" data-exercise="vol-surface" data-category="vol">
+                            <div class="exercise-card-top">
+                                <span class="pill vol">Volatility</span>
+                                <span class="pill level">Advanced</span>
+                            </div>
+                            <h3>Volatility Surface</h3>
+                            <p>Build a surface and connect skew, term structure, and risk.</p>
+                            <div class="exercise-meta">
+                                <span>Lab</span>
+                                <span>~12 min</span>
+                            </div>
+                            <button class="start-btn">Start Lab</button>
+                        </article>
+
+                        <article class="exercise-card" data-exercise="hedging-sim" data-category="risk">
+                            <div class="exercise-card-top">
+                                <span class="pill risk">Risk</span>
+                                <span class="pill level">Advanced</span>
+                            </div>
+                            <h3>Hedging Simulation</h3>
+                            <p>Maintain delta‑neutrality as the market moves.</p>
+                            <div class="exercise-meta">
+                                <span>Simulation</span>
+                                <span>~10 min</span>
+                            </div>
+                            <button class="start-btn">Start Simulation</button>
+                        </article>
+
+                        <article class="exercise-card" data-exercise="strategy-builder" data-category="strategy">
+                            <div class="exercise-card-top">
+                                <span class="pill strategy">Strategy</span>
+                                <span class="pill level">Intermediate</span>
+                            </div>
+                            <h3>Strategy Builder</h3>
+                            <p>Create multi‑leg strategies and visualize payoffs.</p>
+                            <div class="exercise-meta">
+                                <span>Builder</span>
+                                <span>~10 min</span>
+                            </div>
+                            <button class="start-btn">Open Builder</button>
+                        </article>
+
+                        <article class="exercise-card" data-exercise="liquidity-lab" data-category="execution">
+                            <div class="exercise-card-top">
+                                <span class="pill execution">Execution</span>
+                                <span class="pill level">Intermediate</span>
+                            </div>
+                            <h3>Liquidity & Slippage Lab</h3>
+                            <p>Estimate execution cost from spread, volume, and open interest.</p>
+                            <div class="exercise-meta">
+                                <span>Model</span>
+                                <span>~8 min</span>
+                            </div>
+                            <button class="start-btn">Start Lab</button>
+                        </article>
+
+                        <article class="exercise-card" data-exercise="scenario-analysis" data-category="risk">
+                            <div class="exercise-card-top">
+                                <span class="pill risk">Risk</span>
+                                <span class="pill level">Advanced</span>
+                            </div>
+                            <h3>Scenario Analysis</h3>
+                            <p>Stress test portfolio P&L under multi‑factor shocks.</p>
+                            <div class="exercise-meta">
+                                <span>Scenario</span>
+                                <span>~12 min</span>
+                            </div>
+                            <button class="start-btn">Start Analysis</button>
+                        </article>
                     </div>
                 </div>
             </section>
@@ -494,6 +596,24 @@
                 </div>
             </section>
         </main>
+
+        <nav class="mobile-tabbar" aria-label="Primary Navigation">
+            <button class="nav-btn mobile-tab-btn active" data-section="playground">
+                <span class="mobile-tab-label">Play</span>
+            </button>
+            <button class="nav-btn mobile-tab-btn" data-section="builder">
+                <span class="mobile-tab-label">Builder</span>
+            </button>
+            <button class="nav-btn mobile-tab-btn" data-section="learn">
+                <span class="mobile-tab-label">Learn</span>
+            </button>
+            <button class="nav-btn mobile-tab-btn" data-section="practice">
+                <span class="mobile-tab-label">Practice</span>
+            </button>
+            <button class="nav-btn mobile-tab-btn" data-section="challenges">
+                <span class="mobile-tab-label">Challenges</span>
+            </button>
+        </nav>
     </div>
 
     <!-- Strategy Builder Guide Modal -->

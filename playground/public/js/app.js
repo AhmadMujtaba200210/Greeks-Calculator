@@ -123,11 +123,13 @@ function initializeNavigation() {
         navButtons.forEach(b => b.classList.remove('active'));
         sections.forEach(s => s.classList.remove('active'));
 
-        const activeBtn = document.querySelector(`.nav-btn[data-section="${targetSection}"]`);
+        const activeBtns = document.querySelectorAll(`.nav-btn[data-section="${targetSection}"]`);
         const activeSection = document.getElementById(targetSection);
 
-        if (activeBtn) activeBtn.classList.add('active');
-        if (activeSection) activeSection.classList.add('active');
+        if (!activeSection) return;
+
+        activeBtns.forEach(btn => btn.classList.add('active'));
+        activeSection.classList.add('active');
 
         localStorage.setItem('activeSection', targetSection);
         history.replaceState(null, '', `#${targetSection}`);

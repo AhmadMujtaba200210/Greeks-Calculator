@@ -1,0 +1,12 @@
+<svg width="760" height="180" viewBox="0 0 760 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="760" height="180" rx="28" fill="#081322"/>
+  <g transform="translate(24,20)">
+    <rect width="140" height="140" rx="30" fill="#0C1B33"/>
+    <circle cx="70" cy="70" r="30" fill="#112847"/>
+    <ellipse cx="70" cy="70" rx="52" ry="22" stroke="#1D4ED8" stroke-width="6"/>
+    <ellipse cx="70" cy="70" rx="22" ry="52" stroke="#14B8A6" stroke-width="6"/>
+    <circle cx="70" cy="70" r="8" fill="#DBEAFE"/>
+  </g>
+  <text x="192" y="82" fill="#F8FAFC" font-size="44" font-family="Outfit, Inter, sans-serif" font-weight="800">Options Greeks</text>
+  <text x="192" y="118" fill="#7DD3FC" font-size="24" font-family="Inter, sans-serif" font-weight="600">Interactive Playground</text>
+</svg>

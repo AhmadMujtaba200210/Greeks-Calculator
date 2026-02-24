@@ -1,0 +1,16 @@
+<svg width="760" height="180" viewBox="0 0 760 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="760" height="180" rx="28" fill="#0A1022"/>
+  <g transform="translate(24,20)">
+    <rect width="140" height="140" rx="30" fill="#111A33"/>
+    <path d="M20 76C31 55 42 55 53 76C64 97 75 97 86 76C97 55 108 55 120 76" stroke="url(#c4)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M20 98C31 77 42 77 53 98C64 119 75 119 86 98C97 77 108 77 120 98" stroke="#1D4ED8" stroke-opacity="0.35" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <text x="192" y="82" fill="#F8FAFC" font-size="44" font-family="Outfit, Inter, sans-serif" font-weight="800">Options Greeks</text>
+  <text x="192" y="118" fill="#C4B5FD" font-size="24" font-family="Inter, sans-serif" font-weight="600">Volatility Wave</text>
+  <defs>
+    <linearGradient id="c4" x1="20" y1="55" x2="120" y2="96" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+</svg>

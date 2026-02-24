@@ -63,3 +63,21 @@ test('strategy card can open builder', async ({ page }) => {
   await expect(page.locator('#builder')).toHaveClass(/active/);
   await expect(page.locator('.leg-card')).toHaveCount(2);
 });
+
+test('liquidity lab computes metrics', async ({ page }) => {
+  await page.goto('/');
+  await page.click('.nav-btn[data-section="practice"]');
+  await page.click('.exercise-card[data-exercise="liquidity-lab"] .start-btn');
+
+  const mid = page.locator('#liqMid');
+  await expect(mid).toHaveText(/\$/);
+
+  await page.fill('#liqBid', '1.00');
+  await page.fill('#liqAsk', '1.20');
+  await page.fill('#liqVolume', '500');
+  await page.fill('#liqOI', '1500');
+  await page.fill('#liqSize', '5');
+
+  await expect(page.locator('#liqSpread')).toHaveText('$0.20');
+  await expect(page.locator('#liqFillPrice')).toHaveText(/\$/);
+});

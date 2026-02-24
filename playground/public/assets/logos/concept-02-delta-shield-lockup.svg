@@ -1,0 +1,16 @@
+<svg width="760" height="180" viewBox="0 0 760 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="760" height="180" rx="28" fill="#0D132B"/>
+  <g transform="translate(24,20)">
+    <rect width="140" height="140" rx="30" fill="#121B35"/>
+    <path d="M70 18L116 38V74C116 104 95 132 70 142C45 132 24 104 24 74V38L70 18Z" fill="#18243F"/>
+    <path d="M45 108L70 58L95 108H45Z" fill="url(#c2)"/>
+  </g>
+  <text x="192" y="82" fill="#F8FAFC" font-size="44" font-family="Outfit, Inter, sans-serif" font-weight="800">Options Greeks</text>
+  <text x="192" y="118" fill="#93C5FD" font-size="24" font-family="Inter, sans-serif" font-weight="600">Delta Shield</text>
+  <defs>
+    <linearGradient id="c2" x1="45" y1="58" x2="95" y2="108" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+</svg>
