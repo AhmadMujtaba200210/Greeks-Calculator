@@ -1612,6 +1612,8 @@ function buildPayoffCurve(preset) {
 function renderLessonCharts() {
     destroyLessonCharts();
 
+    if (!window.Chart) return;
+
     document.querySelectorAll('.lesson-payoff-chart').forEach(canvas => {
         const presetId = canvas.dataset.strategy;
         const preset = strategyPresets[presetId];

@@ -28,6 +28,17 @@ class BlackScholesCalculator {
 
     // Calculate option price
     calculatePrice(S, K, T, sigma, r, q, isCall = true) {
+        if (T <= 1e-6) {
+            return isCall ? Math.max(0, S - K) : Math.max(0, K - S);
+        }
+
+        if (sigma <= 0) {
+            const forwardDiscount = Math.exp(-q * T);
+            const discountFactor = Math.exp(-r * T);
+            const forwardIntrinsic = S * forwardDiscount - K * discountFactor;
+            return isCall ? Math.max(0, forwardIntrinsic) : Math.max(0, -forwardIntrinsic);
+        }
+
         const { d1, d2 } = this.calculateD1D2(S, K, T, sigma, r, q);
         const discountFactor = Math.exp(-r * T);
         const forwardDiscount = Math.exp(-q * T);
@@ -41,6 +52,18 @@ class BlackScholesCalculator {
 
     // Calculate all Greeks
     calculateGreeks(S, K, T, sigma, r, q, isCall = true) {
+        if (T <= 1e-6 || sigma <= 0) {
+            const tSafe = Math.max(T, 0);
+            const discountFactor = Math.exp(-r * tSafe);
+            const forwardDiscount = Math.exp(-q * tSafe);
+            const forwardIntrinsic = S * forwardDiscount - K * discountFactor;
+            const price = isCall ? Math.max(0, forwardIntrinsic) : Math.max(0, -forwardIntrinsic);
+            const delta = isCall
+                ? (forwardIntrinsic > 0 ? forwardDiscount : 0)
+                : (forwardIntrinsic < 0 ? -forwardDiscount : 0);
+            return { price, delta, gamma: 0, vega: 0, theta: 0, rho: 0 };
+        }
+
         const { d1, d2 } = this.calculateD1D2(S, K, T, sigma, r, q);
         const discountFactor = Math.exp(-r * T);
         const forwardDiscount = Math.exp(-q * T);

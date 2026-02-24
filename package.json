@@ -1,0 +1,13 @@
+{
+  "name": "greeks-calculator-tests",
+  "private": true,
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  },
+  "scripts": {
+    "test:ui": "playwright test",
+    "test:ui:headed": "playwright test --headed",
+    "test:math": "node tests/math/calculator.test.cjs",
+    "test": "npm run test:math && npm run test:ui"
+  }
+}

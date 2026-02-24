@@ -3,13 +3,14 @@ import { customTooltip } from './ui_utils.js';
 
 export const strategyState = {
     legs: [],
-    chart: null
+    chart: null,
+    nextId: 1
 };
 
 // Add a default leg
 export function addLeg(defaults = {}) {
     const leg = {
-        id: Date.now().toString(),
+        id: `${Date.now()}-${strategyState.nextId++}`,
         type: defaults.type || 'call',
         action: defaults.action || 'buy',
         strike: defaults.strike || 100,
@@ -34,7 +35,15 @@ export function updateLeg(id, param, value) {
     const leg = strategyState.legs.find(l => l.id === id);
     if (leg) {
         if (param === 'quantity' || param === 'strike' || param === 'expiry') {
-            leg[param] = parseFloat(value);
+            const parsed = parseFloat(value);
+            if (!Number.isFinite(parsed)) return;
+            if (param === 'quantity') {
+                leg[param] = Math.max(1, parsed);
+            } else if (param === 'strike') {
+                leg[param] = Math.max(0, parsed);
+            } else {
+                leg[param] = Math.max(0.01, parsed);
+            }
         } else {
             leg[param] = value;
         }
@@ -182,7 +191,8 @@ export function updateStrategyChart() {
                 borderWidth: 2,
                 fill: true,
                 tension: 0.1, // Straighter lines for payoff diagrams
-                pointRadius: 0
+                pointRadius: 0,
+                pointHitRadius: 12
             }]
         },
         options: {
@@ -192,8 +202,19 @@ export function updateStrategyChart() {
                 legend: { labels: { color: '#f1f5f9' } },
                 tooltip: {
                     enabled: false,
-                    external: customTooltip
+                    external: customTooltip,
+                    callbacks: {
+                        label: (ctx) => `P/L: $${Number(ctx.parsed.y).toFixed(2)}`
+                    }
                 }
+            },
+            interaction: {
+                mode: 'nearest',
+                intersect: false
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: false
             },
             scales: {
                 x: {

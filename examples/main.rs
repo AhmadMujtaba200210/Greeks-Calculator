@@ -58,7 +58,7 @@ fn main() {
     println!("\nSample results (first 5 strikes):");
     println!("  Strike    Price     Delta     Gamma     Vega");
     println!("  ------    -----     -----     -----     ----");
-    for (i, (&strike, greeks)) in strikes.iter().zip(chain_greeks.iter()).take(5).enumerate() {
+    for (_i, (&strike, greeks)) in strikes.iter().zip(chain_greeks.iter()).take(5).enumerate() {
         println!("  ${:>5.0}   ${:>6.3}    {:>5.3}    {:>5.4}   {:>5.3}",
                  strike, greeks.price, greeks.delta, greeks.gamma, greeks.vega);
     }

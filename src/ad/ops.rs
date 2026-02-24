@@ -1,5 +1,5 @@
 use super::dual::Dual;
-use std::f64::consts::{E, PI, SQRT_2};
+use std::f64::consts::{PI, SQRT_2};
 
 /// Mathematical operations for dual numbers
 
@@ -138,6 +138,7 @@ pub fn norm_pdf(x: Dual) -> Dual {
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
+    use std::f64::consts::E;
 
     #[test]
     fn test_exp() {
