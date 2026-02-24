@@ -77,7 +77,7 @@ const exercises = {
         title: 'Strategy Builder',
         description: 'Construct multi-leg option strategies.',
         type: 'interactive',
-        content: '<p>Strategy builder coming soon. Practice by calculating P&L for individual legs in the Playground.</p>'
+        content: '<p>Open the Builder tab to create multi-leg strategies, load presets, and practice payoff diagrams.</p><button class="start-btn" onclick="document.querySelector(\\\'.nav-btn[data-section=\\\"builder\\\"]\\\')?.click()">Open Builder</button>'
     },
 
     'scenario-analysis': {

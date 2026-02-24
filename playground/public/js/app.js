@@ -16,7 +16,7 @@ const state = {
 
 // Import WASM module and UI utilities
 import init, { calculate_greeks_wasm } from '../pkg/greeks_calculator.js';
-import { addLeg, initStrategyGuide } from './strategy.js';
+import { addLeg, initStrategyGuide, initStrategyPresets } from './strategy.js';
 import { customTooltip } from './ui_utils.js';
 
 // Initialize the application
@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Defaults
         addLeg({ type: 'call', action: 'buy', strike: 100 });
         initStrategyGuide();
+        initStrategyPresets();
     }
 });
 
@@ -116,17 +117,35 @@ function initializeNavigation() {
     const navButtons = document.querySelectorAll('.nav-btn');
     const sections = document.querySelectorAll('.section');
 
+    function setActiveSection(targetSection) {
+        if (!targetSection) return;
+
+        navButtons.forEach(b => b.classList.remove('active'));
+        sections.forEach(s => s.classList.remove('active'));
+
+        const activeBtn = document.querySelector(`.nav-btn[data-section="${targetSection}"]`);
+        const activeSection = document.getElementById(targetSection);
+
+        if (activeBtn) activeBtn.classList.add('active');
+        if (activeSection) activeSection.classList.add('active');
+
+        localStorage.setItem('activeSection', targetSection);
+        history.replaceState(null, '', `#${targetSection}`);
+    }
+
+    const initialSection = window.location.hash?.replace('#', '') || localStorage.getItem('activeSection') || 'playground';
+    setActiveSection(initialSection);
+
     navButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetSection = btn.dataset.section;
-
-            // Update active states
-            navButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            sections.forEach(s => s.classList.remove('active'));
-            document.getElementById(targetSection).classList.add('active');
+            setActiveSection(targetSection);
         });
+    });
+
+    window.addEventListener('hashchange', () => {
+        const hashSection = window.location.hash.replace('#', '');
+        if (hashSection) setActiveSection(hashSection);
     });
 }
 

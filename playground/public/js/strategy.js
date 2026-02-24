@@ -76,12 +76,13 @@ function renderLegs() {
                 <select onchange="window.updateLeg('${leg.id}', 'type', this.value)" class="leg-select">
                     <option value="call" ${leg.type === 'call' ? 'selected' : ''}>Call</option>
                     <option value="put" ${leg.type === 'put' ? 'selected' : ''}>Put</option>
+                    <option value="stock" ${leg.type === 'stock' ? 'selected' : ''}>Stock</option>
                 </select>
                 <button onclick="window.removeLeg('${leg.id}')" class="remove-leg-btn">×</button>
             </div>
             <div class="leg-controls">
                 <div class="control-group">
-                    <label>Strike</label>
+                    <label>Strike / Entry</label>
                     <input type="number" value="${leg.strike}" onchange="window.updateLeg('${leg.id}', 'strike', this.value)">
                 </div>
                 <div class="control-group">
@@ -96,6 +97,11 @@ function renderLegs() {
 
 // Calculate P&L at expiration for a given spot price
 function calculatePayoff(spot, leg) {
+    if (leg.type === 'stock') {
+        const direction = leg.action === 'buy' ? 1 : -1;
+        return direction * leg.quantity * (spot - leg.strike);
+    }
+
     let intrinsic = 0;
     if (leg.type === 'call') {
         intrinsic = Math.max(0, spot - leg.strike);
@@ -332,6 +338,59 @@ export function initStrategyGuide() {
     };
 }
 
+export function loadStrategyPreset(presetId) {
+    const preset = window.strategyPresets?.[presetId];
+    if (!preset) return;
+
+    strategyState.legs = preset.legs.map((leg, index) => ({
+        id: `${Date.now()}-${index}`,
+        type: leg.type,
+        action: leg.action,
+        strike: leg.strike,
+        expiry: leg.expiry || 1.0,
+        quantity: leg.quantity || 1
+    }));
+
+    renderLegs();
+    updateStrategyChart();
+}
+
+export function openStrategyPreset(presetId) {
+    const builderBtn = document.querySelector('.nav-btn[data-section=\"builder\"]');
+    if (builderBtn) builderBtn.click();
+    loadStrategyPreset(presetId);
+}
+
+export function initStrategyPresets() {
+    const presetSelect = document.getElementById('presetSelect');
+    const loadBtn = document.getElementById('loadPresetBtn');
+
+    if (!presetSelect || !loadBtn) return;
+
+    presetSelect.innerHTML = '<option value=\"\">Strategy presets…</option>';
+
+    const groups = window.strategyPresetGroups || {};
+    Object.keys(groups).forEach(groupName => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = groupName;
+        groups[groupName].forEach(presetId => {
+            const preset = window.strategyPresets?.[presetId];
+            if (!preset) return;
+            const option = document.createElement('option');
+            option.value = presetId;
+            option.textContent = preset.label;
+            optgroup.appendChild(option);
+        });
+        presetSelect.appendChild(optgroup);
+    });
+
+    loadBtn.addEventListener('click', () => {
+        if (!presetSelect.value) return;
+        openStrategyPreset(presetSelect.value);
+    });
+}
+
 // Global exposure for UI onclick handlers
 window.updateLeg = updateLeg;
 window.removeLeg = removeLeg;
+window.openStrategyPreset = openStrategyPreset;
