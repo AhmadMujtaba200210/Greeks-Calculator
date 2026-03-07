@@ -90,7 +90,7 @@ pub fn erf(x: Dual) -> Dual {
     // erf'(x) = 2/sqrt(π) * exp(-x²)
     let t = 1.0 / (1.0 + 0.5 * x.value.abs());
     
-    let tau = t * (-x.value * x.value - 1.26551223 +
+    let exponent = -x.value * x.value - 1.26551223 +
                     t * (1.00002368 +
                     t * (0.37409196 +
                     t * (0.09678418 +
@@ -99,12 +99,14 @@ pub fn erf(x: Dual) -> Dual {
                     t * (-1.13520398 +
                     t * (1.48851587 +
                     t * (-0.82215223 +
-                    t * 0.17087277)))))))));
+                    t * 0.17087277))))))));
+    
+    let tau = t * exponent.exp();
     
     let erf_val = if x.value >= 0.0 {
-        1.0 - tau.exp()
+        1.0 - tau
     } else {
-        tau.exp() - 1.0
+        tau - 1.0
     };
     
     // Derivative: erf'(x) = 2/sqrt(π) * exp(-x²)

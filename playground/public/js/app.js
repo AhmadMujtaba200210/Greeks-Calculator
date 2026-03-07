@@ -9,13 +9,14 @@ const state = {
     volatility: 0.25,
     rate: 0.05,
     dividend: 0.0,
+    pricingModel: 'black_scholes',
     currentViz: 'price',
     currentChart: null,
     wasmLoaded: false
 };
 
 // Import WASM module and UI utilities
-import init, { calculate_greeks_wasm } from '../pkg/greeks_calculator.js';
+import init, { calculate_greeks_wasm, calculate_binomial_wasm, calculate_mc_wasm } from '../pkg/greeks_calculator.js';
 import { addLeg, initStrategyGuide, initStrategyPresets } from './strategy.js';
 import { customTooltip } from './ui_utils.js';
 
@@ -50,6 +51,12 @@ function initializeControls() {
     // Option type
     document.getElementById('optionType').addEventListener('change', (e) => {
         state.optionType = e.target.value;
+        updateCalculations();
+    });
+
+    // Pricing Model
+    document.getElementById('pricingModel').addEventListener('change', (e) => {
+        state.pricingModel = e.target.value;
         updateCalculations();
     });
 
@@ -168,17 +175,32 @@ function initializeVisualization() {
 
 // Update all calculations and display
 function updateCalculations() {
-    const { spot, strike, maturity, volatility, rate, dividend, optionType, wasmLoaded } = state;
+    const { spot, strike, maturity, volatility, rate, dividend, optionType, pricingModel, wasmLoaded } = state;
     const isCall = optionType === 'call';
     let greeks;
 
+    // Show loading state if monte carlo is chosen (can take a second in unoptimized WASM)
+    if (pricingModel === 'monte_carlo') {
+        document.body.style.cursor = 'wait';
+    }
+
     if (wasmLoaded) {
-        // Use high-performance Rust backend
-        greeks = calculate_greeks_wasm(spot, strike, maturity, volatility, rate, dividend, isCall);
+        // Use high-performance Rust backend based on selected model
+        if (pricingModel === 'ai_surrogate' && window.aiSurrogate && window.aiSurrogate.ready) {
+            greeks = window.aiSurrogate.predictGreeks(spot, strike, maturity, volatility, rate, dividend, isCall);
+        } else if (pricingModel === 'binomial') {
+            greeks = calculate_binomial_wasm(spot, strike, maturity, volatility, rate, dividend, isCall, 500);
+        } else if (pricingModel === 'monte_carlo') {
+            greeks = calculate_mc_wasm(spot, strike, maturity, volatility, rate, dividend, isCall, 50000);
+        } else {
+            greeks = calculate_greeks_wasm(spot, strike, maturity, volatility, rate, dividend, isCall);
+        }
     } else {
-        // Fallback to JS (or if WASM failed to load)
+        // Fallback to JS (or if WASM failed to load), only Black-Scholes is available in pure JS
         greeks = calculator.calculateGreeks(spot, strike, maturity, volatility, rate, dividend, isCall);
     }
+
+    document.body.style.cursor = 'default';
 
     // Update display
     document.getElementById('priceResult').textContent = `$${greeks.price.toFixed(4)}`;
@@ -282,6 +304,18 @@ function updateMoneyness() {
 function updateChart() {
     const { currentViz } = state;
 
+    // Manage canvas vs Plotly div visibility
+    const canvas = document.getElementById('mainChart');
+    const plotlyDiv = document.getElementById('plotlyChart');
+
+    if (currentViz === 'surface3d') {
+        canvas.style.display = 'none';
+        plotlyDiv.style.display = 'block';
+    } else {
+        canvas.style.display = 'block';
+        plotlyDiv.style.display = 'none';
+    }
+
     switch (currentViz) {
         case 'price':
             drawPriceChart();
@@ -295,7 +329,58 @@ function updateChart() {
         case 'time':
             drawTimeDecayChart();
             break;
+        case 'comparison':
+            drawModelComparisonChart();
+            break;
+        case 'convergence':
+            drawConvergenceChart();
+            break;
+        case 'surface3d':
+            draw3DSurfaceChart();
+            break;
     }
+}
+
+// Helper to get Greeks for the current chart using selected model
+function getChartGreeks(S, K, T, sigma, r, q, isCall) {
+    if (!state.wasmLoaded) {
+        return calculator.calculateGreeks(S, K, T, sigma, r, q, isCall);
+    }
+
+    // For charts, we use lower precision for slow models to keep UI responsive
+    if (state.pricingModel === 'binomial') {
+        return calculate_binomial_wasm(S, K, T, sigma, r, q, isCall, 100);
+    } else if (state.pricingModel === 'monte_carlo') {
+        return calculate_mc_wasm(S, K, T, sigma, r, q, isCall, 5000);
+    } else if (state.pricingModel === 'ai_surrogate' && window.aiSurrogate && window.aiSurrogate.ready) {
+        return window.aiSurrogate.predictGreeks(S, K, T, sigma, r, q, isCall);
+    } else {
+        return calculate_greeks_wasm(S, K, T, sigma, r, q, isCall);
+    }
+}
+
+// Calculate Greeks range using active model
+function calculateModelGreeksRange(K, T, sigma, r, q, isCall, spotMin, spotMax, points = 50) {
+    const results = [];
+    const step = (spotMax - spotMin) / (points - 1);
+    for (let i = 0; i < points; i++) {
+        const S = spotMin + i * step;
+        const greeks = getChartGreeks(S, K, T, sigma, r, q, isCall);
+        results.push({ spot: S, ...greeks });
+    }
+    return results;
+}
+
+// Calculate time decay range using active model
+function calculateModelTimeDecay(S, K, sigma, r, q, isCall, maxDays = 90) {
+    const results = [];
+    for (let days = maxDays; days >= 0; days -= Math.ceil(maxDays / 50)) {
+        const T = days / 365;
+        if (T <= 0) continue;
+        const greeks = getChartGreeks(S, K, T, sigma, r, q, isCall);
+        results.push({ daysToExpiry: days, ...greeks });
+    }
+    return results;
 }
 
 // Draw price vs spot chart
@@ -305,7 +390,7 @@ function drawPriceChart() {
 
     const spotMin = strike * 0.7;
     const spotMax = strike * 1.3;
-    const data = calculator.calculateGreeksRange(strike, maturity, volatility, rate, dividend, isCall, spotMin, spotMax);
+    const data = calculateModelGreeksRange(strike, maturity, volatility, rate, dividend, isCall, spotMin, spotMax);
 
     const ctx = document.getElementById('mainChart').getContext('2d');
 
@@ -376,7 +461,7 @@ function drawGreeksChart() {
 
     const spotMin = strike * 0.7;
     const spotMax = strike * 1.3;
-    const data = calculator.calculateGreeksRange(strike, maturity, volatility, rate, dividend, isCall, spotMin, spotMax);
+    const data = calculateModelGreeksRange(strike, maturity, volatility, rate, dividend, isCall, spotMin, spotMax);
 
     const ctx = document.getElementById('mainChart').getContext('2d');
 
@@ -505,7 +590,7 @@ function drawTimeDecayChart() {
     const { spot, strike, volatility, rate, dividend, optionType } = state;
     const isCall = optionType === 'call';
 
-    const data = calculator.calculateTimeDecay(spot, strike, volatility, rate, dividend, isCall, 90);
+    const data = calculateModelTimeDecay(spot, strike, volatility, rate, dividend, isCall, 90);
 
     const ctx = document.getElementById('mainChart').getContext('2d');
 
@@ -554,6 +639,272 @@ function drawTimeDecayChart() {
             }
         }
     });
+}
+
+// Draw model comparison chart
+function drawModelComparisonChart() {
+    const { spot, strike, maturity, volatility, rate, dividend, optionType, wasmLoaded } = state;
+
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    if (state.currentChart) {
+        state.currentChart.destroy();
+    }
+
+    if (!wasmLoaded) {
+        // Fallback info if no WASM available
+        state.currentChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: ['Error'], datasets: [{ data: [0], label: 'WASM Needed for Comparison' }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        return;
+    }
+
+    const isCall = optionType === 'call';
+    document.body.style.cursor = 'wait';
+
+    // Calculate prices for all three models
+    // We'll show Price, Delta, and Gamma side by side
+    const bs = calculate_greeks_wasm(spot, strike, maturity, volatility, rate, dividend, isCall);
+    const crr = calculate_binomial_wasm(spot, strike, maturity, volatility, rate, dividend, isCall, 500);
+    const mc = calculate_mc_wasm(spot, strike, maturity, volatility, rate, dividend, isCall, 50000);
+
+    let ai = null;
+    if (window.aiSurrogate && window.aiSurrogate.ready) {
+        ai = window.aiSurrogate.predictGreeks(spot, strike, maturity, volatility, rate, dividend, isCall);
+    }
+
+    document.body.style.cursor = 'default';
+
+    const datasets = [
+        {
+            label: 'Black-Scholes (Exact)',
+            data: [bs.price, bs.delta * 10, bs.gamma * 100, bs.vega],
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderColor: 'rgb(59, 130, 246)',
+            borderWidth: 1
+        },
+        {
+            label: 'Binomial Tree (CRR)',
+            data: [crr.price, crr.delta * 10, crr.gamma * 100, crr.vega],
+            backgroundColor: 'rgba(16, 185, 129, 0.8)',
+            borderColor: 'rgb(16, 185, 129)',
+            borderWidth: 1
+        },
+        {
+            label: 'Monte Carlo (GBM)',
+            data: [mc.price, mc.delta * 10, mc.gamma * 100, mc.vega],
+            backgroundColor: 'rgba(245, 158, 11, 0.8)',
+            borderColor: 'rgb(245, 158, 11)',
+            borderWidth: 1
+        }
+    ];
+
+    if (ai) {
+        datasets.push({
+            label: 'AI Surrogate (MLP)',
+            data: [ai.price, ai.delta * 10, ai.gamma * 100, ai.vega],
+            backgroundColor: 'rgba(168, 85, 247, 0.8)',
+            borderColor: 'rgb(168, 85, 247)',
+            borderWidth: 1
+        });
+    }
+
+    state.currentChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Price ($)', 'Delta (x10)', 'Gamma (x100)', 'Vega'],
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { color: '#f1f5f9' }
+                },
+                title: {
+                    display: true,
+                    text: 'Model Output Comparison',
+                    color: '#f8fafc'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#334155' },
+                    ticks: { color: '#94a3b8' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8' }
+                }
+            }
+        }
+    });
+}
+
+// Draw convergence chart
+function drawConvergenceChart() {
+    const { spot, strike, maturity, volatility, rate, dividend, optionType, pricingModel, wasmLoaded } = state;
+
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    if (state.currentChart) {
+        state.currentChart.destroy();
+    }
+
+    if (!wasmLoaded || pricingModel === 'black_scholes') {
+        state.currentChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: ['Info'], datasets: [{ data: [0], label: 'Please select Binomial or Monte Carlo model to see convergence' }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        return;
+    }
+
+    const isCall = optionType === 'call';
+    document.body.style.cursor = 'wait';
+
+    const exact_bs = calculate_greeks_wasm(spot, strike, maturity, volatility, rate, dividend, isCall).price;
+    const labels = [];
+    const prices = [];
+
+    if (pricingModel === 'binomial') {
+        const stepsToTest = [10, 50, 100, 200, 300, 500, 1000];
+        for (let steps of stepsToTest) {
+            labels.push(steps.toString());
+            prices.push(calculate_binomial_wasm(spot, strike, maturity, volatility, rate, dividend, isCall, steps).price);
+        }
+    } else if (pricingModel === 'monte_carlo') {
+        const pathsToTest = [1000, 5000, 10000, 25000, 50000, 100000];
+        for (let paths of pathsToTest) {
+            labels.push((paths / 1000) + 'k');
+            prices.push(calculate_mc_wasm(spot, strike, maturity, volatility, rate, dividend, isCall, paths).price);
+        }
+    }
+
+    document.body.style.cursor = 'default';
+
+    state.currentChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: pricingModel === 'binomial' ? 'Binomial Price (Steps)' : 'MC Price (Paths)',
+                    data: prices,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1
+                },
+                {
+                    label: 'Black-Scholes (Exact)',
+                    data: labels.map(() => exact_bs),
+                    borderColor: '#3b82f6',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    fill: false,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#f1f5f9' } },
+                title: { display: true, text: 'Model Convergence Analysis', color: '#f8fafc' },
+                tooltip: { enabled: true }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: pricingModel === 'binomial' ? 'Number of Tree Steps' : 'Number of Paths', color: '#94a3b8' },
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: '#334155' }
+                },
+                y: {
+                    title: { display: true, text: 'Estimated Option Price ($)', color: '#94a3b8' },
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: '#334155' }
+                }
+            }
+        }
+    });
+}
+
+// Draw 3D Surface Chart using Plotly
+function draw3DSurfaceChart() {
+    const { spot, strike, volatility, rate, dividend, optionType } = state;
+    const isCall = optionType === 'call';
+
+    document.body.style.cursor = 'wait';
+
+    // We will plot Price (Z) against Spot Price (X) and Time to Maturity (Y)
+    const points = 30; // Grid resolution
+
+    const spotMin = strike * 0.5;
+    const spotMax = strike * 1.5;
+    const spotStep = (spotMax - spotMin) / (points - 1);
+
+    const timeMin = 0.01; // nearly expired
+    const timeMax = 2.0;  // 2 years
+    const timeStep = (timeMax - timeMin) / (points - 1);
+
+    const x_spots = [];
+    const y_times = [];
+    const z_prices = [];
+
+    // Pre-calculate X axis values
+    for (let i = 0; i < points; i++) {
+        x_spots.push(spotMin + i * spotStep);
+    }
+
+    // Double loop to populate Z values array
+    for (let j = 0; j < points; j++) {
+        const time = timeMin + j * timeStep;
+        y_times.push(time);
+
+        const z_row = [];
+        for (let i = 0; i < points; i++) {
+            const currentSpot = x_spots[i];
+            const greeks = getChartGreeks(currentSpot, strike, time, volatility, rate, dividend, isCall);
+            z_row.push(greeks.price);
+        }
+        z_prices.push(z_row);
+    }
+
+    document.body.style.cursor = 'default';
+
+    const data = [{
+        z: z_prices,
+        x: x_spots,
+        y: y_times,
+        type: 'surface',
+        colorscale: 'Viridis',
+        colorbar: { title: 'Price ($)' },
+        hovertemplate: 'Spot: %{x:.2f}<br>Time: %{y:.2f} yrs<br>Price: %{z:.2f}<extra></extra>'
+    }];
+
+    const layout = {
+        title: 'Option Price Surface (Spot vs Time vs Price)',
+        autosize: true,
+        margin: { l: 0, r: 0, b: 0, t: 40 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: '#f8fafc' },
+        scene: {
+            xaxis: { title: 'Spot Price', gridcolor: '#334155' },
+            yaxis: { title: 'Time to Exp (Yrs)', gridcolor: '#334155' },
+            zaxis: { title: 'Option Price', gridcolor: '#334155' },
+            camera: { eye: { x: 1.5, y: 1.5, z: 1.2 } }
+        }
+    };
+
+    const config = { responsive: true };
+
+    Plotly.newPlot('plotlyChart', data, layout, config);
 }
 
 // Initialize challenge buttons

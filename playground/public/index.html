@@ -26,6 +26,7 @@
                 <button class="nav-btn" data-section="learn">Learn</button>
                 <button class="nav-btn" data-section="practice">Practice</button>
                 <button class="nav-btn" data-section="challenges">Challenges</button>
+                <button class="nav-btn" data-section="theory">Theory Guide</button>
             </div>
         </nav>
 
@@ -43,6 +44,16 @@
                             <select id="optionType">
                                 <option value="call">Call</option>
                                 <option value="put">Put</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label for="pricingModel">Pricing Model</label>
+                            <select id="pricingModel">
+                                <option value="black_scholes">Black-Scholes (Analytical)</option>
+                                <option value="binomial">Binomial Tree (CRR)</option>
+                                <option value="monte_carlo">Monte Carlo (GBM)</option>
+                                <option value="ai_surrogate">AI Surrogate (Neural Net)</option>
                             </select>
                         </div>
 
@@ -168,10 +179,14 @@
                             <button class="viz-tab" data-viz="greeks">Greeks vs Spot</button>
                             <button class="viz-tab" data-viz="volatility">Vol Surface</button>
                             <button class="viz-tab" data-viz="time">Time Decay</button>
+                            <button class="viz-tab compare-tab" data-viz="comparison">Compare</button>
+                            <button class="viz-tab convergence-tab" data-viz="convergence">Convergence</button>
+                            <button class="viz-tab surface-tab" data-viz="surface3d">3D Surface</button>
                         </div>
 
                         <div class="chart-container">
                             <canvas id="mainChart"></canvas>
+                            <div id="plotlyChart" style="display: none; width: 100%; height: 100%;"></div>
                         </div>
                     </div>
 
@@ -360,7 +375,8 @@
                     <div class="practice-hero">
                         <div class="practice-hero-copy">
                             <h2>Practice Lab</h2>
-                            <p class="subtitle">Run focused drills to build execution-quality intuition across Greeks, volatility, strategy, and risk.</p>
+                            <p class="subtitle">Run focused drills to build execution-quality intuition across Greeks,
+                                volatility, strategy, and risk.</p>
                             <div class="hero-actions">
                                 <button class="start-btn" data-filter="core">Start Core Track</button>
                                 <button class="start-btn secondary" data-filter="execution">Execution Edge</button>
@@ -383,7 +399,8 @@
                             <button class="filter-btn" data-filter="execution">Execution</button>
                         </div>
                         <div class="practice-search">
-                            <input id="practiceSearch" type="search" placeholder="Search exercises, e.g. delta, volatility, liquidity">
+                            <input id="practiceSearch" type="search"
+                                placeholder="Search exercises, e.g. delta, volatility, liquidity">
                         </div>
                     </div>
 
@@ -492,6 +509,76 @@
                                 <span>~12 min</span>
                             </div>
                             <button class="start-btn">Start Analysis</button>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Theory Guide Section -->
+            <section id="theory" class="section">
+                <div class="theory-layout">
+                    <h2>Academic Theory & Models Guide</h2>
+                    <p class="subtitle">Understand the mathematics and assumptions behind the pricing engines.</p>
+
+                    <div class="content-grid theory-grid">
+                        <article class="content-card">
+                            <h3>Black-Scholes Model</h3>
+                            <p>The foundational continuous-time model developed by Fischer Black, Myron Scholes, and
+                                Robert Merton (1973).</p>
+                            <ul>
+                                <li><strong>Assumptions:</strong> Log-normal distribution of stock prices, constant
+                                    risk-free rate, constant volatility, no transaction costs, continuous trading.</li>
+                                <li><strong>Best for:</strong> European options with known parameters. Fast, analytical
+                                    exact solution.</li>
+                                <li><strong>Limitation:</strong> Cannot accurately price American options before
+                                    expiration or handle discrete dividends easily.</li>
+                            </ul>
+                        </article>
+
+                        <article class="content-card">
+                            <h3>Binomial Tree (CRR Model)</h3>
+                            <p>A discrete-time model developed by Cox, Ross, and Rubinstein (1979).</p>
+                            <ul>
+                                <li><strong>Mechanism:</strong> Builds a recombining tree of possible future stock
+                                    prices (Up or Down movements) out to expiration, then works backward to find today's
+                                    price.</li>
+                                <li><strong>Best for:</strong> American options, as early exercise can be evaluated at
+                                    every tree node.</li>
+                                <li><strong>Convergence:</strong> As the number of steps approaches infinity, the
+                                    Binomial price converges to the Black-Scholes price.</li>
+                            </ul>
+                        </article>
+
+                        <article class="content-card">
+                            <h3>Monte Carlo Simulation</h3>
+                            <p>A stochastic method that simulates thousands of possible future price paths.</p>
+                            <ul>
+                                <li><strong>Mechanism:</strong> Uses Geometric Brownian Motion (GBM) to randomly walk
+                                    the stock price forward. The option payoff is averaged across all paths and
+                                    discounted to the present.</li>
+                                <li><strong>Variance Reduction:</strong> This application uses <em>Antithetic
+                                        Variates</em>, computing paths in pairs (positive shock and negative shock) to
+                                    reduce standard error without doubling computation time.</li>
+                                <li><strong>Best for:</strong> Highly complex, path-dependent exotic options (like
+                                    Asians or Barriers).</li>
+                            </ul>
+                        </article>
+
+                        <article class="content-card">
+                            <h3>The Greeks</h3>
+                            <p>First-order and second-order derivatives of the pricing formula.</p>
+                            <ul>
+                                <li><strong>Delta (Δ):</strong> First derivative w.r.t Spot Price. Represents hedge
+                                    ratio.</li>
+                                <li><strong>Gamma (Γ):</strong> Second derivative w.r.t Spot Price. Measures convexity
+                                    and delta stability.</li>
+                                <li><strong>Theta (Θ):</strong> First derivative w.r.t Time. Represents daily time
+                                    decay. Always negative for long options.</li>
+                                <li><strong>Vega (ν):</strong> First derivative w.r.t Volatility. Highest when
+                                    At-The-Money.</li>
+                                <li><strong>Rho (ρ):</strong> First derivative w.r.t Risk-Free Rate. Generally least
+                                    impactful for short-term retail trading, but critical for long-dated LEAPS.</li>
+                            </ul>
                         </article>
                     </div>
                 </div>
@@ -738,6 +825,7 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/calculator.js"></script>
+    <script src="js/ai_model.js"></script>
     <script src="js/advice.js"></script>
     <script src="js/lessons.js"></script>
     <script src="js/exercises.js"></script>
