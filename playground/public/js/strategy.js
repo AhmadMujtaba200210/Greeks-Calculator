@@ -750,7 +750,7 @@ function updateStrategyStats(payoffs, start, end, stepSize) {
 export function initStrategyGuide() {
     const modal = document.getElementById('guideModal');
     const btn = document.getElementById('builderGuideBtn');
-    const closeBtn = document.querySelector('.close-modal');
+    const closeBtn = modal ? modal.querySelector('.close-modal') : null;
     const finishBtn = document.getElementById('closeGuideFinal');
 
     const steps = document.querySelectorAll('.guide-step');
@@ -813,21 +813,105 @@ export function initStrategyGuide() {
     };
 }
 
+// ─── Strategy Playbook Logic ──────────────────────────────────────────────
+const PLAYBOOK_DATA = {
+    bullish: {
+        title: "Steady Bullish View",
+        thinking: "You expect the stock to rise, but don't want to pay 'full price' for a naked call. A Bull Call Spread reduces your cost basis by selling upside you don't expect to hit.",
+        recommendation: "Bull Call Spread",
+        presetId: "bull_call_spread"
+    },
+    bearish: {
+        title: "Controlled Bearish View",
+        thinking: "You think the market is overextended. Buying a put is expensive due to high demand. A Bear Put Spread caps your cost while giving you a defined window of profit.",
+        recommendation: "Bear Put Spread",
+        presetId: "bear_put_spread"
+    },
+    neutral: {
+        title: "Range-Bound / Flat",
+        thinking: "Vol is high but the stock isn't moving. Sell an Iron Condor to collect 'Rent' (Theta decay). You win if the stock stays between your two short strikes.",
+        recommendation: "Iron Condor",
+        presetId: "iron_condor"
+    },
+    volatile: {
+        title: "Explosive Breakout",
+        thinking: "Earnings or news is coming. You don't know the direction, but you know it won't stay here. A Straddle wins if the price moves hard in EITHER direction.",
+        recommendation: "Long Straddle",
+        presetId: "long_straddle"
+    }
+};
+
+export function initStrategyPlaybook() {
+    const container = document.querySelector('.terminal-panel:has(.playbook-scenarios)');
+    if (!container) return;
+
+    const buttons = container.querySelectorAll('.scenario-btn');
+    const contentArea = document.getElementById('playbookContent');
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const scenarioId = btn.dataset.scenario;
+            const data = PLAYBOOK_DATA[scenarioId];
+            if (!data) return;
+
+            // Update active button
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Render content
+            contentArea.innerHTML = `
+                <div class="playbook-card active">
+                    <h4>${data.title}</h4>
+                    <div class="thinking-section">
+                        <h5>Thinking Like a Trader</h5>
+                        <p>${data.thinking}</p>
+                    </div>
+                    <div class="thinking-section" style="border-left-color: var(--t-green);">
+                        <h5 style="color: var(--t-green);">Strategy Choice</h5>
+                        <p>${data.recommendation}</p>
+                    </div>
+                    <div class="action-row">
+                        <button class="btn-playbook-load" onclick="window.loadStrategyPreset('${data.presetId}')">
+                            Load Example →
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    });
+}
+
 export function loadStrategyPreset(presetId) {
     const preset = window.strategyPresets?.[presetId];
     if (!preset) return;
 
-    strategyState.legs = preset.legs.map((leg, index) => ({
-        id: `${Date.now()}-${index}`,
-        type: leg.type,
-        action: leg.action,
-        strike: leg.strike,
-        expiry: leg.expiry || 1.0,
-        quantity: leg.quantity || 1
-    }));
+    // Use current spot to make strikes relative
+    const S = window.sharedMarketState ? window.sharedMarketState.spot : 100;
+
+    strategyState.legs = preset.legs.map((leg, index) => {
+        // Presets in lessons.js are mostly based on Spot=100
+        // We shift the strike relative to current S
+        let newStrike = leg.strike;
+        if (leg.type !== 'stock') {
+            const offset = leg.strike - 100;
+            newStrike = Math.round(S + offset);
+        } else {
+            newStrike = S;
+        }
+
+        return {
+            id: `leg-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}`,
+            type: leg.type,
+            action: leg.action,
+            strike: newStrike,
+            expiry: leg.expiry || 1.0,
+            quantity: leg.quantity || 1
+        };
+    });
 
     renderLegs();
     updateStrategyChart();
+    if (window.updateSandboxScenario) window.updateSandboxScenario();
 }
 
 export function openStrategyPreset(presetId) {
@@ -869,6 +953,7 @@ export function initStrategyPresets() {
 window.updateLeg = updateLeg;
 window.removeLeg = removeLeg;
 window.openStrategyPreset = openStrategyPreset;
+window.loadStrategyPreset = loadStrategyPreset;
 
 // ─── Strategy Compare Feature ───────────────────────────────────────────────
 

@@ -17,7 +17,7 @@ const state = {
 
 // Import WASM module and UI utilities
 import init, { calculate_greeks_wasm, calculate_binomial_wasm, calculate_mc_wasm } from '../pkg/greeks_calculator.js';
-import { addLeg, initStrategyGuide, initStrategyPresets, initStrategyContextBar, initScenarioSandbox, initStrategyComparison } from './strategy.js';
+import { addLeg, initStrategyGuide, initStrategyPresets, initStrategyContextBar, initScenarioSandbox, initStrategyComparison, initStrategyPlaybook } from './strategy.js';
 import { customTooltip } from './ui_utils.js';
 
 // Initialize the application
@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         initStrategyContextBar();
         initScenarioSandbox();
         initStrategyComparison();
+        initStrategyPlaybook();
         addLegBtn.addEventListener('click', () => addLeg());
         // Defaults
         addLeg({ type: 'call', action: 'buy', strike: 100 });

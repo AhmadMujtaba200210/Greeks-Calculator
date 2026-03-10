@@ -634,234 +634,283 @@
                 </div>
             </section>
             <!-- Strategy Builder Section -->
-            <section id="builder" class="section">
-                <div class="builder-layout">
-                    <div class="builder-header">
-                        <h2>Strategy Builder</h2>
-                        <div class="header-actions">
-                            <select id="presetSelect" class="preset-select">
-                                <option value="">Strategy presets…</option>
-                            </select>
-                            <button class="add-leg-btn" id="loadPresetBtn">Load</button>
-                            <button class="guide-btn" id="builderGuideBtn">? Guide</button>
-                            <button class="add-leg-btn bull" id="saveStrategyBtn">Save Strategy</button>
-                            <button class="add-leg-btn theta" id="compareStrategiesBtn" style="display: none;">Compare
-                                (0)</button>
-                            <button class="add-leg-btn" id="addLegBtn">+ Add Leg</button>
+            <section id="builder" class="section builder-section">
+                <!-- Row 1: Header -->
+                <div class="builder-header">
+                    <div class="builder-title-group">
+                        <h2 class="terminal-title">Strategy Builder</h2>
+                        <span class="terminal-badge">LIVE</span>
+                    </div>
+                    <div class="header-actions">
+                        <select id="presetSelect" class="preset-select">
+                            <option value="">Presets…</option>
+                        </select>
+                        <button class="add-leg-btn" id="loadPresetBtn">Load</button>
+                        <button class="guide-btn" id="builderGuideBtn">? Guide</button>
+                        <button class="add-leg-btn btn-save" id="saveStrategyBtn">💾 Save</button>
+                        <button class="add-leg-btn btn-compare" id="compareStrategiesBtn" style="display: none;">⚖️
+                            Compare (0)</button>
+                        <button class="add-leg-btn" id="addLegBtn">+ Add Leg</button>
+                    </div>
+                </div>
+
+                <!-- Row 2: Market Context Bar (compact) -->
+                <div class="strategy-context-bar glass">
+                    <div class="context-group context-ticker">
+                        <label>Ticker</label>
+                        <input type="text" id="sharedTicker" value="SPY" placeholder="AAPL" class="ticker-input">
+                    </div>
+                    <div class="context-group">
+                        <label>Spot (S)</label>
+                        <div class="slider-input-group">
+                            <input type="number" id="sharedSpotNum" min="1" max="1000" value="100" step="0.5">
+                            <input type="range" id="sharedSpot" min="1" max="1000" value="100" step="0.5">
                         </div>
                     </div>
-
-                    <!-- Market Context Bar -->
-                    <div class="strategy-context-bar glass">
-                        <div class="context-group">
-                            <label for="sharedTicker">Ticker</label>
-                            <input type="text" id="sharedTicker" value="SPY" placeholder="AAPL" class="ticker-input">
-                        </div>
-
-                        <div class="context-group">
-                            <label for="sharedSpot">Spot (S)</label>
-                            <div class="slider-input-group">
-                                <input type="number" id="sharedSpotNum" min="1" max="1000" value="100" step="0.5">
-                                <input type="range" id="sharedSpot" min="1" max="1000" value="100" step="0.5">
-                            </div>
-                        </div>
-
-                        <div class="context-group">
-                            <label for="sharedVol">Volatility (σ %)</label>
-                            <div class="slider-input-group">
-                                <input type="number" id="sharedVolNum" min="1" max="200" value="25" step="1">
-                                <input type="range" id="sharedVol" min="1" max="200" value="25" step="1">
-                            </div>
-                        </div>
-
-                        <div class="context-group">
-                            <label for="sharedExpiry">Expiration</label>
-                            <div class="expiry-group">
-                                <input type="date" id="sharedExpiry">
-                                <span class="calc-t" id="sharedTValue">T=1.00y</span>
-                            </div>
-                        </div>
-
-                        <div class="context-group">
-                            <label for="sharedRate">Rate (r %)</label>
-                            <div class="slider-input-group">
-                                <input type="number" id="sharedRateNum" min="0" max="20" value="5" step="0.1">
-                                <input type="range" id="sharedRate" min="0" max="20" value="5" step="0.1">
-                            </div>
-                        </div>
-
-                        <div class="context-group">
-                            <label for="sharedDiv">Yield (q %)</label>
-                            <div class="slider-input-group">
-                                <input type="number" id="sharedDivNum" min="0" max="15" value="0" step="0.1">
-                                <input type="range" id="sharedDiv" min="0" max="15" value="0" step="0.1">
-                            </div>
+                    <div class="context-group">
+                        <label>Vol σ %</label>
+                        <div class="slider-input-group">
+                            <input type="number" id="sharedVolNum" min="1" max="200" value="25" step="1">
+                            <input type="range" id="sharedVol" min="1" max="200" value="25" step="1">
                         </div>
                     </div>
-
-                    <div class="strategy-content">
-                        <!-- Chart -->
-                        <div class="strategy-chart-container">
-                            <canvas id="strategyChart"></canvas>
-                        </div>
-
-                        <!-- Leg Manager -->
-                        <div class="legs-container" id="legsContainer">
-                            <!-- Legs injected here -->
-                            <div class="empty-state" id="legsEmptyState">
-                                <div class="empty-state-icon">🧊</div>
-                                <h3>No Strategy Legs</h3>
-                                <p>Add a call or put option to start building your trading strategy and see the P&L
-                                    profile.</p>
-                            </div>
+                    <div class="context-group">
+                        <label>Expiry</label>
+                        <div class="expiry-group">
+                            <input type="date" id="sharedExpiry">
+                            <span class="calc-t" id="sharedTValue">T=1.00y</span>
                         </div>
                     </div>
-
-                    <div class="strategy-info">
-                        <div class="info-card">
-                            <h3>Max Profit</h3>
-                            <span id="maxProfit">--</span>
-                        </div>
-                        <div class="info-card">
-                            <h3>Max Loss</h3>
-                            <span id="maxLoss">--</span>
-                        </div>
-                        <div class="info-card">
-                            <h3>Breakevens</h3>
-                            <span id="breakevens">--</span>
+                    <div class="context-group">
+                        <label>Rate r %</label>
+                        <div class="slider-input-group">
+                            <input type="number" id="sharedRateNum" min="0" max="20" value="5" step="0.1">
+                            <input type="range" id="sharedRate" min="0" max="20" value="5" step="0.1">
                         </div>
                     </div>
-
-                    <!-- Net Greeks Summary -->
-                    <div class="net-greeks-summary" style="margin-top: 2rem;">
-                        <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">
-                            Net Greeks Summary</h3>
-                        <div class="results-grid">
-                            <div class="result-card">
-                                <div class="result-label">Net Delta (Δ)</div>
-                                <div class="result-value" id="netDeltaResult">0.00</div>
-                                <div class="result-desc">Directional exposure</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="result-label">Net Gamma (Γ)</div>
-                                <div class="result-value" id="netGammaResult">0.00</div>
-                                <div class="result-desc">Rate of Delta change</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="result-label">Net Vega (ν)</div>
-                                <div class="result-value" id="netVegaResult">0.00</div>
-                                <div class="result-desc">Sensitivity to vol</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="result-label">Net Theta (Θ) / day</div>
-                                <div class="result-value" id="netThetaResult">0.00</div>
-                                <div class="result-desc">Daily time decay</div>
-                            </div>
-                            <div class="result-card">
-                                <div class="result-label">Net Rho (ρ)</div>
-                                <div class="result-value" id="netRhoResult">0.00</div>
-                                <div class="result-desc">Interest rate risk</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Net Greeks vs Spot Chart -->
-                    <div class="greeks-vs-spot-section" style="margin-top: 2rem;">
-                        <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">
-                            Net Greeks vs Spot Price</h3>
-                        <div class="strategy-chart-container" style="height: 400px;">
-                            <canvas id="netGreeksChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Scenario Sandbox -->
-                    <div class="scenario-sandbox" style="margin-top: 3rem; margin-bottom: 2rem;">
-                        <div class="builder-header" style="margin-bottom: 1.5rem;">
-                            <h2>Scenario Sandbox</h2>
-                            <div class="header-actions">
-                                <button class="add-leg-btn bull" id="scenarioBullBtn">Bull Case</button>
-                                <button class="add-leg-btn bear" id="scenarioBearBtn">Bear Case</button>
-                                <button class="add-leg-btn theta" id="scenarioThetaBtn">Theta Bleed</button>
-                            </div>
-                        </div>
-
-                        <div class="strategy-content">
-                            <!-- Sliders -->
-                            <div class="control-panel glass" style="grid-column: 1;">
-                                <div class="control-group">
-                                    <label>Spot Price Change <span id="valSpotChange">0%</span></label>
-                                    <input type="range" id="scenarioSpotChange" min="-30" max="30" value="0" step="1">
-                                </div>
-                                <div class="control-group">
-                                    <label>Implied Vol Change <span id="valVolChange">0</span></label>
-                                    <input type="range" id="scenarioVolChange" min="-20" max="20" value="0" step="1">
-                                </div>
-                                <div class="control-group">
-                                    <label>Days Elapsed <span id="valDaysElapsed">0</span></label>
-                                    <input type="range" id="scenarioDaysElapsed" min="0" max="365" value="0" step="1">
-                                </div>
-                            </div>
-
-                            <!-- Scenario Results -->
-                            <div class="results-panel glass"
-                                style="grid-column: 2; display: flex; flex-direction: column; gap: 1rem;">
-                                <div class="result-card price-card">
-                                    <div class="result-label" style="color: rgba(255,255,255,0.8);">Scenario P/L</div>
-                                    <div class="result-value" id="scenarioPL">$0.00</div>
-                                    <div class="result-desc" id="scenarioPLPct">0.00%</div>
-                                </div>
-                                <div class="quick-facts"
-                                    style="margin-top: 0.5rem; background: rgba(15,23,42,0.4); padding: 1rem; border-radius: 8px;">
-                                    <strong style="color: white; margin-bottom: 0.5rem; display: block;">New Net
-                                        Greeks:</strong>
-                                    <div
-                                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-family: 'JetBrains Mono', monospace;">
-                                        <div>Δ: <span id="scenDelta" style="color: var(--primary-light);">0.00</span>
-                                        </div>
-                                        <div>Γ: <span id="scenGamma" style="color: var(--primary-light);">0.00</span>
-                                        </div>
-                                        <div>ν: <span id="scenVega" style="color: var(--primary-light);">0.00</span>
-                                        </div>
-                                        <div>Θ: <span id="scenTheta" style="color: var(--primary-light);">0.00</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button class="add-leg-btn" id="saveScenarioBtn"
-                                    style="width: 100%; margin-top: auto;">Save Scenario</button>
-                            </div>
-                        </div>
-
-                        <!-- Saved Scenarios Table -->
-                        <div class="saved-scenarios glass"
-                            style="margin-top: 1.5rem; padding: 1.5rem; border-radius: var(--radius-lg); overflow-x: auto;">
-                            <h3
-                                style="color: var(--text-primary); margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">
-                                Saved Scenarios</h3>
-                            <table class="scenarios-table"
-                                style="width: 100%; text-align: left; border-collapse: collapse;">
-                                <thead>
-                                    <tr
-                                        style="border-bottom: 1px solid var(--border-light); color: var(--text-secondary);">
-                                        <th style="padding: 0.75rem;">Name</th>
-                                        <th style="padding: 0.75rem;">Spot Δ</th>
-                                        <th style="padding: 0.75rem;">IV Δ</th>
-                                        <th style="padding: 0.75rem;">Days Elapsed</th>
-                                        <th style="padding: 0.75rem;">Net P/L</th>
-                                        <th style="padding: 0.75rem;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="scenariosTableBody">
-                                    <tr id="emptyScenariosRow">
-                                        <td colspan="6"
-                                            style="padding: 1.5rem; text-align: center; color: var(--text-muted);">No
-                                            scenarios saved yet. Maximum 6 allowed.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <div class="context-group">
+                        <label>Yield q %</label>
+                        <div class="slider-input-group">
+                            <input type="number" id="sharedDivNum" min="0" max="15" value="0" step="0.1">
+                            <input type="range" id="sharedDiv" min="0" max="15" value="0" step="0.1">
                         </div>
                     </div>
                 </div>
+
+                <!-- Row 3: Terminal Body (two columns) -->
+                <div class="terminal-body">
+
+                    <!-- LEFT RAIL -->
+                    <div class="terminal-left">
+
+                        <!-- Strategy Playbook -->
+                        <div class="terminal-panel">
+                            <div class="terminal-panel-header">
+                                <span class="panel-label">📂 Strategy Playbook</span>
+                                <span class="panel-hint">Starter Ideas</span>
+                            </div>
+                            <div class="playbook-scenarios">
+                                <button class="scenario-btn" data-scenario="bullish">▲ Bull</button>
+                                <button class="scenario-btn" data-scenario="bearish">▼ Bear</button>
+                                <button class="scenario-btn" data-scenario="neutral">〓 Flat</button>
+                                <button class="scenario-btn" data-scenario="volatile">⚡ Vol</button>
+                            </div>
+                            <div id="playbookContent" class="playbook-content">
+                                <div class="playbook-card active">
+                                    <p class="playbook-placeholder">Select a market view above to get started with a
+                                        strategy idea.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leg Manager -->
+                        <div class="terminal-panel">
+                            <div class="terminal-panel-header">
+                                <span class="panel-label">📋 Legs</span>
+                            </div>
+                            <div class="legs-container" id="legsContainer">
+                                <div class="empty-state" id="legsEmptyState">
+                                    <div class="empty-state-icon">🧊</div>
+                                    <h3>No Strategy Legs</h3>
+                                    <p>Add a call or put option to start building.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Cards -->
+                        <div class="terminal-panel">
+                            <div class="terminal-panel-header">
+                                <span class="panel-label">📊 Summary</span>
+                            </div>
+                            <div class="strategy-info compact-info">
+                                <div class="info-card">
+                                    <h3>Max Profit</h3>
+                                    <span id="maxProfit">--</span>
+                                </div>
+                                <div class="info-card">
+                                    <h3>Max Loss</h3>
+                                    <span id="maxLoss">--</span>
+                                </div>
+                                <div class="info-card">
+                                    <h3>Breakevens</h3>
+                                    <span id="breakevens">--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Net Greeks Summary -->
+                        <div class="terminal-panel">
+                            <div class="terminal-panel-header">
+                                <span class="panel-label">⚗️ Net Greeks</span>
+                            </div>
+                            <div class="greeks-compact-grid">
+                                <div class="greek-chip">
+                                    <span class="greek-label">Δ Delta</span>
+                                    <span class="greek-value" id="netDeltaResult">0.00</span>
+                                    <span class="greek-desc">Directional</span>
+                                </div>
+                                <div class="greek-chip">
+                                    <span class="greek-label">Γ Gamma</span>
+                                    <span class="greek-value" id="netGammaResult">0.00</span>
+                                    <span class="greek-desc">Δ rate</span>
+                                </div>
+                                <div class="greek-chip">
+                                    <span class="greek-label">ν Vega</span>
+                                    <span class="greek-value" id="netVegaResult">0.00</span>
+                                    <span class="greek-desc">Vol sens.</span>
+                                </div>
+                                <div class="greek-chip">
+                                    <span class="greek-label">Θ Theta/d</span>
+                                    <span class="greek-value" id="netThetaResult">0.00</span>
+                                    <span class="greek-desc">Daily decay</span>
+                                </div>
+                                <div class="greek-chip">
+                                    <span class="greek-label">ρ Rho</span>
+                                    <span class="greek-value" id="netRhoResult">0.00</span>
+                                    <span class="greek-desc">Rate risk</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- end .terminal-left -->
+
+                    <!-- RIGHT MAIN COLUMN -->
+                    <div class="terminal-right">
+
+                        <!-- P/L Chart -->
+                        <div class="terminal-panel terminal-panel-chart">
+                            <div class="terminal-panel-header">
+                                <span class="panel-label">📈 P/L Over Time</span>
+                                <span class="panel-hint">Today · 75% · 50% · 25% · Expiry</span>
+                            </div>
+                            <div class="strategy-chart-container chart-pl">
+                                <canvas id="strategyChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Bottom row: Greeks Chart + Scenario Sandbox side by side -->
+                        <div class="terminal-bottom-row">
+
+                            <!-- Greeks vs Spot (left half) -->
+                            <div class="terminal-panel terminal-panel-half">
+                                <div class="terminal-panel-header">
+                                    <span class="panel-label">🧮 Greeks vs Spot</span>
+                                </div>
+                                <div class="strategy-chart-container chart-greeks">
+                                    <canvas id="netGreeksChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Scenario Sandbox (right half) -->
+                            <div class="terminal-panel terminal-panel-half">
+                                <div class="terminal-panel-header">
+                                    <span class="panel-label">🧪 Scenario Sandbox</span>
+                                    <div class="sandbox-presets">
+                                        <button class="preset-pill bull" id="scenarioBullBtn">▲ Bull</button>
+                                        <button class="preset-pill bear" id="scenarioBearBtn">▼ Bear</button>
+                                        <button class="preset-pill theta" id="scenarioThetaBtn">⏱ Theta</button>
+                                    </div>
+                                </div>
+                                <div class="sandbox-body">
+                                    <!-- Sliders Column -->
+                                    <div class="sandbox-sliders">
+                                        <div class="sandbox-control">
+                                            <div class="sandbox-label">
+                                                <span>Spot Δ</span>
+                                                <span class="sandbox-val" id="valSpotChange">0%</span>
+                                            </div>
+                                            <input type="range" id="scenarioSpotChange" min="-30" max="30" value="0"
+                                                step="1">
+                                        </div>
+                                        <div class="sandbox-control">
+                                            <div class="sandbox-label">
+                                                <span>IV Δ pts</span>
+                                                <span class="sandbox-val" id="valVolChange">0</span>
+                                            </div>
+                                            <input type="range" id="scenarioVolChange" min="-20" max="20" value="0"
+                                                step="1">
+                                        </div>
+                                        <div class="sandbox-control">
+                                            <div class="sandbox-label">
+                                                <span>Days</span>
+                                                <span class="sandbox-val" id="valDaysElapsed">0</span>
+                                            </div>
+                                            <input type="range" id="scenarioDaysElapsed" min="0" max="365" value="0"
+                                                step="1">
+                                        </div>
+                                    </div>
+                                    <!-- Results Column -->
+                                    <div class="sandbox-results">
+                                        <div class="sandbox-pl-block">
+                                            <div class="sandbox-pl-label">Scenario P/L</div>
+                                            <div class="sandbox-pl-value" id="scenarioPL">$0.00</div>
+                                            <div class="sandbox-pl-pct" id="scenarioPLPct">0.00%</div>
+                                        </div>
+                                        <div class="sandbox-greeks-row">
+                                            <div class="sb-greek">Δ <span id="scenDelta">0.00</span></div>
+                                            <div class="sb-greek">Γ <span id="scenGamma">0.00</span></div>
+                                            <div class="sb-greek">ν <span id="scenVega">0.00</span></div>
+                                            <div class="sb-greek">Θ <span id="scenTheta">0.00</span></div>
+                                        </div>
+                                        <button class="add-leg-btn" id="saveScenarioBtn"
+                                            style="width:100%;margin-top:0.5rem;font-size:0.8rem;padding:0.4rem;">Save
+                                            Scenario</button>
+                                    </div>
+                                </div>
+
+                                <!-- Saved Scenarios (compact table) -->
+                                <div class="saved-scenarios-compact">
+                                    <table class="scenarios-table"
+                                        style="width:100%;text-align:left;border-collapse:collapse;font-size:0.78rem;">
+                                        <thead>
+                                            <tr
+                                                style="border-bottom:1px solid var(--border-light);color:var(--text-secondary);">
+                                                <th style="padding:0.4rem 0.5rem;">Name</th>
+                                                <th style="padding:0.4rem 0.5rem;">Spot</th>
+                                                <th style="padding:0.4rem 0.5rem;">IV</th>
+                                                <th style="padding:0.4rem 0.5rem;">Days</th>
+                                                <th style="padding:0.4rem 0.5rem;">P/L</th>
+                                                <th style="padding:0.4rem 0.5rem;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="scenariosTableBody">
+                                            <tr id="emptyScenariosRow">
+                                                <td colspan="6" style="padding:0.75rem 0.5rem;color:var(--text-muted);">
+                                                    No scenarios saved.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div><!-- end .terminal-bottom-row -->
+
+                    </div><!-- end .terminal-right -->
+
+                </div><!-- end .terminal-body -->
+
             </section>
+        </main>
         </main>
 
         <nav class="mobile-tabbar" aria-label="Primary Navigation">
@@ -935,129 +984,312 @@
             <span class="close-modal">&times;</span>
 
             <div class="guide-carousel">
-                <!-- Step 1: Welcome -->
+
+                <!-- Step 1: Welcome & Overview -->
                 <div class="guide-step active" data-step="1">
                     <div class="step-icon">🏗️</div>
                     <h2>Welcome to the Builder</h2>
-                    <p>The Strategy Builder lets you combine multiple options to create complex portfolios. Think of it
-                        as "Option Legos".</p>
+                    <p>The Strategy Builder is a <strong>multi-panel trading laboratory</strong> for designing, testing,
+                        and comparing options strategies before you risk real money.</p>
                     <div class="feature-highlight">
-                        <strong>Goal:</strong> Visualize exactly how much you'll make or lose at different stock prices.
+                        <strong>Who is this for?</strong> Anyone designing a multi-leg options trade — from a simple
+                        long call to iron condors and butterflies.
+                    </div>
+                    <p style="margin-top: 0.75rem; color: var(--text-secondary); font-size: 0.9rem;">This guide walks
+                        through each panel in order. Use the arrows below to navigate.</p>
+                </div>
+
+                <!-- Step 2: Panel 0 — Market Context Bar -->
+                <div class="guide-step" data-step="2">
+                    <div class="step-icon">🌐</div>
+                    <h2>Panel 0 · Market Context Bar</h2>
+                    <p>The <strong>horizontal bar at the top</strong> holds the market assumptions that every leg
+                        inherits. Set it once and the entire builder recomputes instantly.</p>
+                    <ul>
+                        <li><strong>Ticker</strong> — cosmetic label only (e.g., "AAPL")</li>
+                        <li><strong>Spot (S)</strong> — current underlying price</li>
+                        <li><strong>Volatility (σ)</strong> — implied vol in %</li>
+                        <li><strong>Expiration</strong> — auto-computes T in years</li>
+                        <li><strong>Rate (r) / Yield (q)</strong> — risk-free & dividend rates</li>
+                    </ul>
+                    <div class="feature-highlight" style="margin-top: 0.75rem;">
+                        ⚠️ <strong>When NOT to use:</strong> Do not set Spot to a value wildly different from realistic
+                        prices — all P/L math anchors off this. An unrealistic spot makes every downstream panel
+                        meaningless.
                     </div>
                 </div>
 
-                <!-- Step 2: Payoff Chart -->
-                <div class="guide-step" data-step="2">
-                    <div class="step-icon">📈</div>
-                    <h2>Reading the Chart</h2>
-                    <p>The line shows your <strong>Profit or Loss at Expiration</strong>.</p>
-                    <ul>
-                        <li><span class="text-green">Green Zone</span>: You are making money.</li>
-                        <li><span class="text-red">Red Zone</span>: You are losing money.</li>
-                        <li>The "Point" is your strike price where the behavior changes.</li>
-                    </ul>
-                </div>
-
-                <!-- Step 3: Leg Manager -->
+                <!-- Step 3: Panel 1 — Leg Manager -->
                 <div class="guide-step" data-step="3">
                     <div class="step-icon">🎛️</div>
-                    <h2>Managing Legs</h2>
-                    <p>On the right, you can add and customize your layers:</p>
+                    <h2>Panel 1 · Strategy Leg Manager</h2>
+                    <p>Each "leg" is one option contract in your strategy. Add, remove, and tweak legs here.</p>
                     <ul>
-                        <li><strong>Buy/Sell</strong>: Are you paying or receiving cash?</li>
-                        <li><strong>Call/Put</strong>: Right to buy vs right to sell.</li>
-                        <li><strong>Strike</strong>: The "line in the sand" for that option.</li>
+                        <li><strong>Buy / Sell</strong> — paying premium vs. collecting premium</li>
+                        <li><strong>Call / Put / Stock</strong> — the instrument type</li>
+                        <li><strong>Strike (K)</strong> — the anchor price for the contract</li>
+                        <li><strong>Qty</strong> — number of contracts (×100 shares each)</li>
                     </ul>
+                    <div class="recipe-grid" style="margin-top: 0.75rem;">
+                        <div class="recipe"><strong>Straddle:</strong> Buy 1 Call + Buy 1 Put @ same strike</div>
+                        <div class="recipe"><strong>Strangle:</strong> Buy 1 Call (high K) + Buy 1 Put (low K)</div>
+                        <div class="recipe"><strong>Bull Spread:</strong> Buy low K Call + Sell high K Call</div>
+                        <div class="recipe"><strong>Iron Condor:</strong> Sell OTM Call spread + Sell OTM Put spread
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Step 4: Common Strategies -->
+                <!-- Step 4: Panel 2 — Multi-Line P/L Chart -->
                 <div class="guide-step" data-step="4">
-                    <div class="step-icon">🍴</div>
-                    <h2>Quick Recipes</h2>
-                    <p>Try these classic setups to learn the shapes:</p>
-                    <div class="recipe-grid">
-                        <div class="recipe"><strong>Straddle</strong>: Buy 1 Call + Buy 1 Put at same strike. (Profits
-                            from big moves)</div>
-                        <div class="recipe"><strong>Bull Spread</strong>: Buy Low Strike Call + Sell High Strike Call.
-                            (Cheaper directional bet)</div>
-                    </div>
-                </div>
-
-                <!-- Step 5: Decision Metrics -->
-                <div class="guide-step" data-step="5">
-                    <div class="step-icon">🏁</div>
-                    <h2>Quick Summary</h2>
-                    <p>Check the bottom cards for your final stats. The next few slides explain exactly what they mean!
+                    <div class="step-icon">📈</div>
+                    <h2>Panel 2 · Multi-Line P/L Chart</h2>
+                    <p>Shows your <strong>Net P/L across a ±30% spot range</strong> at five different moments in time:
                     </p>
-                </div>
-
-                <!-- Step 6: Max Profit -->
-                <div class="guide-step" data-step="6">
-                    <div class="step-icon">💰</div>
-                    <h2>Max Profit</h2>
-                    <p>This is your **"Best Case Scenario"**.</p>
                     <ul>
-                        <li>If it shows <strong>Infinite ♾️</strong>, your potential gain has no limit (e.g., a Long
-                            Call).</li>
-                        <li>It reflects the highest point on the green line of your chart.</li>
+                        <li><span style="color:#2563eb">■</span> <strong>Today</strong> — value right now</li>
+                        <li><span style="color:#8b5cf6">■</span> <strong>75% time left</strong></li>
+                        <li><span style="color:#ec4899">■</span> <strong>50% time left</strong></li>
+                        <li><span style="color:#f59e0b">■</span> <strong>25% time left</strong></li>
+                        <li><span style="color:#10b981">■</span> <strong>At Expiration</strong> — the classic
+                            hockey-stick payoff</li>
                     </ul>
-                </div>
-
-                <!-- Step 7: Max Loss -->
-                <div class="guide-step" data-step="7">
-                    <div class="step-icon">🛡️</div>
-                    <h2>Max Loss</h2>
-                    <p>This is your **"Worst Case Scenario"** or Total Risk.</p>
-                    <ul>
-                        <li>If it shows <strong>Unlimited ⚠️</strong>, be careful! Your potential loss has no cap (e.g.,
-                            a Short Call).</li>
-                        <li>It reflects the lowest point on the red line of your chart.</li>
-                    </ul>
-                </div>
-
-                <!-- Step 8: Breakevens -->
-                <div class="guide-step" data-step="8">
-                    <div class="step-icon">🎯</div>
-                    <h2>Breakevens</h2>
-                    <p>The price where you have **Exactly $0 Profit/Loss**.</p>
-                    <ul>
-                        <li>It's where the line crosses the center (Zero) on the chart.</li>
-                        <li><strong>Why it matters:</strong> It tells you exactly where the stock needs to go for you to
-                            start winning.</li>
-                    </ul>
-                    <button class="finish-tutorial-btn" id="closeGuideFinal">Let's Build! 🚀</button>
-                </div>
-            </div>
-
-            <div class="guide-footer">
-                <div class="guide-nav">
-                    <button id="prevStep" class="nav-arrow" disabled>← Prev</button>
-                    <div class="step-dots">
-                        <span class="dot active"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
+                    <div class="feature-highlight" style="margin-top: 0.75rem;">
+                        <strong>Use this to:</strong> Spot convergence between lines (when time value erodes), identify
+                        theta decay visually, and find your breakeven range (where lines cross the zero dashed line).
                     </div>
-                    <button id="nextStep" class="nav-arrow">Next →</button>
+                </div>
+
+                <!-- Step 5: Reading the P/L Chart -->
+                <div class="guide-step" data-step="5">
+                    <div class="step-icon">🔍</div>
+                    <h2>Reading the P/L Chart</h2>
+                    <ul style="line-height: 2;">
+                        <li>The <strong>white dashed line</strong> = Break-even at $0 P/L</li>
+                        <li>Lines <strong>above</strong> the dashed line = you're profitable</li>
+                        <li>Lines <strong>below</strong> = you're at a loss</li>
+                        <li>The gap between "Today" and "Expiration" lines shows the <strong>time value you still
+                                have</strong></li>
+                        <li>If lines converge quickly, your strategy has <strong>high negative theta</strong> (costs you
+                            every day)</li>
+                    </ul>
+                    <div class="feature-highlight" style="margin-top: 0.75rem;">
+                        ⚠️ <strong>When NOT to rely on this chart:</strong> If your expiration date is less than 3 days
+                        away, BS pricing becomes unreliable near-ATM. Use intrinsic value instead.
+                    </div>
+                </div>
+
+                <!-- Step 6: Net Greeks Summary -->
+                <div class="guide-step" data-step="6">
+                    <div class="step-icon">⚗️</div>
+                    <h2>Panel 3 · Net Greeks Summary</h2>
+                    <p>Five cards showing the <strong>aggregate sensitivity</strong> of your whole strategy — not just
+                        one leg.</p>
+                    <ul>
+                        <li><strong>Net Δ (Delta)</strong> — directional exposure per $1 move in spot. ~0 means
+                            delta-neutral.</li>
+                        <li><strong>Net Γ (Gamma)</strong> — how fast delta changes. Positive = accelerating gains when
+                            you move.</li>
+                        <li><strong>Net ν (Vega)</strong> — P/L change per 1% vol move. Positive = you profit from vol
+                            spikes.</li>
+                        <li><strong>Net Θ (Theta) / day</strong> — daily time decay. Negative = the clock costs you
+                            money.</li>
+                        <li><strong>Net ρ (Rho)</strong> — sensitivity to interest rate changes. Usually minor.</li>
+                    </ul>
+                    <div class="feature-highlight">
+                        <strong>Straddle check:</strong> Net Δ ≈ 0, Γ > 0, Vega > 0, Theta < 0. If yours shows this, the
+                            math is correct. </div>
+                    </div>
+
+                    <!-- Step 7: Greeks vs Spot Chart -->
+                    <div class="guide-step" data-step="7">
+                        <div class="step-icon">🧮</div>
+                        <h2>Panel 4 · Net Greeks vs Spot Chart</h2>
+                        <p>Shows how each Greek <strong>evolves as spot moves</strong> across the ±30% range. Click a
+                            label in the legend to toggle individual Greeks on/off.</p>
+                        <ul>
+                            <li>Use it to find where <strong>delta flips sign</strong> (directional exposure reversal)
+                            </li>
+                            <li>A hump-shaped Gamma curve = maximum convexity near the strikes</li>
+                            <li>Vega peaking near ATM is expected — vol matters most there</li>
+                        </ul>
+                        <div class="feature-highlight" style="margin-top: 0.75rem;">
+                            ⚠️ <strong>When NOT to use:</strong> Greeks vs Spot is theoretical — it assumes all other
+                            parameters stay fixed. In reality, vol changes as spot moves (skew). This chart ignores
+                            that.
+                        </div>
+                    </div>
+
+                    <!-- Step 8: Summary Cards (Max Profit / Loss / Breakevens) -->
+                    <div class="guide-step" data-step="8">
+                        <div class="step-icon">📊</div>
+                        <h2>Summary Cards</h2>
+                        <p>The three cards below the chart give you a quick read of your <strong>strategy's expiration
+                                profile</strong>.</p>
+                        <ul>
+                            <li><strong>Max Profit</strong> — best case. Shows ♾️ if uncapped (e.g., long call).</li>
+                            <li><strong>Max Loss</strong> — worst case. Shows ⚠️ if uncapped (e.g., short call).</li>
+                            <li><strong>Breakevens</strong> — exact prices where you neither profit nor lose at
+                                expiration.</li>
+                        </ul>
+                        <div class="feature-highlight" style="margin-top: 0.75rem;">
+                            <strong>Use case:</strong> Before entering any trade, confirm your max loss is a number you
+                            can comfortably absorb. Never enter if max loss says "Unlimited" unless you truly understand
+                            short options risk.
+                        </div>
+                    </div>
+
+                    <!-- Step 9: Scenario Sandbox -->
+                    <div class="guide-step" data-step="9">
+                        <div class="step-icon">🧪</div>
+                        <h2>Panel 5 · Scenario Sandbox</h2>
+                        <p>A <strong>completely isolated stress-testing environment</strong> — moves here do NOT affect
+                            the main chart. Think of it as a "what if" calculator.</p>
+                        <ul>
+                            <li><strong>Spot Change (%)</strong> — simulate a ±30% price move without touching Panel 0
+                            </li>
+                            <li><strong>IV Change (pts)</strong> — model a volatility expansion or crush</li>
+                            <li><strong>Days Elapsed</strong> — fast-forward time to see theta bleed</li>
+                        </ul>
+                        <div class="feature-highlight" style="margin-top: 0.75rem;">
+                            <strong>Use case:</strong> Earnings plays — simulate a +15% gap-up AND a vol crush (-20 pts)
+                            simultaneously to see if your straddle actually profits.
+                        </div>
+                    </div>
+
+                    <!-- Step 10: Scenario Presets & Table -->
+                    <div class="guide-step" data-step="10">
+                        <div class="step-icon">⚡</div>
+                        <h2>Scenario Presets & Saved Scenarios</h2>
+                        <p>Three one-click presets apply common real-world shocks:</p>
+                        <div class="recipe-grid">
+                            <div class="recipe"><strong>Bull Case:</strong> +10% spot, -5 IV pts, 3 days — stock rallied
+                                and vol dropped</div>
+                            <div class="recipe"><strong>Bear Case:</strong> -10% spot, +5 IV pts, 3 days — sell-off with
+                                vol spike</div>
+                            <div class="recipe"><strong>Theta Bleed:</strong> 0% spot, 0 IV, 7 days — one week passes
+                                with nothing happening</div>
+                        </div>
+                        <p style="margin-top: 0.75rem; color: var(--text-secondary);">Click <strong>"Save
+                                Scenario"</strong> to snapshot any slider state into the comparison table below (max 6).
+                            Perfect for showing teammates different outcomes side-by-side.</p>
+                        <div class="feature-highlight">
+                            ⚠️ <strong>When NOT to use:</strong> Saved scenarios are not persistent — they reset if you
+                            refresh the page. Screenshot or export before closing.
+                        </div>
+                    </div>
+
+                    <!-- Step 11: Save Strategy -->
+                    <div class="guide-step" data-step="11">
+                        <div class="step-icon">💾</div>
+                        <h2>Panel 6 · Save Strategy</h2>
+                        <p>Click <strong>"Save Strategy"</strong> at the top to snapshot your current legs. Up to
+                            <strong>4 strategies</strong> can be saved at once.
+                        </p>
+                        <ul>
+                            <li>A green toast notification confirms the save</li>
+                            <li>Saved strategies are named automatically ("Strategy 1", "Strategy 2"…)</li>
+                            <li>You <strong>cannot edit</strong> a saved strategy — modify the builder and save a new
+                                snapshot</li>
+                            <li>The <strong>Load</strong> button in the Comparison view restores any saved strategy into
+                                the active builder</li>
+                        </ul>
+                        <div class="feature-highlight" style="margin-top: 0.75rem;">
+                            <strong>Use case:</strong> Save a Straddle, then modify the builder to a Strangle. Now you
+                            can compare the two side-by-side.
+                        </div>
+                    </div>
+
+                    <!-- Step 12: Compare Strategies -->
+                    <div class="guide-step" data-step="12">
+                        <div class="step-icon">⚖️</div>
+                        <h2>Panel 7 · Compare Strategies</h2>
+                        <p>Once 2 or more strategies are saved, the <strong>"Compare" button</strong> appears. It opens
+                            a full comparison modal with:</p>
+                        <ul>
+                            <li>A side-by-side metrics table: Legs, Net Cost, Max Loss/Gain, Breakevens, all 5 Greeks
+                            </li>
+                            <li>An <strong>Expiration P/L Overlay</strong> chart — all strategies on one canvas</li>
+                            <li>A <strong>Today's P/L Overlay</strong> chart — showing current theoretical value curves
+                            </li>
+                        </ul>
+                        <div class="feature-highlight" style="margin-top: 0.75rem;">
+                            ⚠️ <strong>Key rule:</strong> All saved strategies are automatically recomputed using the
+                            <em>current</em> Panel 0 market context. Comparisons are only valid if the strategies share
+                            the same underlying. Do not compare AAPL strategies to SPY strategies using this tool.
+                        </div>
+                    </div>
+
+                    <!-- Step 13: Common Mistakes -->
+                    <div class="guide-step" data-step="13">
+                        <div class="step-icon">⚠️</div>
+                        <h2>Common Mistakes to Avoid</h2>
+                        <ul style="line-height: 2;">
+                            <li>Setting <strong>T (time) too small</strong> — BS breaks down below ~3 days ATM</li>
+                            <li>Ignoring <strong>Net Theta</strong> — even a good-looking P/L chart can be bleeding
+                                $50/day</li>
+                            <li>Comparing strategies with <strong>different expiration dates</strong> — the chart
+                                assumes a single T for all legs</li>
+                            <li>Using the Scenario Sandbox to <strong>change base parameters</strong> — it's a sandbox,
+                                not the main builder</li>
+                            <li>Treating <strong>Max Gain = ♾️</strong> as "free money" — uncapped upside comes with
+                                uncapped risk on the other side (short premium)</li>
+                        </ul>
+                    </div>
+
+                    <!-- Step 14: Ready to Build -->
+                    <div class="guide-step" data-step="14">
+                        <div class="step-icon">🚀</div>
+                        <h2>You're Ready to Build!</h2>
+                        <p>Here's the recommended workflow:</p>
+                        <ol style="line-height: 2.2; padding-left: 1.5rem;">
+                            <li>Set Panel 0 with your real market parameters</li>
+                            <li>Add legs in Panel 1 to build your strategy</li>
+                            <li>Read Panel 2 to understand the time-value decay curve</li>
+                            <li>Check Panel 3 for Net Delta neutrality and Theta cost</li>
+                            <li>Stress-test in the Scenario Sandbox</li>
+                            <li>Save and compare multiple strategies</li>
+                            <li>Pick the one with the best risk/reward for your view</li>
+                        </ol>
+                        <button class="finish-tutorial-btn" id="closeGuideFinal">Let's Build! 🚀</button>
+                    </div>
+
+                </div>
+
+                <div class="guide-footer">
+                    <div class="guide-nav">
+                        <button id="prevStep" class="nav-arrow" disabled>← Prev</button>
+                        <div class="step-dots">
+                            <span class="dot active"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                        </div>
+                        <button id="nextStep" class="nav-arrow">Next →</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/calculator.js"></script>
-    <script src="js/ai_model.js"></script>
-    <script src="js/advice.js"></script>
-    <script src="js/lessons.js"></script>
-    <script src="js/exercises.js"></script>
-    <script type="module" src="js/strategy.js"></script>
-    <script type="module" src="js/app.js"></script>
-    <div id="chartjs-tooltip"></div>
+        <!-- Scripts -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="js/calculator.js"></script>
+        <script src="js/ai_model.js"></script>
+        <script src="js/advice.js"></script>
+        <script src="js/lessons.js"></script>
+        <script src="js/exercises.js"></script>
+        <script type="module" src="js/strategy.js"></script>
+        <script type="module" src="js/app.js"></script>
+        <div id="chartjs-tooltip"></div>
 </body>
 
 </html>
