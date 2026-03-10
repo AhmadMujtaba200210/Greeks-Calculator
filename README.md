@@ -38,9 +38,15 @@ A web-based platform to learn, practice, and visualize options concepts.
 
 ### 🦀 High-Performance Rust Engine
 A low-latency library for financial institutions and algorithmic trading.
-- **Speed:** ~190 nanoseconds per calculation (5.2 million options/sec).
+- **Multiple Pricing Models:**
+  - **Black-Scholes (Analytical):** Instant exact pricing for European options.
+  - **Binomial Tree (CRR):** Discrete-time model with early exercise pricing for American options.
+  - **Monte Carlo (GBM):** Stochastic simulation with Antithetic Variates for variance reduction.
+- **Speed:** ~190 nanoseconds per calculation (5.2 million options/sec) for Analytical models.
 - **Exactness:** Uses **Automatic Differentiation (AD)** for precise Greeks (no finite difference errors for Delta/Vega).
-- **Volatility:** Implements **SVI (Stochastic Volatility Inspired)** parameterization for arbitrage-free surfaces.
+- **Advanced Volatility:** Implements **SVI (Stochastic Volatility Inspired)** parameterization for arbitrage-free surfaces.
+- **AI Surrogate Model:** Neural network approximation for accelerating complex option pricing.
+- **WASM Integration:** Compiled to WebAssembly for direct high-performance use within the browser.
 - **Safety:** Pure Rust with zero-cost abstractions.
 
 ---
@@ -82,23 +88,24 @@ cargo bench
 
 This project implements three sophisticated mathematical techniques to achieve its performance and accuracy.
 
-### 1. Black-Scholes Model
+### 1. Pricing Models
 
+This project spans several sophisticated pricing methodologies to handle both European and American options efficiently.
+
+#### European Options (Black-Scholes)
 The Black-Scholes formula prices European options under the assumption of constant volatility and log-normal asset returns.
 
-#### Call Option Price
+- **Call Option Price:** $C(S, K, T, \sigma, r, q) = S e^{-qT} N(d_1) - K e^{-rT} N(d_2)$
+- **Put Option Price:** $P(S, K, T, \sigma, r, q) = K e^{-rT} N(-d_2) - S e^{-qT} N(-d_1)$
 
-$$C(S, K, T, \sigma, r, q) = S e^{-qT} N(d_1) - K e^{-rT} N(d_2)$$
+#### American Options (Binomial Tree)
+The Cox-Ross-Rubinstein (CRR) discrete-time model evaluates the option price at distinct time steps, working backward from expiration. Crucially, it checks for early exercise value at every node, making it the standard for American options handling dividends.
 
-#### Put Option Price
+#### Path-Dependent & Exotic (Monte Carlo Simulation)
+A stochastic engine that models thousands of possible future price paths using Geometric Brownian Motion (GBM). To maximize performance, we utilize **Antithetic Variates**, slicing the standard error without doubling the computational load.
 
-$$P(S, K, T, \sigma, r, q) = K e^{-rT} N(-d_2) - S e^{-qT} N(-d_1)$$
-
-where:
-- $d_1 = \frac{\ln(S/K) + (r - q + \frac{\sigma^2}{2})T}{\sigma\sqrt{T}}$
-- $d_2 = d_1 - \sigma\sqrt{T}$
-
-**Intuition**: The Black-Scholes formula calculates the expected payoff of an option, discounted to present value. The $N(d_1)$ and $N(d_2)$ terms represent probabilities: $N(d_1)$ is the hedge ratio (delta), and $N(d_2)$ is the risk-neutral probability of exercise.
+#### AI Surrogate Model (Neural Net Approximation)
+A feed-forward Neural Network trained on millions of Black-Scholes data points. This acts as an ultra-fast surrogate to approximate complex surfaces where traditional models become computationally prohibitive.
 
 ---
 

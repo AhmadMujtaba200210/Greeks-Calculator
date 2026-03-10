@@ -642,9 +642,60 @@
                             <select id="presetSelect" class="preset-select">
                                 <option value="">Strategy presets…</option>
                             </select>
-                            <button class="add-leg-btn" id="loadPresetBtn">Load Preset</button>
+                            <button class="add-leg-btn" id="loadPresetBtn">Load</button>
                             <button class="guide-btn" id="builderGuideBtn">? Guide</button>
+                            <button class="add-leg-btn bull" id="saveStrategyBtn">Save Strategy</button>
+                            <button class="add-leg-btn theta" id="compareStrategiesBtn" style="display: none;">Compare
+                                (0)</button>
                             <button class="add-leg-btn" id="addLegBtn">+ Add Leg</button>
+                        </div>
+                    </div>
+
+                    <!-- Market Context Bar -->
+                    <div class="strategy-context-bar glass">
+                        <div class="context-group">
+                            <label for="sharedTicker">Ticker</label>
+                            <input type="text" id="sharedTicker" value="SPY" placeholder="AAPL" class="ticker-input">
+                        </div>
+
+                        <div class="context-group">
+                            <label for="sharedSpot">Spot (S)</label>
+                            <div class="slider-input-group">
+                                <input type="number" id="sharedSpotNum" min="1" max="1000" value="100" step="0.5">
+                                <input type="range" id="sharedSpot" min="1" max="1000" value="100" step="0.5">
+                            </div>
+                        </div>
+
+                        <div class="context-group">
+                            <label for="sharedVol">Volatility (σ %)</label>
+                            <div class="slider-input-group">
+                                <input type="number" id="sharedVolNum" min="1" max="200" value="25" step="1">
+                                <input type="range" id="sharedVol" min="1" max="200" value="25" step="1">
+                            </div>
+                        </div>
+
+                        <div class="context-group">
+                            <label for="sharedExpiry">Expiration</label>
+                            <div class="expiry-group">
+                                <input type="date" id="sharedExpiry">
+                                <span class="calc-t" id="sharedTValue">T=1.00y</span>
+                            </div>
+                        </div>
+
+                        <div class="context-group">
+                            <label for="sharedRate">Rate (r %)</label>
+                            <div class="slider-input-group">
+                                <input type="number" id="sharedRateNum" min="0" max="20" value="5" step="0.1">
+                                <input type="range" id="sharedRate" min="0" max="20" value="5" step="0.1">
+                            </div>
+                        </div>
+
+                        <div class="context-group">
+                            <label for="sharedDiv">Yield (q %)</label>
+                            <div class="slider-input-group">
+                                <input type="number" id="sharedDivNum" min="0" max="15" value="0" step="0.1">
+                                <input type="range" id="sharedDiv" min="0" max="15" value="0" step="0.1">
+                            </div>
                         </div>
                     </div>
 
@@ -680,6 +731,135 @@
                             <span id="breakevens">--</span>
                         </div>
                     </div>
+
+                    <!-- Net Greeks Summary -->
+                    <div class="net-greeks-summary" style="margin-top: 2rem;">
+                        <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">
+                            Net Greeks Summary</h3>
+                        <div class="results-grid">
+                            <div class="result-card">
+                                <div class="result-label">Net Delta (Δ)</div>
+                                <div class="result-value" id="netDeltaResult">0.00</div>
+                                <div class="result-desc">Directional exposure</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="result-label">Net Gamma (Γ)</div>
+                                <div class="result-value" id="netGammaResult">0.00</div>
+                                <div class="result-desc">Rate of Delta change</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="result-label">Net Vega (ν)</div>
+                                <div class="result-value" id="netVegaResult">0.00</div>
+                                <div class="result-desc">Sensitivity to vol</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="result-label">Net Theta (Θ) / day</div>
+                                <div class="result-value" id="netThetaResult">0.00</div>
+                                <div class="result-desc">Daily time decay</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="result-label">Net Rho (ρ)</div>
+                                <div class="result-value" id="netRhoResult">0.00</div>
+                                <div class="result-desc">Interest rate risk</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Net Greeks vs Spot Chart -->
+                    <div class="greeks-vs-spot-section" style="margin-top: 2rem;">
+                        <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">
+                            Net Greeks vs Spot Price</h3>
+                        <div class="strategy-chart-container" style="height: 400px;">
+                            <canvas id="netGreeksChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Scenario Sandbox -->
+                    <div class="scenario-sandbox" style="margin-top: 3rem; margin-bottom: 2rem;">
+                        <div class="builder-header" style="margin-bottom: 1.5rem;">
+                            <h2>Scenario Sandbox</h2>
+                            <div class="header-actions">
+                                <button class="add-leg-btn bull" id="scenarioBullBtn">Bull Case</button>
+                                <button class="add-leg-btn bear" id="scenarioBearBtn">Bear Case</button>
+                                <button class="add-leg-btn theta" id="scenarioThetaBtn">Theta Bleed</button>
+                            </div>
+                        </div>
+
+                        <div class="strategy-content">
+                            <!-- Sliders -->
+                            <div class="control-panel glass" style="grid-column: 1;">
+                                <div class="control-group">
+                                    <label>Spot Price Change <span id="valSpotChange">0%</span></label>
+                                    <input type="range" id="scenarioSpotChange" min="-30" max="30" value="0" step="1">
+                                </div>
+                                <div class="control-group">
+                                    <label>Implied Vol Change <span id="valVolChange">0</span></label>
+                                    <input type="range" id="scenarioVolChange" min="-20" max="20" value="0" step="1">
+                                </div>
+                                <div class="control-group">
+                                    <label>Days Elapsed <span id="valDaysElapsed">0</span></label>
+                                    <input type="range" id="scenarioDaysElapsed" min="0" max="365" value="0" step="1">
+                                </div>
+                            </div>
+
+                            <!-- Scenario Results -->
+                            <div class="results-panel glass"
+                                style="grid-column: 2; display: flex; flex-direction: column; gap: 1rem;">
+                                <div class="result-card price-card">
+                                    <div class="result-label" style="color: rgba(255,255,255,0.8);">Scenario P/L</div>
+                                    <div class="result-value" id="scenarioPL">$0.00</div>
+                                    <div class="result-desc" id="scenarioPLPct">0.00%</div>
+                                </div>
+                                <div class="quick-facts"
+                                    style="margin-top: 0.5rem; background: rgba(15,23,42,0.4); padding: 1rem; border-radius: 8px;">
+                                    <strong style="color: white; margin-bottom: 0.5rem; display: block;">New Net
+                                        Greeks:</strong>
+                                    <div
+                                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-family: 'JetBrains Mono', monospace;">
+                                        <div>Δ: <span id="scenDelta" style="color: var(--primary-light);">0.00</span>
+                                        </div>
+                                        <div>Γ: <span id="scenGamma" style="color: var(--primary-light);">0.00</span>
+                                        </div>
+                                        <div>ν: <span id="scenVega" style="color: var(--primary-light);">0.00</span>
+                                        </div>
+                                        <div>Θ: <span id="scenTheta" style="color: var(--primary-light);">0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="add-leg-btn" id="saveScenarioBtn"
+                                    style="width: 100%; margin-top: auto;">Save Scenario</button>
+                            </div>
+                        </div>
+
+                        <!-- Saved Scenarios Table -->
+                        <div class="saved-scenarios glass"
+                            style="margin-top: 1.5rem; padding: 1.5rem; border-radius: var(--radius-lg); overflow-x: auto;">
+                            <h3
+                                style="color: var(--text-primary); margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">
+                                Saved Scenarios</h3>
+                            <table class="scenarios-table"
+                                style="width: 100%; text-align: left; border-collapse: collapse;">
+                                <thead>
+                                    <tr
+                                        style="border-bottom: 1px solid var(--border-light); color: var(--text-secondary);">
+                                        <th style="padding: 0.75rem;">Name</th>
+                                        <th style="padding: 0.75rem;">Spot Δ</th>
+                                        <th style="padding: 0.75rem;">IV Δ</th>
+                                        <th style="padding: 0.75rem;">Days Elapsed</th>
+                                        <th style="padding: 0.75rem;">Net P/L</th>
+                                        <th style="padding: 0.75rem;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scenariosTableBody">
+                                    <tr id="emptyScenariosRow">
+                                        <td colspan="6"
+                                            style="padding: 1.5rem; text-align: center; color: var(--text-muted);">No
+                                            scenarios saved yet. Maximum 6 allowed.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>
@@ -701,6 +881,52 @@
                 <span class="mobile-tab-label">Challenges</span>
             </button>
         </nav>
+    </div>
+
+    <!-- Strategy Comparison Modal -->
+    <div id="compareModal" class="modal">
+        <div class="modal-content tutorial-mode"
+            style="max-width: 90%; width: 1200px; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0;">Strategy Comparison</h2>
+                <span class="close-modal" id="closeCompareModal" style="position: static;">&times;</span>
+            </div>
+
+            <div class="saved-scenarios glass" style="margin-bottom: 2rem; overflow-x: auto;">
+                <table class="scenarios-table compare-table"
+                    style="width: 100%; text-align: left; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border-light); color: var(--text-secondary);"
+                            id="compareTableHead">
+                            <th
+                                style="padding: 0.75rem; min-width: 150px; position: sticky; left: 0; background: var(--bg-card); z-index: 1;">
+                                Metric</th>
+                            <!-- Strategy columns injected here -->
+                        </tr>
+                    </thead>
+                    <tbody id="compareTableBody">
+                        <!-- Rows injected here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <div class="greeks-vs-spot-section">
+                    <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">P/L
+                        at Expiration Overlay</h3>
+                    <div class="strategy-chart-container" style="height: 400px;">
+                        <canvas id="compareExpiryChart"></canvas>
+                    </div>
+                </div>
+                <div class="greeks-vs-spot-section">
+                    <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">P/L
+                        Today Overlay</h3>
+                    <div class="strategy-chart-container" style="height: 400px;">
+                        <canvas id="compareTodayChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Strategy Builder Guide Modal -->

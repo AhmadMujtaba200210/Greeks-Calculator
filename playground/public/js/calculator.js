@@ -73,7 +73,7 @@ class BlackScholesCalculator {
         const price = this.calculatePrice(S, K, T, sigma, r, q, isCall);
 
         // Delta
-        const delta = isCall 
+        const delta = isCall
             ? forwardDiscount * this.normCDF(d1)
             : forwardDiscount * (this.normCDF(d1) - 1);
 
@@ -127,11 +127,11 @@ class BlackScholesCalculator {
     // Calculate time decay over time (for charting)
     calculateTimeDecay(S, K, sigma, r, q, isCall, maxDays = 90) {
         const results = [];
-        
+
         for (let days = maxDays; days >= 0; days--) {
             const T = days / 365;
             if (T <= 0) continue;
-            
+
             const greeks = this.calculateGreeks(S, K, T, sigma, r, q, isCall);
             results.push({
                 daysToExpiry: days,
@@ -145,3 +145,4 @@ class BlackScholesCalculator {
 
 // Export for use in other files
 const calculator = new BlackScholesCalculator();
+window.calculator = calculator;

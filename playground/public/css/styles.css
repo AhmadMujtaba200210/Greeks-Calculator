@@ -596,6 +596,117 @@ h3 {
     flex-wrap: wrap;
 }
 
+/* Strategy Context Bar */
+.strategy-context-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 1rem 1.75rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    box-shadow: var(--shadow);
+}
+
+.context-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 120px;
+}
+
+.context-group label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.slider-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.slider-input-group input[type="number"] {
+    width: 60px;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-light);
+    color: white;
+    padding: 0.4rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+}
+
+.slider-input-group input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: var(--bg-dark);
+    border-radius: 2px;
+    outline: none;
+}
+
+.slider-input-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: var(--primary);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.slider-input-group input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.ticker-input {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-light);
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.expiry-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.expiry-group input[type="date"] {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-light);
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+}
+
+.calc-t {
+    font-size: 0.8rem;
+    color: var(--primary-light);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+}
+
 .strategy-content {
     display: grid;
     grid-template-columns: 1fr 350px;
