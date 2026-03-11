@@ -39,7 +39,7 @@ export const customTooltip = (context) => {
 
     // Position the tooltip
     tooltipEl.style.opacity = 1;
-    tooltipEl.style.left = position.left + window.pageXOffset + tooltipModel.caretX + 'px';
-    tooltipEl.style.top = position.top + window.pageYOffset + tooltipModel.caretY - 10 + 'px';
+    tooltipEl.style.left = position.left + tooltipModel.caretX + 'px';
+    tooltipEl.style.top = position.top + tooltipModel.caretY - 10 + 'px';
     tooltipEl.style.transform = 'translate(-50%, -100%)';
 };

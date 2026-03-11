@@ -17,7 +17,7 @@ const state = {
 
 // Import WASM module and UI utilities
 import init, { calculate_greeks_wasm, calculate_binomial_wasm, calculate_mc_wasm } from '../pkg/greeks_calculator.js';
-import { addLeg, initStrategyGuide, initStrategyPresets, initStrategyContextBar, initScenarioSandbox, initStrategyComparison, initStrategyPlaybook } from './strategy.js';
+import { addLeg, initPositionManagement, initStrategyChartControls, initTradeThesisPanel, initStrategyGuide, initStrategyPresets, initStrategyContextBar, initScenarioSandbox, initStrategyComparison, initStrategyPlaybook, refreshBuilderViewport } from './strategy.js';
 import { customTooltip } from './ui_utils.js';
 
 // Initialize the application
@@ -40,8 +40,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (addLegBtn) {
         initStrategyContextBar();
         initScenarioSandbox();
+        initStrategyChartControls();
+        initPositionManagement();
         initStrategyComparison();
         initStrategyPlaybook();
+        initTradeThesisPanel();
         addLegBtn.addEventListener('click', () => addLeg());
         // Defaults
         addLeg({ type: 'call', action: 'buy', strike: 100 });
@@ -127,6 +130,12 @@ function resetToDefaults() {
 function initializeNavigation() {
     const navButtons = document.querySelectorAll('.nav-btn');
     const sections = document.querySelectorAll('.section');
+    const navbar = document.querySelector('.navbar');
+
+    const syncNavHeight = () => {
+        const navHeight = navbar?.offsetHeight || 88;
+        document.documentElement.style.setProperty('--app-nav-height', `${navHeight}px`);
+    };
 
     function setActiveSection(targetSection) {
         if (!targetSection) return;
@@ -141,11 +150,20 @@ function initializeNavigation() {
 
         activeBtns.forEach(btn => btn.classList.add('active'));
         activeSection.classList.add('active');
+        document.body.classList.toggle('builder-active', targetSection === 'builder');
 
         localStorage.setItem('activeSection', targetSection);
         history.replaceState(null, '', `#${targetSection}`);
+
+        if (targetSection === 'builder') {
+            window.requestAnimationFrame(() => {
+                syncNavHeight();
+                refreshBuilderViewport();
+            });
+        }
     }
 
+    syncNavHeight();
     const initialSection = window.location.hash?.replace('#', '') || localStorage.getItem('activeSection') || 'playground';
     setActiveSection(initialSection);
 
@@ -159,6 +177,13 @@ function initializeNavigation() {
     window.addEventListener('hashchange', () => {
         const hashSection = window.location.hash.replace('#', '');
         if (hashSection) setActiveSection(hashSection);
+    });
+
+    window.addEventListener('resize', () => {
+        syncNavHeight();
+        if (document.body.classList.contains('builder-active')) {
+            refreshBuilderViewport();
+        }
     });
 }
 

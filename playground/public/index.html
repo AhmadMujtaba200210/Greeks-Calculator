@@ -635,7 +635,6 @@
             </section>
             <!-- Strategy Builder Section -->
             <section id="builder" class="section builder-section">
-                <!-- Row 1: Header -->
                 <div class="builder-header">
                     <div class="builder-title-group">
                         <h2 class="terminal-title">Strategy Builder</h2>
@@ -647,14 +646,12 @@
                         </select>
                         <button class="add-leg-btn" id="loadPresetBtn">Load</button>
                         <button class="guide-btn" id="builderGuideBtn">? Guide</button>
-                        <button class="add-leg-btn btn-save" id="saveStrategyBtn">💾 Save</button>
-                        <button class="add-leg-btn btn-compare" id="compareStrategiesBtn" style="display: none;">⚖️
-                            Compare (0)</button>
+                        <button class="add-leg-btn btn-save" id="saveStrategyBtn">Save for Comparison</button>
+                        <button class="add-leg-btn btn-compare" id="compareStrategiesBtn" style="display: none;">Compare (0)</button>
                         <button class="add-leg-btn" id="addLegBtn">+ Add Leg</button>
                     </div>
                 </div>
 
-                <!-- Row 2: Market Context Bar (compact) -->
                 <div class="strategy-context-bar glass">
                     <div class="context-group context-ticker">
                         <label>Ticker</label>
@@ -668,7 +665,7 @@
                         </div>
                     </div>
                     <div class="context-group">
-                        <label>Vol σ %</label>
+                        <label>Vol sigma %</label>
                         <div class="slider-input-group">
                             <input type="number" id="sharedVolNum" min="1" max="200" value="25" step="1">
                             <input type="range" id="sharedVol" min="1" max="200" value="25" step="1">
@@ -697,36 +694,177 @@
                     </div>
                 </div>
 
-                <!-- Row 3: Terminal Body (two columns) -->
-                <div class="terminal-body">
+                <div class="builder-kpi-strip">
+                    <article class="builder-kpi-card">
+                        <span class="builder-kpi-label">Max Profit</span>
+                        <strong id="maxProfit">--</strong>
+                    </article>
+                    <article class="builder-kpi-card">
+                        <span class="builder-kpi-label">Max Loss</span>
+                        <strong id="maxLoss">--</strong>
+                    </article>
+                    <article class="builder-kpi-card">
+                        <span class="builder-kpi-label">Breakevens</span>
+                        <strong id="breakevens">--</strong>
+                    </article>
+                    <article class="builder-kpi-card">
+                        <span class="builder-kpi-label">Net Delta</span>
+                        <strong id="netDeltaResult">0.00</strong>
+                    </article>
+                    <article class="builder-kpi-card">
+                        <span class="builder-kpi-label">Net Theta/Day</span>
+                        <strong id="netThetaResult">0.00</strong>
+                    </article>
+                    <article class="builder-kpi-card">
+                        <span class="builder-kpi-label">Net Vega</span>
+                        <strong id="netVegaResult">0.00</strong>
+                    </article>
+                    <article class="builder-kpi-card">
+                        <span class="builder-kpi-label">% of AUM</span>
+                        <strong id="builderAumRiskValue">--</strong>
+                    </article>
+                </div>
 
-                    <!-- LEFT RAIL -->
-                    <div class="terminal-left">
-
-                        <!-- Strategy Playbook -->
-                        <div class="terminal-panel">
+                <div class="builder-workspace">
+                    <div class="builder-main-column builder-main-column-left">
+                        <section class="builder-card builder-thesis-card">
                             <div class="terminal-panel-header">
-                                <span class="panel-label">📂 Strategy Playbook</span>
-                                <span class="panel-hint">Starter Ideas</span>
+                                <span class="panel-label">Trade Thesis</span>
+                                <span class="panel-hint">Checklist Wizard</span>
                             </div>
-                            <div class="playbook-scenarios">
-                                <button class="scenario-btn" data-scenario="bullish">▲ Bull</button>
-                                <button class="scenario-btn" data-scenario="bearish">▼ Bear</button>
-                                <button class="scenario-btn" data-scenario="neutral">〓 Flat</button>
-                                <button class="scenario-btn" data-scenario="volatile">⚡ Vol</button>
-                            </div>
-                            <div id="playbookContent" class="playbook-content">
-                                <div class="playbook-card active">
-                                    <p class="playbook-placeholder">Select a market view above to get started with a
-                                        strategy idea.</p>
-                                </div>
-                            </div>
-                        </div>
+                            <div class="trade-thesis-panel" id="tradeThesisPanel">
+                                <section class="thesis-step" id="tradeThesisStep1">
+                                    <div class="thesis-step-marker">
+                                        <span class="thesis-step-number">①</span>
+                                    </div>
+                                    <div class="thesis-step-body">
+                                        <div class="thesis-step-heading">
+                                            <h4>What's Happening?</h4>
+                                            <p>Capture the catalyst before you touch the strategy menu.</p>
+                                        </div>
+                                        <textarea id="thesisCatalystInput" class="thesis-catalyst-input"
+                                            placeholder="Middle East conflict causing oil supply uncertainty..."></textarea>
+                                        <div class="thesis-tags" aria-label="Catalyst categories">
+                                            <button type="button" class="thesis-tag" data-tag="Earnings">Earnings</button>
+                                            <button type="button" class="thesis-tag" data-tag="Macro Event">Macro Event</button>
+                                            <button type="button" class="thesis-tag" data-tag="Geopolitical">Geopolitical</button>
+                                            <button type="button" class="thesis-tag" data-tag="Fed/Central Bank">Fed/Central Bank</button>
+                                            <button type="button" class="thesis-tag" data-tag="Sector Rotation">Sector Rotation</button>
+                                            <button type="button" class="thesis-tag" data-tag="Technical Breakout">Technical Breakout</button>
+                                            <button type="button" class="thesis-tag" data-tag="Volatility Event">Volatility Event</button>
+                                        </div>
+                                    </div>
+                                </section>
 
-                        <!-- Leg Manager -->
-                        <div class="terminal-panel">
+                                <section class="thesis-step" id="tradeThesisStep2">
+                                    <div class="thesis-step-marker">
+                                        <span class="thesis-step-number">②</span>
+                                    </div>
+                                    <div class="thesis-step-body">
+                                        <div class="thesis-step-heading">
+                                            <h4>What Do You Believe?</h4>
+                                            <p>Lock in your directional, volatility, and timing view.</p>
+                                        </div>
+                                        <div class="thesis-question">
+                                            <label>Price will...</label>
+                                            <div class="thesis-button-group">
+                                                <button type="button" class="thesis-choice" data-field="priceView" data-value="up">Go Up</button>
+                                                <button type="button" class="thesis-choice" data-field="priceView" data-value="down">Go Down</button>
+                                                <button type="button" class="thesis-choice" data-field="priceView" data-value="move_big">Move Big (Either Way)</button>
+                                                <button type="button" class="thesis-choice" data-field="priceView" data-value="flat">Stay Flat</button>
+                                            </div>
+                                        </div>
+                                        <div class="thesis-question">
+                                            <label>Volatility will...</label>
+                                            <div class="thesis-button-group">
+                                                <button type="button" class="thesis-choice" data-field="volatilityView" data-value="increase">Increase</button>
+                                                <button type="button" class="thesis-choice" data-field="volatilityView" data-value="decrease">Decrease</button>
+                                                <button type="button" class="thesis-choice" data-field="volatilityView" data-value="same">Stay Same</button>
+                                            </div>
+                                        </div>
+                                        <div class="thesis-question">
+                                            <label>Timeframe...</label>
+                                            <div class="thesis-button-group">
+                                                <button type="button" class="thesis-choice" data-field="timeframe" data-value="days">Days (1-5)</button>
+                                                <button type="button" class="thesis-choice" data-field="timeframe" data-value="weeks">Weeks (1-4)</button>
+                                                <button type="button" class="thesis-choice" data-field="timeframe" data-value="months">Months (1-3)</button>
+                                            </div>
+                                        </div>
+                                        <div class="thesis-summary-line" id="thesisSummaryLine">
+                                            Choose your direction, vol view, and timeframe to build the thesis statement.
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section class="thesis-step" id="tradeThesisStep3">
+                                    <div class="thesis-step-marker">
+                                        <span class="thesis-step-number">③</span>
+                                    </div>
+                                    <div class="thesis-step-body">
+                                        <div class="thesis-step-heading">
+                                            <h4>Suggested Strategies</h4>
+                                            <p>These auto-populate from your thesis and connect directly to the playbook.</p>
+                                        </div>
+                                        <div class="thesis-suggestions" id="thesisSuggestions">
+                                            <div class="thesis-placeholder">Finish the thesis above to see matching strategies.</div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section class="thesis-step" id="tradeThesisStep4">
+                                    <div class="thesis-step-marker">
+                                        <span class="thesis-step-number">④</span>
+                                    </div>
+                                    <div class="thesis-step-body">
+                                        <div class="thesis-step-heading">
+                                            <h4>Risk Check</h4>
+                                            <p>Size the trade against your portfolio before you load it.</p>
+                                        </div>
+                                        <div class="thesis-risk-grid">
+                                            <div class="thesis-risk-field">
+                                                <label for="thesisAumInput">Portfolio AUM</label>
+                                                <input type="number" id="thesisAumInput" min="1000" step="1000" value="100000">
+                                            </div>
+                                            <div class="thesis-risk-field thesis-risk-field-slider">
+                                                <label for="thesisRiskPct">How much of your portfolio are you willing to risk?</label>
+                                                <div class="thesis-risk-slider-row">
+                                                    <input type="range" id="thesisRiskPct" min="1" max="10" step="1" value="3">
+                                                    <span id="thesisRiskPctValue">3%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="risk-traffic" id="riskTraffic">
+                                            <span class="risk-light risk-light-green"></span>
+                                            <span class="risk-light risk-light-yellow"></span>
+                                            <span class="risk-light risk-light-red"></span>
+                                            <span class="risk-traffic-label" id="riskTrafficLabel">Moderate</span>
+                                        </div>
+                                        <div class="thesis-risk-summary">
+                                            <div class="thesis-risk-metric">
+                                                <span class="thesis-risk-metric-label">Recommended Contracts</span>
+                                                <strong id="thesisContracts">--</strong>
+                                            </div>
+                                            <div class="thesis-risk-metric">
+                                                <span class="thesis-risk-metric-label">Max Loss / 1-Lot</span>
+                                                <strong id="thesisMaxLossPerContract">--</strong>
+                                            </div>
+                                        </div>
+                                        <div class="thesis-risk-details" id="thesisRiskDetails">
+                                            Select a strategy above to calculate a risk budget and contract count.
+                                        </div>
+                                        <div class="thesis-risk-warning" id="thesisRiskWarning">Aggressive sizing above 5% of AUM can create a hard-to-recover drawdown if the thesis is wrong.</div>
+                                        <div class="thesis-peer-note" id="thesisPeerNote">
+                                            Your peer risked 8% on the crude straddle - that's aggressive.
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                        </section>
+
+                        <section class="builder-card builder-legs-card">
                             <div class="terminal-panel-header">
-                                <span class="panel-label">📋 Legs</span>
+                                <span class="panel-label">Legs</span>
+                                <span class="panel-hint">Structure Editor</span>
                             </div>
                             <div class="legs-container" id="legsContainer">
                                 <div class="empty-state" id="legsEmptyState">
@@ -735,182 +873,315 @@
                                     <p>Add a call or put option to start building.</p>
                                 </div>
                             </div>
-                        </div>
+                        </section>
+                    </div>
 
-                        <!-- Summary Cards -->
-                        <div class="terminal-panel">
+                    <div class="builder-main-column builder-main-column-center">
+                        <section class="builder-card builder-chart-card">
                             <div class="terminal-panel-header">
-                                <span class="panel-label">📊 Summary</span>
-                            </div>
-                            <div class="strategy-info compact-info">
-                                <div class="info-card">
-                                    <h3>Max Profit</h3>
-                                    <span id="maxProfit">--</span>
+                                <span class="panel-label">P/L Over Time</span>
+                                <div class="chart-header-controls">
+                                    <span class="panel-hint">Today · 75% · 50% · 25% · Expiry</span>
+                                    <button type="button" class="chart-toggle-btn" id="probabilityOverlayToggle">Probability Overlay: Off</button>
                                 </div>
-                                <div class="info-card">
-                                    <h3>Max Loss</h3>
-                                    <span id="maxLoss">--</span>
-                                </div>
-                                <div class="info-card">
-                                    <h3>Breakevens</h3>
-                                    <span id="breakevens">--</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Net Greeks Summary -->
-                        <div class="terminal-panel">
-                            <div class="terminal-panel-header">
-                                <span class="panel-label">⚗️ Net Greeks</span>
-                            </div>
-                            <div class="greeks-compact-grid">
-                                <div class="greek-chip">
-                                    <span class="greek-label">Δ Delta</span>
-                                    <span class="greek-value" id="netDeltaResult">0.00</span>
-                                    <span class="greek-desc">Directional</span>
-                                </div>
-                                <div class="greek-chip">
-                                    <span class="greek-label">Γ Gamma</span>
-                                    <span class="greek-value" id="netGammaResult">0.00</span>
-                                    <span class="greek-desc">Δ rate</span>
-                                </div>
-                                <div class="greek-chip">
-                                    <span class="greek-label">ν Vega</span>
-                                    <span class="greek-value" id="netVegaResult">0.00</span>
-                                    <span class="greek-desc">Vol sens.</span>
-                                </div>
-                                <div class="greek-chip">
-                                    <span class="greek-label">Θ Theta/d</span>
-                                    <span class="greek-value" id="netThetaResult">0.00</span>
-                                    <span class="greek-desc">Daily decay</span>
-                                </div>
-                                <div class="greek-chip">
-                                    <span class="greek-label">ρ Rho</span>
-                                    <span class="greek-value" id="netRhoResult">0.00</span>
-                                    <span class="greek-desc">Rate risk</span>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div><!-- end .terminal-left -->
-
-                    <!-- RIGHT MAIN COLUMN -->
-                    <div class="terminal-right">
-
-                        <!-- P/L Chart -->
-                        <div class="terminal-panel terminal-panel-chart">
-                            <div class="terminal-panel-header">
-                                <span class="panel-label">📈 P/L Over Time</span>
-                                <span class="panel-hint">Today · 75% · 50% · 25% · Expiry</span>
                             </div>
                             <div class="strategy-chart-container chart-pl">
                                 <canvas id="strategyChart"></canvas>
                             </div>
-                        </div>
-
-                        <!-- Bottom row: Greeks Chart + Scenario Sandbox side by side -->
-                        <div class="terminal-bottom-row">
-
-                            <!-- Greeks vs Spot (left half) -->
-                            <div class="terminal-panel terminal-panel-half">
-                                <div class="terminal-panel-header">
-                                    <span class="panel-label">🧮 Greeks vs Spot</span>
+                            <div class="chart-key-metrics" id="strategyChartMetrics">
+                                <div class="chart-metric-card">
+                                    <span class="chart-metric-label">Break Even Move</span>
+                                    <strong id="chartBreakEvenMove">--</strong>
                                 </div>
-                                <div class="strategy-chart-container chart-greeks">
-                                    <canvas id="netGreeksChart"></canvas>
+                                <div class="chart-metric-card">
+                                    <span class="chart-metric-label">Probability of Profit</span>
+                                    <strong id="chartProbabilityOfProfit">--</strong>
+                                </div>
+                                <div class="chart-metric-card">
+                                    <span class="chart-metric-label">Expected P/L</span>
+                                    <strong id="chartExpectedPL">--</strong>
+                                </div>
+                                <div class="chart-metric-card">
+                                    <span class="chart-metric-label">Theta Cushion</span>
+                                    <strong id="chartThetaAbsorb">--</strong>
                                 </div>
                             </div>
+                        </section>
 
-                            <!-- Scenario Sandbox (right half) -->
-                            <div class="terminal-panel terminal-panel-half">
-                                <div class="terminal-panel-header">
-                                    <span class="panel-label">🧪 Scenario Sandbox</span>
-                                    <div class="sandbox-presets">
-                                        <button class="preset-pill bull" id="scenarioBullBtn">▲ Bull</button>
-                                        <button class="preset-pill bear" id="scenarioBearBtn">▼ Bear</button>
-                                        <button class="preset-pill theta" id="scenarioThetaBtn">⏱ Theta</button>
+                        <section class="builder-card builder-greeks-card">
+                            <div class="terminal-panel-header">
+                                <span class="panel-label">Greeks vs Spot</span>
+                                <div class="builder-card-inline-metrics">
+                                    <span class="builder-inline-metric">Gamma <strong id="netGammaResult">0.00</strong></span>
+                                    <span class="builder-inline-metric">Rho <strong id="netRhoResult">0.00</strong></span>
+                                </div>
+                            </div>
+                            <div class="strategy-chart-container chart-greeks">
+                                <canvas id="netGreeksChart"></canvas>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="builder-main-column builder-main-column-right">
+                        <section class="builder-card builder-sandbox-card">
+                            <div class="terminal-panel-header">
+                                <span class="panel-label">Scenario Sandbox</span>
+                                <div class="sandbox-presets">
+                                    <button class="preset-pill bull" id="scenarioBullBtn">Bull</button>
+                                    <button class="preset-pill bear" id="scenarioBearBtn">Bear</button>
+                                    <button class="preset-pill theta" id="scenarioThetaBtn">Theta</button>
+                                </div>
+                            </div>
+                            <div class="sandbox-body">
+                                <div class="sandbox-sliders">
+                                    <div class="sandbox-control">
+                                        <div class="sandbox-label">
+                                            <span>Spot Delta</span>
+                                            <span class="sandbox-val" id="valSpotChange">0%</span>
+                                        </div>
+                                        <input type="range" id="scenarioSpotChange" min="-30" max="30" value="0" step="1">
+                                    </div>
+                                    <div class="sandbox-control">
+                                        <div class="sandbox-label">
+                                            <span>IV Delta Pts</span>
+                                            <span class="sandbox-val" id="valVolChange">0</span>
+                                        </div>
+                                        <input type="range" id="scenarioVolChange" min="-20" max="20" value="0" step="1">
+                                    </div>
+                                    <div class="sandbox-control">
+                                        <div class="sandbox-label">
+                                            <span>Days</span>
+                                            <span class="sandbox-val" id="valDaysElapsed">0</span>
+                                        </div>
+                                        <input type="range" id="scenarioDaysElapsed" min="0" max="365" value="0" step="1">
                                     </div>
                                 </div>
-                                <div class="sandbox-body">
-                                    <!-- Sliders Column -->
-                                    <div class="sandbox-sliders">
-                                        <div class="sandbox-control">
-                                            <div class="sandbox-label">
-                                                <span>Spot Δ</span>
-                                                <span class="sandbox-val" id="valSpotChange">0%</span>
-                                            </div>
-                                            <input type="range" id="scenarioSpotChange" min="-30" max="30" value="0"
-                                                step="1">
+                                <div class="sandbox-results">
+                                    <div class="sandbox-pl-block">
+                                        <div class="sandbox-pl-label">Scenario P/L</div>
+                                        <div class="sandbox-pl-value" id="scenarioPL">$0.00</div>
+                                        <div class="sandbox-pl-pct" id="scenarioPLPct">0.00%</div>
+                                    </div>
+                                    <div class="sandbox-greeks-row">
+                                        <div class="sb-greek">Delta <span id="scenDelta">0.00</span></div>
+                                        <div class="sb-greek">Gamma <span id="scenGamma">0.00</span></div>
+                                        <div class="sb-greek">Vega <span id="scenVega">0.00</span></div>
+                                        <div class="sb-greek">Theta <span id="scenTheta">0.00</span></div>
+                                    </div>
+                                    <button class="add-leg-btn" id="saveScenarioBtn">Save Scenario</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="builder-card position-management-panel builder-position-card" id="positionManagementPanel">
+                            <div class="position-panel-header">
+                                <span class="panel-label">Position Management</span>
+                                <span class="panel-hint" id="positionStatusBadge">Load a strategy to activate</span>
+                            </div>
+
+                            <section class="position-section">
+                                <div class="position-section-title">Section 1 · Active Position</div>
+                                <div class="position-empty-state" id="positionEmptyState">
+                                    Load a strategy to start tracking the post-entry position lifecycle.
+                                </div>
+                                <div class="position-active-card" id="positionActiveCard" hidden>
+                                    <div class="position-active-head">
+                                        <div>
+                                            <h4 id="positionStrategyName">--</h4>
+                                            <p id="positionEntryMeta">Entry --</p>
                                         </div>
-                                        <div class="sandbox-control">
-                                            <div class="sandbox-label">
-                                                <span>IV Δ pts</span>
-                                                <span class="sandbox-val" id="valVolChange">0</span>
-                                            </div>
-                                            <input type="range" id="scenarioVolChange" min="-20" max="20" value="0"
-                                                step="1">
-                                        </div>
-                                        <div class="sandbox-control">
-                                            <div class="sandbox-label">
-                                                <span>Days</span>
-                                                <span class="sandbox-val" id="valDaysElapsed">0</span>
-                                            </div>
-                                            <input type="range" id="scenarioDaysElapsed" min="0" max="365" value="0"
-                                                step="1">
+                                        <div class="position-qty-field">
+                                            <label for="positionEntryQty">Qty</label>
+                                            <input type="number" id="positionEntryQty" min="1" step="1" value="1">
                                         </div>
                                     </div>
-                                    <!-- Results Column -->
-                                    <div class="sandbox-results">
-                                        <div class="sandbox-pl-block">
-                                            <div class="sandbox-pl-label">Scenario P/L</div>
-                                            <div class="sandbox-pl-value" id="scenarioPL">$0.00</div>
-                                            <div class="sandbox-pl-pct" id="scenarioPLPct">0.00%</div>
+                                    <div class="position-active-grid">
+                                        <div class="position-metric">
+                                            <span class="position-metric-label">Entry Price</span>
+                                            <strong id="positionEntryPrice">--</strong>
                                         </div>
-                                        <div class="sandbox-greeks-row">
-                                            <div class="sb-greek">Δ <span id="scenDelta">0.00</span></div>
-                                            <div class="sb-greek">Γ <span id="scenGamma">0.00</span></div>
-                                            <div class="sb-greek">ν <span id="scenVega">0.00</span></div>
-                                            <div class="sb-greek">Θ <span id="scenTheta">0.00</span></div>
+                                        <div class="position-metric">
+                                            <span class="position-metric-label">Current P/L</span>
+                                            <strong id="positionCurrentPL">$0.00</strong>
+                                            <span class="position-metric-sub" id="positionCurrentPLPct">0.00%</span>
                                         </div>
-                                        <button class="add-leg-btn" id="saveScenarioBtn"
-                                            style="width:100%;margin-top:0.5rem;font-size:0.8rem;padding:0.4rem;">Save
-                                            Scenario</button>
+                                        <div class="position-metric">
+                                            <span class="position-metric-label">Scenario Mark</span>
+                                            <strong id="positionScenarioMark">--</strong>
+                                        </div>
                                     </div>
                                 </div>
+                            </section>
 
-                                <!-- Saved Scenarios (compact table) -->
-                                <div class="saved-scenarios-compact">
-                                    <table class="scenarios-table"
-                                        style="width:100%;text-align:left;border-collapse:collapse;font-size:0.78rem;">
+                            <section class="position-section">
+                                <div class="position-section-title">Section 2 · Position Actions</div>
+                                <div class="position-actions" id="positionActions">
+                                    <button type="button" class="position-action-btn" id="positionTrimBtn" disabled>Trim</button>
+                                    <button type="button" class="position-action-btn" id="positionRollBtn" disabled>Roll</button>
+                                    <button type="button" class="position-action-btn danger" id="positionCloseBtn" disabled>Close All</button>
+                                </div>
+
+                                <div class="position-action-form" id="positionTrimForm" hidden>
+                                    <div class="position-form-row">
+                                        <label for="positionTrimTargetQty">Remaining Qty After Trim</label>
+                                        <select id="positionTrimTargetQty"></select>
+                                    </div>
+                                    <button type="button" class="position-submit-btn" id="positionTrimConfirmBtn">Apply Trim</button>
+                                </div>
+
+                                <div class="position-action-form" id="positionRollForm" hidden>
+                                    <div class="position-form-grid">
+                                        <div class="position-form-row">
+                                            <label for="positionRollStrike">New Strike</label>
+                                            <input type="number" id="positionRollStrike" step="0.5" value="100">
+                                        </div>
+                                        <div class="position-form-row">
+                                            <label for="positionRollExpiry">New Expiry</label>
+                                            <input type="date" id="positionRollExpiry">
+                                        </div>
+                                    </div>
+                                    <div class="position-roll-metrics" id="positionRollMetrics">
+                                        Enter a strike and expiry to preview the roll.
+                                    </div>
+                                    <div class="position-roll-chart-wrap" id="positionRollChartWrap" hidden>
+                                        <canvas id="positionRollChart"></canvas>
+                                    </div>
+                                    <button type="button" class="position-submit-btn" id="positionRollConfirmBtn">Confirm Roll</button>
+                                </div>
+
+                                <div class="position-action-result" id="positionActionResult">
+                                    No position action taken yet.
+                                </div>
+                            </section>
+                        </section>
+                    </div>
+                </div>
+
+                <div class="builder-utility-shell">
+                    <div class="builder-utility-tabs" id="builderUtilityTabs">
+                        <button type="button" class="builder-utility-tab active" data-pane="playbook">Playbook</button>
+                        <button type="button" class="builder-utility-tab" data-pane="journal">Trade Journal</button>
+                        <button type="button" class="builder-utility-tab" data-pane="scenarios">Saved Scenarios</button>
+                        <button type="button" class="builder-utility-tab" data-pane="compare">Compare</button>
+                    </div>
+
+                    <div class="builder-utility-panels" id="builderUtilityPanels">
+                        <section class="builder-utility-pane active" id="strategyPlaybookPane" data-pane="playbook">
+                            <div class="builder-pane-topline">
+                                <span class="panel-label">Strategy Playbook</span>
+                                <span class="panel-hint">Starter Ideas</span>
+                            </div>
+                            <div class="playbook-scenarios">
+                                <button class="scenario-btn" data-scenario="bullish">Bull</button>
+                                <button class="scenario-btn" data-scenario="bearish">Bear</button>
+                                <button class="scenario-btn" data-scenario="neutral">Flat</button>
+                                <button class="scenario-btn" data-scenario="volatile">Vol</button>
+                            </div>
+                            <div id="playbookContent" class="playbook-content">
+                                <div class="playbook-card active">
+                                    <p class="playbook-placeholder">Select a market view above to get started with a strategy idea.</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="builder-utility-pane" id="positionJournalPane" data-pane="journal">
+                            <div class="builder-pane-topline">
+                                <span class="panel-label">Trade Journal</span>
+                                <button type="button" class="position-export-btn" id="positionJournalExportBtn" disabled>Export</button>
+                            </div>
+                            <div class="position-journal-status" id="positionJournalExportStatus"></div>
+                            <div class="position-journal-wrap">
+                                <table class="scenarios-table position-journal-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Action</th>
+                                            <th>Details</th>
+                                            <th>P/L</th>
+                                            <th>Cumulative</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="positionJournalBody">
+                                        <tr>
+                                            <td colspan="5" class="position-journal-empty">No journal entries yet.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section class="builder-utility-pane" id="savedScenariosPane" data-pane="scenarios">
+                            <div class="builder-pane-topline">
+                                <span class="panel-label">Saved Scenarios</span>
+                                <span class="panel-hint">Meeting Snapshots</span>
+                            </div>
+                            <div class="saved-scenarios-compact">
+                                <table class="scenarios-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Spot</th>
+                                            <th>IV</th>
+                                            <th>Days</th>
+                                            <th>P/L</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="scenariosTableBody">
+                                        <tr id="emptyScenariosRow">
+                                            <td colspan="6">No scenarios saved.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section class="builder-utility-pane" id="compareStrategiesPane" data-pane="compare">
+                            <div class="builder-pane-topline">
+                                <div>
+                                    <span class="panel-label">Compare Strategies</span>
+                                    <p id="compareContextSummary" class="compare-context-summary">Same market context applied to every saved snapshot.</p>
+                                </div>
+                                <button type="button" class="add-leg-btn btn-save" id="copyComparisonBtn">Copy Comparison</button>
+                            </div>
+                            <div class="compare-copy-status" id="compareCopyStatus"></div>
+                            <div class="builder-compare-layout">
+                                <div class="compare-chart-card">
+                                    <div class="compare-section-title">Expiry Curve Overlay</div>
+                                    <div class="strategy-chart-container compare-chart-wrap">
+                                        <canvas id="compareExpiryChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="saved-scenarios glass compare-table-shell">
+                                    <div class="compare-section-title">Meeting Table</div>
+                                    <table class="scenarios-table compare-table">
                                         <thead>
-                                            <tr
-                                                style="border-bottom:1px solid var(--border-light);color:var(--text-secondary);">
-                                                <th style="padding:0.4rem 0.5rem;">Name</th>
-                                                <th style="padding:0.4rem 0.5rem;">Spot</th>
-                                                <th style="padding:0.4rem 0.5rem;">IV</th>
-                                                <th style="padding:0.4rem 0.5rem;">Days</th>
-                                                <th style="padding:0.4rem 0.5rem;">P/L</th>
-                                                <th style="padding:0.4rem 0.5rem;"></th>
+                                            <tr id="compareTableHead">
+                                                <th>Metric</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="scenariosTableBody">
-                                            <tr id="emptyScenariosRow">
-                                                <td colspan="6" style="padding:0.75rem 0.5rem;color:var(--text-muted);">
-                                                    No scenarios saved.</td>
-                                            </tr>
-                                        </tbody>
+                                        <tbody id="compareTableBody"></tbody>
                                     </table>
                                 </div>
                             </div>
-
-                        </div><!-- end .terminal-bottom-row -->
-
-                    </div><!-- end .terminal-right -->
-
-                </div><!-- end .terminal-body -->
-
+                            <div class="compare-footer-grid">
+                                <div class="compare-recommendation-card">
+                                    <div class="compare-section-title">Recommendation</div>
+                                    <div id="compareRecommendationText" class="compare-recommendation-text">
+                                        Save at least two snapshots to generate a recommendation.
+                                    </div>
+                                </div>
+                                <div class="compare-notes-card">
+                                    <div class="compare-section-title">Snapshot Notes</div>
+                                    <div class="compare-notes-text">
+                                        Save up to three strategies. Every snapshot is re-priced using the current shared market context so the comparison stays apples-to-apples for the meeting.
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
             </section>
-        </main>
         </main>
 
         <nav class="mobile-tabbar" aria-label="Primary Navigation">
@@ -934,44 +1205,50 @@
 
     <!-- Strategy Comparison Modal -->
     <div id="compareModal" class="modal">
-        <div class="modal-content tutorial-mode"
-            style="max-width: 90%; width: 1200px; max-height: 90vh; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 style="margin: 0;">Strategy Comparison</h2>
-                <span class="close-modal" id="closeCompareModal" style="position: static;">&times;</span>
+        <div class="modal-content tutorial-mode compare-modal-shell">
+            <div class="compare-modal-header">
+                <div>
+                    <h2>Strategy Comparison</h2>
+                    <p id="compareModalContextSummary">Same market context applied to every saved snapshot.</p>
+                </div>
+                <div class="compare-modal-actions">
+                    <button type="button" class="add-leg-btn btn-save" id="copyComparisonModalBtn">Copy Comparison</button>
+                    <span class="close-modal" id="closeCompareModal" style="position: static;">&times;</span>
+                </div>
+            </div>
+            <div class="compare-copy-status" id="compareModalCopyStatus"></div>
+
+            <div class="compare-chart-card">
+                <div class="compare-section-title">Expiry Curve Overlay</div>
+                <div class="strategy-chart-container compare-chart-wrap">
+                    <canvas id="compareModalExpiryChart"></canvas>
+                </div>
             </div>
 
-            <div class="saved-scenarios glass" style="margin-bottom: 2rem; overflow-x: auto;">
+            <div class="saved-scenarios glass compare-table-shell">
+                <div class="compare-section-title">Meeting Table</div>
                 <table class="scenarios-table compare-table"
                     style="width: 100%; text-align: left; border-collapse: collapse;">
                     <thead>
-                        <tr style="border-bottom: 1px solid var(--border-light); color: var(--text-secondary);"
-                            id="compareTableHead">
-                            <th
-                                style="padding: 0.75rem; min-width: 150px; position: sticky; left: 0; background: var(--bg-card); z-index: 1;">
-                                Metric</th>
-                            <!-- Strategy columns injected here -->
+                        <tr id="compareModalTableHead">
+                            <th>Metric</th>
                         </tr>
                     </thead>
-                    <tbody id="compareTableBody">
-                        <!-- Rows injected here -->
-                    </tbody>
+                    <tbody id="compareModalTableBody"></tbody>
                 </table>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                <div class="greeks-vs-spot-section">
-                    <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">P/L
-                        at Expiration Overlay</h3>
-                    <div class="strategy-chart-container" style="height: 400px;">
-                        <canvas id="compareExpiryChart"></canvas>
+            <div class="compare-footer-grid">
+                <div class="compare-recommendation-card">
+                    <div class="compare-section-title">Recommendation</div>
+                    <div id="compareModalRecommendationText" class="compare-recommendation-text">
+                        Save at least two snapshots to generate a recommendation.
                     </div>
                 </div>
-                <div class="greeks-vs-spot-section">
-                    <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">P/L
-                        Today Overlay</h3>
-                    <div class="strategy-chart-container" style="height: 400px;">
-                        <canvas id="compareTodayChart"></canvas>
+                <div class="compare-notes-card">
+                    <div class="compare-section-title">Snapshot Notes</div>
+                    <div class="compare-notes-text">
+                        Save up to three strategies. Every snapshot is re-priced using the current shared market context so the comparison stays apples-to-apples for the meeting.
                     </div>
                 </div>
             </div>

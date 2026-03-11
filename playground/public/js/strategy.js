@@ -7,7 +7,9 @@ export const strategyState = {
     savedStrategies: [],
     chart: null,
     greeksChart: null,
+    positionRollChart: null,
     compareExpiryChart: null,
+    compareModalExpiryChart: null,
     compareTodayChart: null,
     nextId: 1
 };
@@ -20,6 +22,264 @@ export const sharedMarketState = {
     rate: 0.05,
     dividend: 0.0
 };
+
+const tradeThesisState = {
+    catalyst: '',
+    tags: [],
+    priceView: null,
+    volatilityView: null,
+    timeframe: null,
+    suggestions: [],
+    selectedPresetId: null,
+    loadedPresetId: null,
+    riskPct: 3,
+    aum: 100000
+};
+
+const scenarioState = {
+    spotChangePct: 0,
+    ivChangePts: 0,
+    daysElapsed: 0
+};
+
+const positionState = {
+    active: null,
+    journal: [],
+    actionMode: null,
+    lastResultHtml: 'No position action taken yet.',
+    rollPreview: null,
+    exportStatus: ''
+};
+
+const chartState = {
+    showProbabilityOverlay: false
+};
+
+const builderUiState = {
+    activeUtilityPane: 'playbook'
+};
+
+window.sharedMarketState = sharedMarketState;
+
+function cloneMarketState(source = sharedMarketState) {
+    return {
+        ticker: source.ticker,
+        spot: source.spot,
+        volatility: source.volatility,
+        tYears: source.tYears,
+        rate: source.rate,
+        dividend: source.dividend
+    };
+}
+
+function cloneLegs(legs = []) {
+    return legs.map(leg => ({ ...leg }));
+}
+
+function gcd(a, b) {
+    let x = Math.abs(a);
+    let y = Math.abs(b);
+    while (y) {
+        const temp = y;
+        y = x % y;
+        x = temp;
+    }
+    return x || 1;
+}
+
+function detectStrategyUnits(legs = []) {
+    if (!legs.length) return 1;
+    const rounded = legs.map(leg => Math.round(leg.quantity));
+    const hasFractional = legs.some((leg, index) => Math.abs(leg.quantity - rounded[index]) > 1e-6);
+    if (hasFractional) return 1;
+    return Math.max(1, rounded.reduce((acc, quantity) => gcd(acc, quantity), rounded[0] || 1));
+}
+
+function scaleLegTemplate(baseLegs = [], units = 1) {
+    return baseLegs.map(leg => ({
+        ...leg,
+        quantity: leg.quantity * units
+    }));
+}
+
+function getEntryPriceText(totalCost) {
+    if (!Number.isFinite(totalCost)) return '--';
+    if (Math.abs(totalCost) < 0.005) return '$0';
+    return totalCost >= 0 ? `Debit $${totalCost.toFixed(2)}` : `Credit $${Math.abs(totalCost).toFixed(2)}`;
+}
+
+function formatPositionMoney(value) {
+    if (!Number.isFinite(value)) return '--';
+    const sign = value > 0 ? '+' : '';
+    return `${sign}$${value.toFixed(2)}`;
+}
+
+function formatPositionPct(value) {
+    if (!Number.isFinite(value)) return '--';
+    const sign = value > 0 ? '+' : '';
+    return `${sign}${value.toFixed(2)}%`;
+}
+
+function formatBreakevenList(points = []) {
+    return points.length ? points.map(point => point.toFixed(1)).join(', ') : 'None';
+}
+
+function formatJournalTimestamp(timestamp) {
+    return new Date(timestamp).toLocaleString([], {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function getScenarioMarketState(baseMarketState = sharedMarketState, nextScenarioState = scenarioState) {
+    const spot = baseMarketState.spot * (1 + (nextScenarioState.spotChangePct / 100));
+    const volatility = Math.max(0.01, Math.min(3, baseMarketState.volatility + (nextScenarioState.ivChangePts / 100)));
+    const tYears = Math.max(0.0001, baseMarketState.tYears - (nextScenarioState.daysElapsed / 365.25));
+
+    return {
+        ...cloneMarketState(baseMarketState),
+        spot,
+        volatility,
+        tYears
+    };
+}
+
+function getLegModelPrice(leg, spot, tYears, marketState) {
+    if (leg.type === 'stock') return spot;
+    if (!window.calculator) {
+        if (leg.type === 'call') return Math.max(0, spot - leg.strike);
+        return Math.max(0, leg.strike - spot);
+    }
+
+    return window.calculator.calculatePrice(
+        spot,
+        leg.strike,
+        Math.max(0.0001, tYears),
+        marketState.volatility,
+        marketState.rate,
+        marketState.dividend,
+        leg.type === 'call'
+    );
+}
+
+function getLegScenarioGreeks(leg, marketState, spot = marketState.spot) {
+    if (leg.type === 'stock') {
+        return { delta: 1, gamma: 0, vega: 0, theta: 0, rho: 0 };
+    }
+
+    if (!window.calculator) {
+        return { delta: 0, gamma: 0, vega: 0, theta: 0, rho: 0 };
+    }
+
+    return window.calculator.calculateGreeks(
+        spot,
+        leg.strike,
+        Math.max(0.0001, marketState.tYears),
+        marketState.volatility,
+        marketState.rate,
+        marketState.dividend,
+        leg.type === 'call'
+    );
+}
+
+function calculateScenarioMetricsForLegs(legs, nextScenarioState = scenarioState, entryMarketState = sharedMarketState) {
+    if (!legs || !legs.length) {
+        return {
+            totalCost: 0,
+            totalValue: 0,
+            scenarioPL: 0,
+            scenarioPLPct: 0,
+            marketState: getScenarioMarketState(entryMarketState, nextScenarioState),
+            greeks: { delta: 0, gamma: 0, vega: 0, theta: 0, rho: 0 }
+        };
+    }
+
+    const scenarioMarket = getScenarioMarketState(entryMarketState, nextScenarioState);
+    let totalCost = 0;
+    let totalValue = 0;
+    let netDelta = 0;
+    let netGamma = 0;
+    let netVega = 0;
+    let netTheta = 0;
+    let netRho = 0;
+
+    legs.forEach(leg => {
+        const direction = leg.action === 'buy' ? 1 : -1;
+        const multiplier = leg.quantity * direction * 100;
+        const entryCost = getLegModelPrice(leg, entryMarketState.spot, entryMarketState.tYears, entryMarketState);
+        const currentPrice = getLegModelPrice(leg, scenarioMarket.spot, scenarioMarket.tYears, scenarioMarket);
+        const greeks = getLegScenarioGreeks(leg, scenarioMarket);
+
+        totalCost += entryCost * direction * leg.quantity * 100;
+        totalValue += currentPrice * direction * leg.quantity * 100;
+        netDelta += greeks.delta * multiplier;
+        netGamma += greeks.gamma * multiplier;
+        netVega += greeks.vega * multiplier;
+        netTheta += greeks.theta * multiplier;
+        netRho += greeks.rho * multiplier;
+    });
+
+    const scenarioPL = totalValue - totalCost;
+    const scenarioPLPct = totalCost !== 0 ? (scenarioPL / Math.abs(totalCost)) * 100 : 0;
+
+    return {
+        totalCost,
+        totalValue,
+        scenarioPL,
+        scenarioPLPct,
+        marketState: scenarioMarket,
+        greeks: {
+            delta: netDelta,
+            gamma: netGamma,
+            vega: netVega,
+            theta: netTheta / 365.25,
+            rho: netRho
+        }
+    };
+}
+
+function buildExpirySeries(legs, entryMarketState, start = entryMarketState.spot * 0.7, end = entryMarketState.spot * 1.3, steps = 100) {
+    const stepSize = (end - start) / steps;
+    const labels = [];
+    const data = [];
+
+    for (let i = 0; i <= steps; i++) {
+        const spot = start + (i * stepSize);
+        labels.push(spot.toFixed(2));
+        let total = 0;
+        legs.forEach(leg => {
+            total += calculateNetValue(spot, leg, 0, entryMarketState);
+        });
+        data.push(total);
+    }
+
+    return { labels, data, start, end, stepSize, steps };
+}
+
+function getBreakevensFromSeries(series) {
+    const points = [];
+    for (let i = 0; i < series.data.length - 1; i++) {
+        if (series.data[i] * series.data[i + 1] <= 0) {
+            const x1 = series.start + (i * series.stepSize);
+            const x2 = series.start + ((i + 1) * series.stepSize);
+            const y1 = series.data[i];
+            const y2 = series.data[i + 1];
+            if (y1 !== y2) {
+                points.push(x1 + ((0 - y1) * (x2 - x1) / (y2 - y1)));
+            }
+        }
+    }
+    return points;
+}
+
+function getPositionAnchorStrike(legs = [], fallback = sharedMarketState.spot) {
+    const optionStrikes = legs.filter(leg => leg.type !== 'stock').map(leg => leg.strike);
+    if (!optionStrikes.length) return fallback;
+    return optionStrikes.reduce((sum, strike) => sum + strike, 0) / optionStrikes.length;
+}
 
 // Initialize the Context Bar
 export function initStrategyContextBar() {
@@ -111,78 +371,59 @@ export function initScenarioSandbox() {
     };
     window.updateScenarioMaxDays();
 
+    function syncScenarioInputs(nextScenarioState = {}) {
+        if (typeof nextScenarioState.spotChangePct === 'number') {
+            scenarioState.spotChangePct = nextScenarioState.spotChangePct;
+            if (spotSlider) spotSlider.value = String(nextScenarioState.spotChangePct);
+        }
+        if (typeof nextScenarioState.ivChangePts === 'number') {
+            scenarioState.ivChangePts = nextScenarioState.ivChangePts;
+            if (volSlider) volSlider.value = String(nextScenarioState.ivChangePts);
+        }
+        if (typeof nextScenarioState.daysElapsed === 'number') {
+            scenarioState.daysElapsed = nextScenarioState.daysElapsed;
+            if (daysSlider) daysSlider.value = String(nextScenarioState.daysElapsed);
+        }
+    }
+
     function updateScenario() {
-        if (!spotSlider || !volSlider || !daysSlider || strategyState.legs.length === 0) {
+        if (!spotSlider || !volSlider || !daysSlider) return;
+
+        syncScenarioInputs({
+            spotChangePct: parseFloat(spotSlider.value),
+            ivChangePts: parseFloat(volSlider.value),
+            daysElapsed: parseFloat(daysSlider.value)
+        });
+
+        spotVal.textContent = scenarioState.spotChangePct > 0 ? `+${scenarioState.spotChangePct}%` : `${scenarioState.spotChangePct}%`;
+        volVal.textContent = scenarioState.ivChangePts > 0 ? `+${scenarioState.ivChangePts}` : `${scenarioState.ivChangePts}`;
+        daysVal.textContent = `${scenarioState.daysElapsed}`;
+
+        if (!strategyState.legs.length) {
             if (plEl) plEl.textContent = '$0.00';
             if (plPctEl) plPctEl.textContent = '0.00%';
             if (dEl) dEl.textContent = '0.00';
             if (gEl) gEl.textContent = '0.00';
             if (vEl) vEl.textContent = '0.00';
             if (thEl) thEl.textContent = '0.00';
+            if (window.refreshPositionManagement) window.refreshPositionManagement();
             return;
         }
 
-        const spotChangePct = parseFloat(spotSlider.value);
-        const ivChangePts = parseFloat(volSlider.value);
-        const daysElapsed = parseFloat(daysSlider.value);
+        const entryMarketState = positionState.active?.entryMarketState || sharedMarketState;
+        const metrics = calculateScenarioMetricsForLegs(strategyState.legs, scenarioState, entryMarketState);
 
-        spotVal.textContent = spotChangePct > 0 ? `+${spotChangePct}%` : `${spotChangePct}%`;
-        volVal.textContent = ivChangePts > 0 ? `+${ivChangePts}` : `${ivChangePts}`;
-        daysVal.textContent = `${daysElapsed}`;
-
-        const S_new = sharedMarketState.spot * (1 + spotChangePct / 100);
-        let sigma_new = sharedMarketState.volatility + (ivChangePts / 100);
-        sigma_new = Math.max(0.01, Math.min(3.00, sigma_new)); // cap 1% to 300%
-        let T_new = sharedMarketState.tYears - (daysElapsed / 365.25);
-        T_new = Math.max(0.0001, T_new); // floor at tiny positive number
-
-        // Calculate new P/L
-        let totalValNew = 0;
-        let totalCost = 0;
-        let netDelta = 0, netGamma = 0, netVega = 0, netTheta = 0;
-
-        strategyState.legs.forEach(leg => {
-            const direction = leg.action === 'buy' ? 1 : -1;
-            const multiplier = leg.quantity * direction * 100;
-
-            // Entry cost
-            let cost = 0;
-            if (leg.type === 'stock') {
-                cost = sharedMarketState.spot;
-            } else if (window.calculator) {
-                cost = window.calculator.calculatePrice(sharedMarketState.spot, leg.strike, sharedMarketState.tYears, sharedMarketState.volatility, sharedMarketState.rate, sharedMarketState.dividend, leg.type === 'call');
-            }
-            totalCost += cost * direction * leg.quantity * 100;
-
-            // New Value and Greeks
-            if (leg.type === 'stock') {
-                totalValNew += S_new * direction * leg.quantity * 100;
-                netDelta += 1 * multiplier;
-            } else if (window.calculator) {
-                const isCall = leg.type === 'call';
-                const price = window.calculator.calculatePrice(S_new, leg.strike, T_new, sigma_new, sharedMarketState.rate, sharedMarketState.dividend, isCall);
-                totalValNew += price * multiplier;
-
-                const greeks = window.calculator.calculateGreeks(S_new, leg.strike, T_new, sigma_new, sharedMarketState.rate, sharedMarketState.dividend, isCall);
-                netDelta += greeks.delta * multiplier;
-                netGamma += greeks.gamma * multiplier;
-                netVega += greeks.vega * multiplier;
-                netTheta += greeks.theta * multiplier;
-            }
-        });
-
-        const scenarioPL = totalValNew - totalCost;
-        const scenarioPLPct = totalCost !== 0 ? (scenarioPL / Math.abs(totalCost)) * 100 : 0;
-
-        plEl.textContent = `$${scenarioPL.toFixed(2)}`;
-        plEl.style.color = scenarioPL > 0 ? '#10b981' : (scenarioPL < 0 ? '#ef4444' : '#f8fafc');
-        plPctEl.textContent = `${scenarioPLPct.toFixed(2)}%`;
+        plEl.textContent = `$${metrics.scenarioPL.toFixed(2)}`;
+        plEl.style.color = metrics.scenarioPL > 0 ? '#10b981' : (metrics.scenarioPL < 0 ? '#ef4444' : '#f8fafc');
+        plPctEl.textContent = `${metrics.scenarioPLPct.toFixed(2)}%`;
         plPctEl.style.color = plEl.style.color;
 
-        dEl.textContent = netDelta.toFixed(2);
-        gEl.textContent = netGamma.toFixed(2);
-        vEl.textContent = netVega.toFixed(2);
-        thEl.textContent = (netTheta / 365.25).toFixed(2); // daily
+        dEl.textContent = metrics.greeks.delta.toFixed(2);
+        gEl.textContent = metrics.greeks.gamma.toFixed(2);
+        vEl.textContent = metrics.greeks.vega.toFixed(2);
+        thEl.textContent = metrics.greeks.theta.toFixed(2);
+
+        if (window.refreshPositionManagement) window.refreshPositionManagement();
     }
 
     // Listeners
@@ -192,24 +433,23 @@ export function initScenarioSandbox() {
 
     // We want to expose updateScenario so we can call it when main params change
     window.updateSandboxScenario = updateScenario;
+    window.getScenarioState = () => ({ ...scenarioState });
+    window.resetScenarioSandbox = () => {
+        syncScenarioInputs({ spotChangePct: 0, ivChangePts: 0, daysElapsed: 0 });
+        updateScenario();
+    };
 
     // Presets
     document.getElementById('scenarioBullBtn')?.addEventListener('click', () => {
-        if (spotSlider) spotSlider.value = 10;
-        if (volSlider) volSlider.value = -5;
-        if (daysSlider) { daysSlider.value = Math.min(3, parseInt(daysSlider.max)); }
+        syncScenarioInputs({ spotChangePct: 10, ivChangePts: -5, daysElapsed: Math.min(3, parseInt(daysSlider.max, 10)) });
         updateScenario();
     });
     document.getElementById('scenarioBearBtn')?.addEventListener('click', () => {
-        if (spotSlider) spotSlider.value = -10;
-        if (volSlider) volSlider.value = 5;
-        if (daysSlider) { daysSlider.value = Math.min(3, parseInt(daysSlider.max)); }
+        syncScenarioInputs({ spotChangePct: -10, ivChangePts: 5, daysElapsed: Math.min(3, parseInt(daysSlider.max, 10)) });
         updateScenario();
     });
     document.getElementById('scenarioThetaBtn')?.addEventListener('click', () => {
-        if (spotSlider) spotSlider.value = 0;
-        if (volSlider) volSlider.value = 0;
-        if (daysSlider) { daysSlider.value = Math.min(7, parseInt(daysSlider.max)); }
+        syncScenarioInputs({ spotChangePct: 0, ivChangePts: 0, daysElapsed: Math.min(7, parseInt(daysSlider.max, 10)) });
         updateScenario();
     });
 
@@ -366,7 +606,7 @@ function renderLegs() {
 }
 
 // Calculate Net Value (P&L) of a leg at a specific time remaining and spot price
-function calculateNetValue(S_test, leg, tRemaining) {
+function calculateNetValue(S_test, leg, tRemaining, entryMarketState = sharedMarketState) {
     let currentVal = 0;
 
     // Calculate theoretical intrinsic or BS value based on tRemaining
@@ -379,10 +619,10 @@ function calculateNetValue(S_test, leg, tRemaining) {
             else currentVal = Math.max(0, leg.strike - S_test);
         } else {
             // Before expiration, use Black-Scholes
-            if (window.calculator && sharedMarketState) {
-                const v = sharedMarketState.volatility;
-                const r = sharedMarketState.rate;
-                const q = sharedMarketState.dividend;
+            if (window.calculator && entryMarketState) {
+                const v = entryMarketState.volatility;
+                const r = entryMarketState.rate;
+                const q = entryMarketState.dividend;
                 const isCall = leg.type === 'call';
                 currentVal = window.calculator.calculatePrice(S_test, leg.strike, tRemaining, v, r, q, isCall);
             } else {
@@ -394,12 +634,12 @@ function calculateNetValue(S_test, leg, tRemaining) {
 
     // Calculate Entry Cost based on Panel 1's sharedMarketState
     let entryCost = 0;
-    if (window.calculator && sharedMarketState) {
-        const S = sharedMarketState.spot;
-        const T = sharedMarketState.tYears;
-        const v = sharedMarketState.volatility;
-        const r = sharedMarketState.rate;
-        const q = sharedMarketState.dividend;
+    if (window.calculator && entryMarketState) {
+        const S = entryMarketState.spot;
+        const T = entryMarketState.tYears;
+        const v = entryMarketState.volatility;
+        const r = entryMarketState.rate;
+        const q = entryMarketState.dividend;
         const isCall = leg.type === 'call';
 
         if (leg.type !== 'stock') {
@@ -408,9 +648,9 @@ function calculateNetValue(S_test, leg, tRemaining) {
             entryCost = S;
         }
     } else {
-        if (leg.type === 'stock') entryCost = sharedMarketState.spot;
-        else if (leg.type === 'call') entryCost = Math.max(0, sharedMarketState.spot - leg.strike);
-        else entryCost = Math.max(0, leg.strike - sharedMarketState.spot);
+        if (leg.type === 'stock') entryCost = entryMarketState.spot;
+        else if (leg.type === 'call') entryCost = Math.max(0, entryMarketState.spot - leg.strike);
+        else entryCost = Math.max(0, leg.strike - entryMarketState.spot);
     }
 
     const direction = leg.action === 'buy' ? 1 : -1;
@@ -418,16 +658,16 @@ function calculateNetValue(S_test, leg, tRemaining) {
 }
 
 // Calculate aggregated Net Greeks for the entire strategy
-function calculateNetGreeks(spotToTest = sharedMarketState.spot) {
+function calculateNetGreeks(spotToTest = sharedMarketState.spot, marketState = sharedMarketState, legs = strategyState.legs) {
     let netDelta = 0, netGamma = 0, netVega = 0, netTheta = 0, netRho = 0;
 
-    if (window.calculator && sharedMarketState) {
-        const T = sharedMarketState.tYears;
-        const v = sharedMarketState.volatility;
-        const r = sharedMarketState.rate;
-        const q = sharedMarketState.dividend;
+    if (window.calculator && marketState) {
+        const T = marketState.tYears;
+        const v = marketState.volatility;
+        const r = marketState.rate;
+        const q = marketState.dividend;
 
-        strategyState.legs.forEach(leg => {
+        legs.forEach(leg => {
             const direction = leg.action === 'buy' ? 1 : -1;
             const multiplier = leg.quantity * direction * 100;
 
@@ -454,6 +694,372 @@ function calculateNetGreeks(spotToTest = sharedMarketState.spot) {
     };
 }
 
+function calculateStrategyPayoffAt(spot, tRemain = 0, legs = strategyState.legs, entryMarketState = sharedMarketState) {
+    return legs.reduce((total, leg) => total + calculateNetValue(spot, leg, tRemain, entryMarketState), 0);
+}
+
+function formatChartCurrency(value) {
+    return `$${Math.abs(value).toFixed(2)}`;
+}
+
+function formatChartSignedCurrency(value) {
+    if (!Number.isFinite(value)) return '--';
+    const sign = value > 0 ? '+' : (value < 0 ? '-' : '');
+    return `${sign}$${Math.abs(value).toFixed(2)}`;
+}
+
+function formatChartSignedPct(value) {
+    if (!Number.isFinite(value)) return '--';
+    const sign = value > 0 ? '+' : (value < 0 ? '-' : '');
+    return `${sign}${Math.abs(value).toFixed(1)}%`;
+}
+
+function erf(x) {
+    const sign = x < 0 ? -1 : 1;
+    const absX = Math.abs(x);
+    const a1 = 0.254829592;
+    const a2 = -0.284496736;
+    const a3 = 1.421413741;
+    const a4 = -1.453152027;
+    const a5 = 1.061405429;
+    const p = 0.3275911;
+    const t = 1 / (1 + p * absX);
+    const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-absX * absX);
+    return sign * y;
+}
+
+function normalCdf(x) {
+    return 0.5 * (1 + erf(x / Math.sqrt(2)));
+}
+
+function logNormalPdf(spot, marketState = sharedMarketState) {
+    const S0 = marketState.spot;
+    const sigma = marketState.volatility;
+    const T = marketState.tYears;
+    if (spot <= 0 || S0 <= 0 || sigma <= 0 || T <= 0) return 0;
+
+    const mu = Math.log(S0) + (marketState.rate - marketState.dividend - 0.5 * sigma * sigma) * T;
+    const variance = sigma * sigma * T;
+    const denom = spot * Math.sqrt(2 * Math.PI * variance);
+    const exponent = -((Math.log(spot) - mu) ** 2) / (2 * variance);
+    return Math.exp(exponent) / denom;
+}
+
+function getBreakevenObjects(expiryPoints, currentSpot = sharedMarketState.spot) {
+    const breakevens = [];
+    for (let i = 0; i < expiryPoints.length - 1; i++) {
+        const left = expiryPoints[i];
+        const right = expiryPoints[i + 1];
+        if (left.y * right.y <= 0 && left.y !== right.y) {
+            const price = left.x + ((0 - left.y) * (right.x - left.x) / (right.y - left.y));
+            breakevens.push({
+                price,
+                pctFromSpot: ((price / currentSpot) - 1) * 100
+            });
+        }
+    }
+    return breakevens;
+}
+
+function interpolatePayoffFromPoints(points, x) {
+    if (!points.length) return 0;
+    if (x <= points[0].x) return points[0].y;
+    if (x >= points[points.length - 1].x) return points[points.length - 1].y;
+
+    for (let i = 0; i < points.length - 1; i++) {
+        const left = points[i];
+        const right = points[i + 1];
+        if (x >= left.x && x <= right.x) {
+            if (left.x === right.x) return left.y;
+            const ratio = (x - left.x) / (right.x - left.x);
+            return left.y + ((right.y - left.y) * ratio);
+        }
+    }
+
+    return points[points.length - 1].y;
+}
+
+function computeProbabilityAnalysis(expiryPoints, legs, marketState, chartRange) {
+    if (!legs.length || marketState.tYears <= 0 || marketState.volatility <= 0 || marketState.spot <= 0) {
+        return null;
+    }
+
+    const sigmaT = marketState.volatility * Math.sqrt(marketState.tYears);
+    const low = Math.max(0.01, marketState.spot * Math.exp((marketState.rate - marketState.dividend - 0.5 * marketState.volatility ** 2) * marketState.tYears - (6 * sigmaT)));
+    const high = marketState.spot * Math.exp((marketState.rate - marketState.dividend - 0.5 * marketState.volatility ** 2) * marketState.tYears + (6 * sigmaT));
+
+    const integrationSteps = 800;
+    const dx = (high - low) / integrationSteps;
+    let totalMass = 0;
+    let profitMass = 0;
+    let expectedPL = 0;
+
+    for (let i = 0; i < integrationSteps; i++) {
+        const x = low + ((i + 0.5) * dx);
+        const density = logNormalPdf(x, marketState);
+        const payoff = calculateStrategyPayoffAt(x, 0, legs, marketState);
+        const mass = density * dx;
+        totalMass += mass;
+        if (payoff > 0) profitMass += mass;
+        expectedPL += payoff * mass;
+    }
+
+    const overlaySamples = [];
+    let maxOverlayDensity = 0;
+    const overlaySteps = 160;
+    for (let i = 0; i <= overlaySteps; i++) {
+        const x = chartRange.start + (((chartRange.end - chartRange.start) * i) / overlaySteps);
+        const density = logNormalPdf(x, marketState);
+        maxOverlayDensity = Math.max(maxOverlayDensity, density);
+        overlaySamples.push({
+            x,
+            density,
+            payoff: interpolatePayoffFromPoints(expiryPoints, x)
+        });
+    }
+
+    overlaySamples.forEach(sample => {
+        sample.normalizedDensity = maxOverlayDensity > 0 ? sample.density / maxOverlayDensity : 0;
+        sample.isProfit = sample.payoff > 0;
+    });
+
+    if (totalMass <= 0) return null;
+
+    return {
+        probProfit: profitMass / totalMass,
+        expectedPL: expectedPL / totalMass,
+        samples: overlaySamples
+    };
+}
+
+function computeThetaAbsorbMetric(legs, marketState, currentSpot = marketState.spot) {
+    const currentGreeks = calculateNetGreeks(currentSpot, marketState, legs);
+    if (currentGreeks.theta >= 0) {
+        return {
+            days: null,
+            text: 'Theta positive'
+        };
+    }
+
+    const totalDays = Math.max(1, Math.floor(marketState.tYears * 365.25));
+    for (let day = 1; day <= totalDays; day++) {
+        const tRemain = Math.max(0.0001, marketState.tYears - (day / 365.25));
+        const pnl = calculateStrategyPayoffAt(currentSpot, tRemain, legs, marketState);
+        if (pnl < 0) {
+            return {
+                days: day,
+                text: `${day}d`
+            };
+        }
+    }
+
+    return {
+        days: totalDays,
+        text: `>${totalDays}d`
+    };
+}
+
+function analyzeExpiryProfile(expiryPoints, legs, marketState, currentSpot, currentNetGreeks) {
+    const payoffs = expiryPoints.map(point => point.y);
+    const maxVal = Math.max(...payoffs);
+    const minVal = Math.min(...payoffs);
+    const lastIndex = payoffs.length - 1;
+
+    const isRisingAtEnd = payoffs[lastIndex] > payoffs[lastIndex - 1];
+    const isFallingAtEnd = payoffs[lastIndex] < payoffs[lastIndex - 1];
+    const isRisingAtStart = payoffs[0] > payoffs[1];
+    const isFallingAtStart = payoffs[0] < payoffs[1];
+
+    const breakevens = getBreakevenObjects(expiryPoints, currentSpot);
+    const maxLossIndex = payoffs.indexOf(minVal);
+    const maxLossPoint = {
+        price: expiryPoints[maxLossIndex]?.x ?? currentSpot,
+        value: minVal,
+        totalLoss: Math.abs(minVal),
+        perContractLoss: Math.abs(minVal) / Math.max(1, detectStrategyUnits(legs))
+    };
+
+    const probability = computeProbabilityAnalysis(
+        expiryPoints,
+        legs,
+        marketState,
+        { start: expiryPoints[0].x, end: expiryPoints[expiryPoints.length - 1].x }
+    );
+
+    const thetaAbsorb = computeThetaAbsorbMetric(legs, marketState, currentSpot);
+
+    return {
+        expiryPoints,
+        breakevens,
+        maxProfitValue: maxVal,
+        maxLossValue: minVal,
+        maxProfitText: (isRisingAtEnd || isRisingAtStart) ? 'Infinite ♾️' : `$${maxVal.toFixed(2)}`,
+        maxLossText: (isFallingAtEnd || isFallingAtStart) ? 'Unlimited ⚠️' : `$${Math.abs(minVal).toFixed(2)}`,
+        maxLossPoint,
+        breakevenText: breakevens.length ? breakevens.map(point => point.price.toFixed(1)).join(', ') : 'None',
+        breakEvenMoveText: breakevens.length ? breakevens.map(point => formatChartSignedPct(point.pctFromSpot)).join(' / ') : 'No expiry B/E',
+        probability,
+        probabilityText: probability ? `${(probability.probProfit * 100).toFixed(1)}%` : '--',
+        expectedPLText: probability ? formatChartSignedCurrency(probability.expectedPL) : '--',
+        thetaAbsorb,
+        thetaAbsorbText: thetaAbsorb.text,
+        positiveZonePoints: expiryPoints.map(point => ({ x: point.x, y: point.y > 0 ? point.y : null })),
+        negativeZonePoints: expiryPoints.map(point => ({ x: point.x, y: point.y < 0 ? point.y : null })),
+        currentSpot,
+        currentNetGreeks
+    };
+}
+
+function drawAnnotationLabel(ctx, chartArea, x, y, lines, borderColor, fillColor = 'rgba(10, 12, 18, 0.92)') {
+    ctx.save();
+    ctx.font = "10px 'JetBrains Mono', monospace";
+    const paddingX = 6;
+    const paddingY = 4;
+    const lineHeight = 12;
+    const width = Math.max(...lines.map(line => ctx.measureText(line).width)) + (paddingX * 2);
+    const height = (lines.length * lineHeight) + (paddingY * 2);
+    const left = Math.min(Math.max(x - (width / 2), chartArea.left + 4), chartArea.right - width - 4);
+    const top = Math.min(Math.max(y, chartArea.top + 4), chartArea.bottom - height - 4);
+
+    ctx.fillStyle = fillColor;
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(left, top, width, height, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#e2e4f0';
+    lines.forEach((line, index) => {
+        ctx.fillText(line, left + paddingX, top + paddingY + 9 + (index * lineHeight));
+    });
+    ctx.restore();
+}
+
+const strategyPayoffOverlayPlugin = {
+    id: 'strategyPayoffOverlay',
+    beforeDatasetsDraw(chart, _args, options) {
+        if (!options?.showProbabilityOverlay || !options.analysis?.probability?.samples?.length) return;
+
+        const { ctx, chartArea, scales } = chart;
+        const xScale = scales.x;
+        const samples = options.analysis.probability.samples;
+        const bandHeight = Math.min(60, chartArea.height * 0.22);
+        const baseY = chartArea.bottom - 4;
+        const topY = baseY - bandHeight;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(8, 9, 13, 0.55)';
+        ctx.fillRect(chartArea.left, topY, chartArea.right - chartArea.left, bandHeight);
+
+        for (let i = 0; i < samples.length - 1; i++) {
+            const left = samples[i];
+            const right = samples[i + 1];
+            const x1 = xScale.getPixelForValue(left.x);
+            const x2 = xScale.getPixelForValue(right.x);
+            const y1 = baseY - (left.normalizedDensity * bandHeight);
+            const y2 = baseY - (right.normalizedDensity * bandHeight);
+            const isProfitSegment = left.isProfit && right.isProfit;
+            const isLossSegment = !left.isProfit && !right.isProfit;
+
+            ctx.beginPath();
+            ctx.moveTo(x1, baseY);
+            ctx.lineTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x2, baseY);
+            ctx.closePath();
+            ctx.fillStyle = isProfitSegment ? 'rgba(16, 185, 129, 0.16)' : (isLossSegment ? 'rgba(239, 68, 68, 0.14)' : 'rgba(148, 163, 184, 0.10)');
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = isProfitSegment ? 'rgba(16, 185, 129, 0.35)' : (isLossSegment ? 'rgba(239, 68, 68, 0.30)' : 'rgba(148, 163, 184, 0.22)');
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
+        ctx.font = "10px 'JetBrains Mono', monospace";
+        ctx.fillText(`P(Profit): ${(options.analysis.probability.probProfit * 100).toFixed(1)}%`, chartArea.left + 6, topY + 12);
+        ctx.restore();
+    },
+    afterDatasetsDraw(chart, _args, options) {
+        const analysis = options?.analysis;
+        if (!analysis) return;
+
+        const { ctx, chartArea, scales } = chart;
+        const xScale = scales.x;
+        const yScale = scales.y;
+
+        ctx.save();
+
+        analysis.breakevens.forEach((breakeven, index) => {
+            const xPixel = xScale.getPixelForValue(breakeven.price);
+            const yPixel = yScale.getPixelForValue(0);
+
+            ctx.beginPath();
+            ctx.setLineDash([6, 4]);
+            ctx.strokeStyle = 'rgba(255, 176, 32, 0.65)';
+            ctx.lineWidth = 1;
+            ctx.moveTo(xPixel, chartArea.top);
+            ctx.lineTo(xPixel, chartArea.bottom);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.fillStyle = '#ffb020';
+            ctx.arc(xPixel, yPixel, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#0a0c12';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            drawAnnotationLabel(
+                ctx,
+                chartArea,
+                xPixel,
+                chartArea.top + 8 + ((index % 2) * 32),
+                [`B/E: $${breakeven.price.toFixed(2)}`, formatChartSignedPct(breakeven.pctFromSpot)],
+                'rgba(255, 176, 32, 0.45)'
+            );
+        });
+
+        if (Number.isFinite(analysis.maxLossPoint.value)) {
+            const xPixel = xScale.getPixelForValue(analysis.maxLossPoint.price);
+            const yPixel = yScale.getPixelForValue(analysis.maxLossPoint.value);
+
+            ctx.beginPath();
+            ctx.setLineDash([8, 4]);
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.55)';
+            ctx.lineWidth = 1;
+            ctx.moveTo(chartArea.left, yPixel);
+            ctx.lineTo(chartArea.right, yPixel);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.fillStyle = '#ef4444';
+            ctx.arc(xPixel, yPixel, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            drawAnnotationLabel(
+                ctx,
+                chartArea,
+                xPixel + 40,
+                yPixel - 34,
+                [
+                    `Max Loss: ${formatChartCurrency(analysis.maxLossPoint.perContractLoss)} per contract`,
+                    `(${formatChartCurrency(analysis.maxLossPoint.totalLoss)} total)`
+                ],
+                'rgba(239, 68, 68, 0.45)'
+            );
+        }
+
+        ctx.restore();
+    }
+};
+
 // Draw the strategy chart
 export function updateStrategyChart() {
     const ctx = document.getElementById('strategyChart');
@@ -463,19 +1069,21 @@ export function updateStrategyChart() {
         if (strategyState.chart) strategyState.chart.destroy();
         if (strategyState.greeksChart) strategyState.greeksChart.destroy();
         updateNetGreeksDisplay({ delta: 0, gamma: 0, vega: 0, theta: 0, rho: 0 });
+        updateStrategyStats(null);
+        updateStrategyChartMetrics(null);
+        window.syncStrategyChartControls?.();
+        if (window.refreshPositionManagement) window.refreshPositionManagement();
+        if (window.refreshTradeThesisRisk) window.refreshTradeThesisRisk();
         return;
     }
 
-    const strikes = strategyState.legs.map(l => l.strike);
     const currentSpot = sharedMarketState.spot;
-    const minSpot = currentSpot * 0.70;
-    const maxSpot = currentSpot * 1.30;
-    const start = minSpot;
-    const end = maxSpot;
+    const start = currentSpot * 0.70;
+    const end = currentSpot * 1.30;
 
     const steps = 100;
     const stepSize = (end - start) / steps;
-    const labels = [];
+    const xValues = [];
 
     const originalT = sharedMarketState.tYears;
     const timeProfiles = [
@@ -486,101 +1094,104 @@ export function updateStrategyChart() {
         { label: 'At Expiration', tRemain: 0, color: '#10b981', data: [] }
     ];
 
-    // Calculate P&L for all lines
     for (let i = 0; i <= steps; i++) {
         const spot = start + (i * stepSize);
-        labels.push(spot.toFixed(2));
+        xValues.push(spot);
         timeProfiles.forEach(profile => {
-            let totalPayoff = 0;
-            strategyState.legs.forEach(leg => {
-                totalPayoff += calculateNetValue(spot, leg, profile.tRemain);
-            });
-            profile.data.push(totalPayoff);
+            const payoff = calculateStrategyPayoffAt(spot, profile.tRemain, strategyState.legs, sharedMarketState);
+            profile.data.push({ x: spot, y: payoff });
         });
     }
 
-    // Update old stats (used elsewhere, passing expiry data)
-    updateStrategyStats(timeProfiles[4].data, start, end, stepSize);
-
-    // Update Greek Cards
     const currentNetGreeks = calculateNetGreeks(currentSpot);
     updateNetGreeksDisplay(currentNetGreeks);
-
-    // Draw Greeks Chart over the spot range
-    drawGreeksVsSpotChart(start, end, steps, stepSize, labels);
+    drawGreeksVsSpotChart(start, end, steps, stepSize, xValues.map(value => value.toFixed(2)));
 
     if (strategyState.chart) {
         strategyState.chart.destroy();
     }
 
-    // Generate horizontal zero line
-    const zeroLineData = new Array(labels.length).fill(0);
+    const expiryAnalysis = analyzeExpiryProfile(timeProfiles[4].data, strategyState.legs, sharedMarketState, currentSpot, currentNetGreeks);
+    updateStrategyStats(expiryAnalysis);
+    updateStrategyChartMetrics(expiryAnalysis);
 
-    const datasets = timeProfiles.map(p => ({
-        label: p.label,
-        data: p.data,
-        borderColor: p.color,
-        backgroundColor: p.color + '20', // Add a little transparency
-        borderWidth: 2,
-        fill: false,
-        tension: 0.4,
-        pointRadius: 0,
-        pointHitRadius: 10
-    }));
-
-    // Make Expiration line slightly thicker and non-smoothed
-    datasets[4].tension = 0.0;
-    datasets[4].borderWidth = 3;
-    datasets[4].borderDash = [5, 5]; // Highlight expiration differently if desired
-
-    // Add Zero Line
-    datasets.push({
-        label: 'Break Even ($0)',
-        data: zeroLineData,
-        borderColor: 'rgba(255, 255, 255, 0.5)',
-        borderWidth: 1.5,
-        borderDash: [8, 4],
-        pointRadius: 0,
-        fill: false,
-        showLine: true
-    });
+    const datasets = [
+        {
+            label: 'Profit Zone',
+            data: expiryAnalysis.positiveZonePoints,
+            helperDataset: true,
+            borderWidth: 0,
+            pointRadius: 0,
+            fill: 'origin',
+            backgroundColor: 'rgba(16, 185, 129, 0.18)',
+            spanGaps: false,
+            order: 0
+        },
+        {
+            label: 'Loss Zone',
+            data: expiryAnalysis.negativeZonePoints,
+            helperDataset: true,
+            borderWidth: 0,
+            pointRadius: 0,
+            fill: 'origin',
+            backgroundColor: 'rgba(239, 68, 68, 0.18)',
+            spanGaps: false,
+            order: 0
+        },
+        ...timeProfiles.map(profile => ({
+            label: profile.label,
+            data: profile.data,
+            borderColor: profile.color,
+            backgroundColor: `${profile.color}20`,
+            borderWidth: profile.label === 'At Expiration' ? 3 : 2,
+            borderDash: profile.label === 'At Expiration' ? [5, 5] : undefined,
+            fill: false,
+            tension: profile.label === 'At Expiration' ? 0 : 0.35,
+            pointRadius: 0,
+            pointHitRadius: 10,
+            order: profile.label === 'At Expiration' ? 4 : 3
+        })),
+        {
+            label: 'Break Even ($0)',
+            data: xValues.map(spot => ({ x: spot, y: 0 })),
+            helperDataset: true,
+            borderColor: 'rgba(255, 255, 255, 0.45)',
+            borderWidth: 1.5,
+            borderDash: [8, 4],
+            pointRadius: 0,
+            fill: false,
+            order: 1
+        }
+    ];
 
     const plugins = {
-        legend: { labels: { color: '#f1f5f9' } },
+        legend: {
+            labels: {
+                color: '#f1f5f9',
+                filter: (_item, data) => !data.datasets[_item.datasetIndex]?.helperDataset
+            }
+        },
         tooltip: {
             mode: 'index',
             intersect: false,
+            filter: (tooltipItem) => !tooltipItem.dataset?.helperDataset,
             callbacks: {
-                title: (context) => `Spot Price: $${context[0].label}`,
-                label: (ctx) => `${ctx.dataset.label}: $${Number(ctx.parsed.y).toFixed(2)}`
+                title: (context) => `Spot Price: $${Number(context[0].parsed.x).toFixed(2)}`,
+                label: (tooltipItem) => `${tooltipItem.dataset.label}: $${Number(tooltipItem.parsed.y).toFixed(2)}`
             }
+        },
+        strategyPayoffOverlay: {
+            analysis: expiryAnalysis,
+            showProbabilityOverlay: chartState.showProbabilityOverlay
         }
     };
-
-    // Attempt annotation for vertical strike lines if plugin is included
-    const strikesUnique = [...new Set(strikes)];
-    const annotations = {};
-    strikesUnique.forEach((st, idx) => {
-        annotations[`line${idx}`] = {
-            type: 'line',
-            xMin: st,
-            xMax: st,
-            borderColor: 'rgba(255, 255, 255, 0.3)',
-            borderWidth: 1,
-            borderDash: [5, 5]
-        };
-    });
-
-    if (Object.keys(annotations).length > 0) {
-        plugins.annotation = { annotations };
-    }
 
     strategyState.chart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: labels,
             datasets: datasets
         },
+        plugins: [strategyPayoffOverlayPlugin],
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -595,8 +1206,13 @@ export function updateStrategyChart() {
             },
             scales: {
                 x: {
+                    type: 'linear',
                     title: { display: true, text: 'Spot Price', color: '#94a3b8' },
-                    ticks: { color: '#94a3b8', maxTicksLimit: 10 },
+                    ticks: {
+                        color: '#94a3b8',
+                        maxTicksLimit: 10,
+                        callback: (value) => `$${Number(value).toFixed(0)}`
+                    },
                     grid: { color: '#334155' }
                 },
                 y: {
@@ -608,19 +1224,36 @@ export function updateStrategyChart() {
         }
     });
 
+    window.syncStrategyChartControls?.();
+
     if (window.updateSandboxScenario) {
         window.updateSandboxScenario();
+    }
+
+    if (window.refreshTradeThesisRisk) {
+        window.refreshTradeThesisRisk();
+    }
+
+    if (window.refreshPositionManagement) {
+        window.refreshPositionManagement();
     }
 }
 
 // Helper to update Net Greeks DOM Cards
 function updateNetGreeksDisplay(greeks) {
     const formatGreek = (val) => val === 0 ? "0.00" : val.toFixed(2);
-    document.getElementById('netDeltaResult').textContent = formatGreek(greeks.delta);
-    document.getElementById('netGammaResult').textContent = formatGreek(greeks.gamma);
-    document.getElementById('netVegaResult').textContent = formatGreek(greeks.vega);
-    document.getElementById('netThetaResult').textContent = formatGreek(greeks.theta);
-    document.getElementById('netRhoResult').textContent = formatGreek(greeks.rho);
+    const bindings = {
+        netDeltaResult: greeks.delta,
+        netGammaResult: greeks.gamma,
+        netVegaResult: greeks.vega,
+        netThetaResult: greeks.theta,
+        netRhoResult: greeks.rho
+    };
+
+    Object.entries(bindings).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = formatGreek(value);
+    });
 }
 
 // Function to draw Greek charts vs Spot
@@ -687,63 +1320,81 @@ function drawGreeksVsSpotChart(start, end, steps, stepSize, labels) {
 }
 
 // Calculate and Update Stats Cards
-function updateStrategyStats(payoffs, start, end, stepSize) {
+function updateStrategyStats(analysis) {
     const maxProfitEl = document.getElementById('maxProfit');
     const maxLossEl = document.getElementById('maxLoss');
     const breakevensEl = document.getElementById('breakevens');
+    const aumRiskEl = document.getElementById('builderAumRiskValue');
 
     if (!maxProfitEl || !maxLossEl || !breakevensEl) return;
 
-    let maxVal = Math.max(...payoffs);
-    let minVal = Math.min(...payoffs);
-
-    // Check for Infinite/Unlimited at boundaries
-    const isRisingAtEnd = payoffs[payoffs.length - 1] > payoffs[payoffs.length - 2];
-    const isFallingAtEnd = payoffs[payoffs.length - 1] < payoffs[payoffs.length - 2];
-    const isRisingAtStart = payoffs[0] > payoffs[1];
-    const isFallingAtStart = payoffs[0] < payoffs[1];
-
-    // Simplistic infinite detection: if the value at the very end is the max/min and it was moving in that direction
-    let maxProfitText = "";
-    let maxLossText = "";
-
-    if (isRisingAtEnd || isRisingAtStart) {
-        maxProfitText = "Infinite ♾️";
-    } else {
-        maxProfitText = `$${maxVal.toFixed(2)}`;
+    if (!analysis) {
+        maxProfitEl.innerText = '--';
+        maxLossEl.innerText = '--';
+        breakevensEl.innerText = '--';
+        if (aumRiskEl) aumRiskEl.innerText = '--';
+        return;
     }
 
-    if (isFallingAtEnd || isFallingAtStart) {
-        maxLossText = "Unlimited ⚠️";
-    } else {
-        maxLossText = `$${Math.abs(minVal).toFixed(2)}`;
+    maxProfitEl.innerText = analysis.maxProfitText;
+    maxProfitEl.style.color = analysis.maxProfitText.includes('Infinite') ? '#10b981' : (analysis.maxProfitValue > 0 ? '#10b981' : '#94a3b8');
+
+    maxLossEl.innerText = analysis.maxLossText;
+    maxLossEl.style.color = analysis.maxLossText.includes('Unlimited') ? '#ef4444' : (analysis.maxLossValue < 0 ? '#ef4444' : '#94a3b8');
+    breakevensEl.innerText = analysis.breakevenText;
+
+    if (aumRiskEl) {
+        const aumRisk = analysis.maxLossText.includes('Unlimited')
+            ? null
+            : ((Math.abs(analysis.maxLossValue) / getPositionPortfolioAum()) * 100);
+        aumRiskEl.innerText = Number.isFinite(aumRisk) ? `${aumRisk.toFixed(2)}%` : '--';
+        aumRiskEl.style.color = !Number.isFinite(aumRisk)
+            ? '#e2e4f0'
+            : (aumRisk > 5 ? '#fca5a5' : (aumRisk >= 3 ? '#f8d08a' : '#b6ffd7'));
+    }
+}
+
+function updateStrategyChartMetrics(analysis) {
+    const breakEvenMoveEl = document.getElementById('chartBreakEvenMove');
+    const popEl = document.getElementById('chartProbabilityOfProfit');
+    const expectedEl = document.getElementById('chartExpectedPL');
+    const thetaEl = document.getElementById('chartThetaAbsorb');
+
+    if (!breakEvenMoveEl || !popEl || !expectedEl || !thetaEl) return;
+
+    if (!analysis) {
+        breakEvenMoveEl.textContent = '--';
+        popEl.textContent = '--';
+        expectedEl.textContent = '--';
+        thetaEl.textContent = '--';
+        return;
     }
 
-    maxProfitEl.innerText = maxProfitText;
-    maxProfitEl.style.color = maxProfitText.includes('Infinite') ? '#10b981' : (maxVal > 0 ? '#10b981' : '#94a3b8');
+    breakEvenMoveEl.textContent = analysis.breakEvenMoveText;
+    popEl.textContent = analysis.probabilityText;
+    expectedEl.textContent = analysis.expectedPLText;
+    expectedEl.style.color = analysis.probability?.expectedPL > 0 ? '#10b981' : (analysis.probability?.expectedPL < 0 ? '#fca5a5' : '#e2e4f0');
+    thetaEl.textContent = analysis.thetaAbsorbText;
+}
 
-    maxLossEl.innerText = maxLossText;
-    maxLossEl.style.color = maxLossText.includes('Unlimited') ? '#ef4444' : (minVal < 0 ? '#ef4444' : '#94a3b8');
+export function initStrategyChartControls() {
+    const toggle = document.getElementById('probabilityOverlayToggle');
+    if (!toggle) return;
 
-    // Find Breakevens (Crossings of zero)
-    const bePoints = [];
-    for (let i = 0; i < payoffs.length - 1; i++) {
-        if (payoffs[i] * payoffs[i + 1] <= 0) {
-            // Found a crossing between i and i+1
-            // Linear interpolation: y = mx + c => 0 = m*x + payoffs[i]
-            const x1 = start + (i * stepSize);
-            const x2 = start + ((i + 1) * stepSize);
-            const y1 = payoffs[i];
-            const y2 = payoffs[i + 1];
+    const sync = () => {
+        toggle.textContent = `Probability Overlay: ${chartState.showProbabilityOverlay ? 'On' : 'Off'}`;
+        toggle.classList.toggle('active', chartState.showProbabilityOverlay);
+        toggle.disabled = strategyState.legs.length === 0;
+    };
 
-            if (y1 === y2) continue; // Horizontal on 0
+    toggle.addEventListener('click', () => {
+        chartState.showProbabilityOverlay = !chartState.showProbabilityOverlay;
+        sync();
+        updateStrategyChart();
+    });
 
-            const breakPrice = x1 + (0 - y1) * (x2 - x1) / (y2 - y1);
-            bePoints.push(breakPrice.toFixed(1));
-        }
-    }
-
-    breakevensEl.innerText = bePoints.length > 0 ? bePoints.join(', ') : 'None';
+    window.syncStrategyChartControls = sync;
+    sync();
 }
 
 // Initialize Guide Modal with Carousel logic
@@ -841,43 +1492,210 @@ const PLAYBOOK_DATA = {
     }
 };
 
+const THESIS_SUMMARY_LABELS = {
+    priceView: {
+        up: 'GO UP',
+        down: 'GO DOWN',
+        move_big: 'MOVE BIG',
+        flat: 'STAY FLAT'
+    },
+    volatilityView: {
+        increase: 'INCREASING',
+        decrease: 'DECREASING',
+        same: 'UNCHANGED'
+    },
+    timeframe: {
+        days: 'DAYS',
+        weeks: 'WEEKS',
+        months: 'MONTHS'
+    }
+};
+
+const THESIS_STRATEGY_LIBRARY = [
+    {
+        presetId: 'bull_call_spread',
+        scenario: 'bullish',
+        priceViews: ['up'],
+        volViews: ['decrease', 'same'],
+        timeframes: ['days', 'weeks'],
+        tags: ['Technical Breakout', 'Sector Rotation'],
+        rationale: 'Defined-risk upside spread for a controlled bullish move without paying for unlimited upside.'
+    },
+    {
+        presetId: 'bull_put_spread',
+        scenario: 'bullish',
+        priceViews: ['up', 'flat'],
+        volViews: ['decrease', 'same'],
+        timeframes: ['days', 'weeks'],
+        tags: ['Sector Rotation', 'Macro Event'],
+        rationale: 'Short premium structure that benefits when price holds up and implied volatility cools off.'
+    },
+    {
+        presetId: 'call_backspread',
+        scenario: 'volatile',
+        priceViews: ['up', 'move_big'],
+        volViews: ['increase'],
+        timeframes: ['days', 'weeks'],
+        tags: ['Earnings', 'Technical Breakout', 'Volatility Event'],
+        rationale: 'Convex upside expression for breakout setups where you want long gamma and rising vol.'
+    },
+    {
+        presetId: 'bear_put_spread',
+        scenario: 'bearish',
+        priceViews: ['down'],
+        volViews: ['increase', 'same'],
+        timeframes: ['days', 'weeks'],
+        tags: ['Macro Event', 'Geopolitical', 'Sector Rotation'],
+        rationale: 'Defined-risk bearish spread that targets downside while keeping the debit contained.'
+    },
+    {
+        presetId: 'bear_call_spread',
+        scenario: 'bearish',
+        priceViews: ['down', 'flat'],
+        volViews: ['decrease', 'same'],
+        timeframes: ['days', 'weeks'],
+        tags: ['Macro Event', 'Sector Rotation'],
+        rationale: 'Premium-selling bearish structure when you expect weak price action without a volatility shock.'
+    },
+    {
+        presetId: 'put_backspread',
+        scenario: 'volatile',
+        priceViews: ['down', 'move_big'],
+        volViews: ['increase'],
+        timeframes: ['days', 'weeks'],
+        tags: ['Geopolitical', 'Macro Event', 'Volatility Event'],
+        rationale: 'Downside convexity play that thrives when panic expands volatility and price drops hard.'
+    },
+    {
+        presetId: 'long_straddle',
+        scenario: 'volatile',
+        priceViews: ['move_big'],
+        volViews: ['increase'],
+        timeframes: ['days', 'weeks'],
+        tags: ['Earnings', 'Geopolitical', 'Fed/Central Bank', 'Volatility Event'],
+        rationale: 'Pure long-vol expression for catalysts that can force a large move in either direction.'
+    },
+    {
+        presetId: 'long_strangle',
+        scenario: 'volatile',
+        priceViews: ['move_big'],
+        volViews: ['increase'],
+        timeframes: ['weeks', 'months'],
+        tags: ['Earnings', 'Macro Event', 'Geopolitical', 'Volatility Event'],
+        rationale: 'Cheaper long-vol alternative when you expect expansion over a wider time window.'
+    },
+    {
+        presetId: 'iron_condor',
+        scenario: 'neutral',
+        priceViews: ['flat'],
+        volViews: ['decrease'],
+        timeframes: ['days', 'weeks'],
+        tags: ['Sector Rotation'],
+        rationale: 'Defined-risk premium seller for range-bound markets and compressing implied volatility.'
+    },
+    {
+        presetId: 'iron_butterfly',
+        scenario: 'neutral',
+        priceViews: ['flat'],
+        volViews: ['decrease', 'same'],
+        timeframes: ['days', 'weeks'],
+        tags: ['Fed/Central Bank', 'Sector Rotation'],
+        rationale: 'Higher-credit neutral structure when you have a tight pinning view around the current spot.'
+    },
+    {
+        presetId: 'calendar_spread',
+        scenario: 'neutral',
+        priceViews: ['flat'],
+        volViews: ['increase', 'same'],
+        timeframes: ['weeks', 'months'],
+        tags: ['Earnings', 'Fed/Central Bank'],
+        rationale: 'Time-spread setup for sticky price action with stable-to-firmer implied volatility.'
+    },
+    {
+        presetId: 'double_calendar',
+        scenario: 'neutral',
+        priceViews: ['flat', 'move_big'],
+        volViews: ['increase'],
+        timeframes: ['weeks', 'months'],
+        tags: ['Earnings', 'Macro Event', 'Volatility Event'],
+        rationale: 'Longer-horizon volatility structure when you expect movement but want defined wings.'
+    }
+];
+
+function renderPlaybookScenario(scenarioId) {
+    const data = PLAYBOOK_DATA[scenarioId];
+    const contentArea = document.getElementById('playbookContent');
+    if (!data || !contentArea) return;
+
+    contentArea.innerHTML = `
+        <div class="playbook-card active">
+            <h4>${data.title}</h4>
+            <div class="thinking-section">
+                <h5>Thinking Like a Trader</h5>
+                <p>${data.thinking}</p>
+            </div>
+            <div class="thinking-section" style="border-left-color: var(--t-green);">
+                <h5 style="color: var(--t-green);">Strategy Choice</h5>
+                <p>${data.recommendation}</p>
+            </div>
+            <div class="action-row">
+                <button class="btn-playbook-load" onclick="window.loadStrategyPreset('${data.presetId}')">
+                    Load Example →
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+export function setActivePlaybookScenario(scenarioId) {
+    const container = document.getElementById('strategyPlaybookPane');
+    if (!container || !scenarioId || !PLAYBOOK_DATA[scenarioId]) return;
+
+    const buttons = container.querySelectorAll('.scenario-btn');
+    buttons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.scenario === scenarioId);
+    });
+
+    renderPlaybookScenario(scenarioId);
+}
+
 export function initStrategyPlaybook() {
-    const container = document.querySelector('.terminal-panel:has(.playbook-scenarios)');
+    const container = document.getElementById('strategyPlaybookPane');
     if (!container) return;
 
     const buttons = container.querySelectorAll('.scenario-btn');
-    const contentArea = document.getElementById('playbookContent');
 
     buttons.forEach(btn => {
         btn.addEventListener('click', () => {
-            const scenarioId = btn.dataset.scenario;
-            const data = PLAYBOOK_DATA[scenarioId];
-            if (!data) return;
-
-            // Update active button
-            buttons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            // Render content
-            contentArea.innerHTML = `
-                <div class="playbook-card active">
-                    <h4>${data.title}</h4>
-                    <div class="thinking-section">
-                        <h5>Thinking Like a Trader</h5>
-                        <p>${data.thinking}</p>
-                    </div>
-                    <div class="thinking-section" style="border-left-color: var(--t-green);">
-                        <h5 style="color: var(--t-green);">Strategy Choice</h5>
-                        <p>${data.recommendation}</p>
-                    </div>
-                    <div class="action-row">
-                        <button class="btn-playbook-load" onclick="window.loadStrategyPreset('${data.presetId}')">
-                            Load Example →
-                        </button>
-                    </div>
-                </div>
-            `;
+            setActivePlaybookScenario(btn.dataset.scenario);
         });
+    });
+}
+
+function buildPresetLegs(presetId, options = {}) {
+    const preset = window.strategyPresets?.[presetId];
+    if (!preset) return [];
+
+    const { includeRuntimeIds = false } = options;
+    const S = sharedMarketState.spot;
+
+    return preset.legs.map((leg, index) => {
+        let newStrike = leg.strike;
+        if (leg.type !== 'stock') {
+            const offset = leg.strike - 100;
+            newStrike = Math.round((S + offset) * 100) / 100;
+        } else {
+            newStrike = S;
+        }
+
+        return {
+            id: includeRuntimeIds ? `leg-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}` : `preset-${presetId}-${index}`,
+            type: leg.type,
+            action: leg.action,
+            strike: newStrike,
+            expiry: leg.expiry || sharedMarketState.tYears,
+            quantity: leg.quantity || 1
+        };
     });
 }
 
@@ -885,33 +1703,21 @@ export function loadStrategyPreset(presetId) {
     const preset = window.strategyPresets?.[presetId];
     if (!preset) return;
 
-    // Use current spot to make strikes relative
-    const S = window.sharedMarketState ? window.sharedMarketState.spot : 100;
-
-    strategyState.legs = preset.legs.map((leg, index) => {
-        // Presets in lessons.js are mostly based on Spot=100
-        // We shift the strike relative to current S
-        let newStrike = leg.strike;
-        if (leg.type !== 'stock') {
-            const offset = leg.strike - 100;
-            newStrike = Math.round(S + offset);
-        } else {
-            newStrike = S;
-        }
-
-        return {
-            id: `leg-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}`,
-            type: leg.type,
-            action: leg.action,
-            strike: newStrike,
-            expiry: leg.expiry || 1.0,
-            quantity: leg.quantity || 1
-        };
+    positionState.active = null;
+    if (window.resetScenarioSandbox) window.resetScenarioSandbox();
+    strategyState.legs = buildPresetLegs(presetId, { includeRuntimeIds: true });
+    tradeThesisState.selectedPresetId = presetId;
+    tradeThesisState.loadedPresetId = presetId;
+    createManagedPosition(preset.label, strategyState.legs, sharedMarketState, {
+        resetJournal: true,
+        allowQtyEdit: true
     });
 
     renderLegs();
     updateStrategyChart();
     if (window.updateSandboxScenario) window.updateSandboxScenario();
+    if (window.refreshPositionManagement) window.refreshPositionManagement();
+    if (window.refreshTradeThesisPanel) window.refreshTradeThesisPanel();
 }
 
 export function openStrategyPreset(presetId) {
@@ -949,6 +1755,858 @@ export function initStrategyPresets() {
     });
 }
 
+function getPositionPortfolioAum() {
+    return Math.max(1, tradeThesisState.aum || 100000);
+}
+
+function getPositionEntryMetrics(activePosition = positionState.active) {
+    if (!activePosition) return null;
+    return calculateScenarioMetricsForLegs(
+        activePosition.currentLegs,
+        { spotChangePct: 0, ivChangePts: 0, daysElapsed: 0 },
+        activePosition.entryMarketState
+    );
+}
+
+function buildOpenJournalDetails(activePosition = positionState.active) {
+    const entryMetrics = getPositionEntryMetrics(activePosition);
+    if (!activePosition || !entryMetrics) return 'Opened position.';
+    return `Opened ${activePosition.quantity} unit${activePosition.quantity === 1 ? '' : 's'} at ${getEntryPriceText(entryMetrics.totalCost)}.`;
+}
+
+function addPositionJournalEntry(action, details, pnl = 0, timestamp = Date.now()) {
+    const previousCumulative = positionState.journal[positionState.journal.length - 1]?.cumulative ?? 0;
+    const entry = {
+        id: `${timestamp}-${positionState.journal.length + 1}`,
+        timestamp,
+        action,
+        details,
+        pnl,
+        cumulative: previousCumulative + pnl
+    };
+    positionState.journal.push(entry);
+    return entry;
+}
+
+function setPositionResult(html) {
+    positionState.lastResultHtml = html;
+}
+
+function resetRollPreview() {
+    positionState.rollPreview = null;
+    if (strategyState.positionRollChart) {
+        strategyState.positionRollChart.destroy();
+        strategyState.positionRollChart = null;
+    }
+}
+
+function setPositionActionMode(mode = null) {
+    positionState.actionMode = mode;
+
+    const trimForm = document.getElementById('positionTrimForm');
+    const rollForm = document.getElementById('positionRollForm');
+    if (trimForm) trimForm.hidden = mode !== 'trim';
+    if (rollForm) rollForm.hidden = mode !== 'roll';
+
+    if (mode !== 'roll') {
+        resetRollPreview();
+        const rollWrap = document.getElementById('positionRollChartWrap');
+        if (rollWrap) rollWrap.hidden = true;
+    }
+}
+
+function renderPositionJournal() {
+    const body = document.getElementById('positionJournalBody');
+    const exportBtn = document.getElementById('positionJournalExportBtn');
+    const exportStatus = document.getElementById('positionJournalExportStatus');
+    if (!body) return;
+
+    if (!positionState.journal.length) {
+        body.innerHTML = '<tr><td colspan="5" class="position-journal-empty">No journal entries yet.</td></tr>';
+    } else {
+        body.innerHTML = positionState.journal.map(entry => `
+            <tr>
+                <td>${formatJournalTimestamp(entry.timestamp)}</td>
+                <td>${entry.action}</td>
+                <td>${entry.details}</td>
+                <td class="${entry.pnl > 0 ? 'is-positive' : (entry.pnl < 0 ? 'is-negative' : '')}">${formatPositionMoney(entry.pnl)}</td>
+                <td class="${entry.cumulative > 0 ? 'is-positive' : (entry.cumulative < 0 ? 'is-negative' : '')}">${formatPositionMoney(entry.cumulative)}</td>
+            </tr>
+        `).join('');
+    }
+
+    if (exportBtn) exportBtn.disabled = !positionState.journal.length;
+    if (exportStatus) exportStatus.textContent = positionState.exportStatus;
+}
+
+function syncBuilderWithPosition() {
+    strategyState.legs = cloneLegs(positionState.active?.currentLegs || []);
+    renderLegs();
+    updateStrategyChart();
+}
+
+function createManagedPosition(label, legs, entryMarketState = sharedMarketState, options = {}) {
+    const { resetJournal = true, timestamp = Date.now(), allowQtyEdit = true } = options;
+    const currentLegs = cloneLegs(legs);
+    const units = detectStrategyUnits(currentLegs);
+    const baseLegTemplate = currentLegs.map(leg => ({
+        ...leg,
+        quantity: leg.quantity / units
+    }));
+
+    positionState.active = {
+        label,
+        openedAt: timestamp,
+        entryMarketState: cloneMarketState(entryMarketState),
+        quantity: units,
+        baseLegTemplate,
+        currentLegs,
+        canEditQty: allowQtyEdit
+    };
+
+    if (resetJournal) {
+        positionState.journal = [];
+        addPositionJournalEntry('Open', buildOpenJournalDetails(positionState.active), 0, timestamp);
+    }
+
+    positionState.exportStatus = '';
+    setPositionActionMode(null);
+    setPositionResult('No position action taken yet.');
+}
+
+function setSharedContextMarketState(nextMarketState, nextExpiryValue = '') {
+    sharedMarketState.spot = nextMarketState.spot;
+    sharedMarketState.volatility = nextMarketState.volatility;
+    sharedMarketState.tYears = nextMarketState.tYears;
+    sharedMarketState.rate = nextMarketState.rate;
+    sharedMarketState.dividend = nextMarketState.dividend;
+
+    const spotNum = document.getElementById('sharedSpotNum');
+    const spotRange = document.getElementById('sharedSpot');
+    const volNum = document.getElementById('sharedVolNum');
+    const volRange = document.getElementById('sharedVol');
+    const expiryInput = document.getElementById('sharedExpiry');
+    const tValue = document.getElementById('sharedTValue');
+
+    if (spotNum) spotNum.value = String(nextMarketState.spot);
+    if (spotRange) spotRange.value = String(nextMarketState.spot);
+    if (volNum) volNum.value = String((nextMarketState.volatility * 100).toFixed(0));
+    if (volRange) volRange.value = String((nextMarketState.volatility * 100).toFixed(0));
+    if (expiryInput && nextExpiryValue) expiryInput.value = nextExpiryValue;
+    if (tValue) tValue.textContent = `T=${nextMarketState.tYears.toFixed(2)}y`;
+
+    if (window.updateScenarioMaxDays) window.updateScenarioMaxDays();
+}
+
+function getRollPreview() {
+    const activePosition = positionState.active;
+    const strikeInput = document.getElementById('positionRollStrike');
+    const expiryInput = document.getElementById('positionRollExpiry');
+
+    if (!activePosition || !strikeInput || !expiryInput) return null;
+
+    const strike = parseFloat(strikeInput.value);
+    if (!Number.isFinite(strike) || !expiryInput.value) return null;
+
+    const oldMetrics = calculateScenarioMetricsForLegs(activePosition.currentLegs, scenarioState, activePosition.entryMarketState);
+    const rollDate = new Date();
+    rollDate.setHours(0, 0, 0, 0);
+    rollDate.setDate(rollDate.getDate() + scenarioState.daysElapsed);
+
+    const [year, month, day] = expiryInput.value.split('-').map(Number);
+    const expiryDate = new Date(year, month - 1, day);
+    const diffDays = Math.max(1, Math.round((expiryDate - rollDate) / (1000 * 60 * 60 * 24)));
+    const newMarketState = {
+        ...cloneMarketState(oldMetrics.marketState),
+        tYears: Math.max(0.001, diffDays / 365.25)
+    };
+
+    const anchorStrike = getPositionAnchorStrike(activePosition.currentLegs, oldMetrics.marketState.spot);
+    const strikeShift = strike - anchorStrike;
+    const newLegs = activePosition.currentLegs.map(leg => ({
+        ...leg,
+        strike: leg.type === 'stock' ? oldMetrics.marketState.spot : Math.max(0, Math.round((leg.strike + strikeShift) * 100) / 100),
+        expiry: newMarketState.tYears
+    }));
+
+    const newEntryMetrics = calculateScenarioMetricsForLegs(newLegs, { spotChangePct: 0, ivChangePts: 0, daysElapsed: 0 }, newMarketState);
+    const costToRoll = newEntryMetrics.totalCost - oldMetrics.totalValue;
+
+    const chartStart = oldMetrics.marketState.spot * 0.7;
+    const chartEnd = oldMetrics.marketState.spot * 1.3;
+    const oldSeries = buildExpirySeries(activePosition.currentLegs, activePosition.entryMarketState, chartStart, chartEnd);
+    const newSeries = buildExpirySeries(newLegs, newMarketState, chartStart, chartEnd);
+
+    return {
+        strike,
+        expiryValue: expiryInput.value,
+        newLegs,
+        newMarketState,
+        oldMetrics,
+        newEntryMetrics,
+        costToRoll,
+        rollTimestamp: rollDate.getTime(),
+        oldSeries,
+        newSeries
+    };
+}
+
+function renderRollPreview() {
+    const rollMetrics = document.getElementById('positionRollMetrics');
+    const chartWrap = document.getElementById('positionRollChartWrap');
+    const canvas = document.getElementById('positionRollChart');
+    if (!rollMetrics || !chartWrap || !canvas) return;
+
+    if (positionState.actionMode !== 'roll' || !positionState.active) {
+        chartWrap.hidden = true;
+        resetRollPreview();
+        return;
+    }
+
+    const preview = getRollPreview();
+    positionState.rollPreview = preview;
+
+    if (!preview) {
+        rollMetrics.textContent = 'Enter a strike and expiry to preview the roll.';
+        chartWrap.hidden = true;
+        resetRollPreview();
+        return;
+    }
+
+    const rollCostText = preview.costToRoll >= 0 ? `Pay ${formatPositionMoney(preview.costToRoll).replace('+', '')}` : `Collect ${formatPositionMoney(Math.abs(preview.costToRoll)).replace('+', '')}`;
+    rollMetrics.textContent = `Close P/L ${formatPositionMoney(preview.oldMetrics.scenarioPL)}. ${rollCostText} to roll into the new structure.`;
+    chartWrap.hidden = false;
+
+    if (strategyState.positionRollChart) {
+        strategyState.positionRollChart.destroy();
+    }
+
+    strategyState.positionRollChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: preview.oldSeries.labels,
+            datasets: [
+                {
+                    label: 'Current Position',
+                    data: preview.oldSeries.data,
+                    borderColor: '#f59e0b',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.25
+                },
+                {
+                    label: 'Rolled Position',
+                    data: preview.newSeries.data,
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.25
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#e2e4f0' }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#94a3b8', maxTicksLimit: 6 },
+                    grid: { color: '#334155' }
+                },
+                y: {
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: '#334155' }
+                }
+            }
+        }
+    });
+}
+
+function renderPositionManagement() {
+    const emptyState = document.getElementById('positionEmptyState');
+    const activeCard = document.getElementById('positionActiveCard');
+    const statusBadge = document.getElementById('positionStatusBadge');
+    const resultEl = document.getElementById('positionActionResult');
+    const qtyInput = document.getElementById('positionEntryQty');
+    const trimBtn = document.getElementById('positionTrimBtn');
+    const rollBtn = document.getElementById('positionRollBtn');
+    const closeBtn = document.getElementById('positionCloseBtn');
+    const trimSelect = document.getElementById('positionTrimTargetQty');
+
+    if (resultEl) resultEl.innerHTML = positionState.lastResultHtml;
+    renderPositionJournal();
+
+    if (!positionState.active) {
+        if (emptyState) emptyState.hidden = false;
+        if (activeCard) activeCard.hidden = true;
+        if (statusBadge) statusBadge.textContent = 'Load a strategy to activate';
+        if (trimBtn) trimBtn.disabled = true;
+        if (rollBtn) rollBtn.disabled = true;
+        if (closeBtn) closeBtn.disabled = true;
+        setPositionActionMode(null);
+        return;
+    }
+
+    const activePosition = positionState.active;
+    const entryMetrics = getPositionEntryMetrics(activePosition);
+    const currentMetrics = calculateScenarioMetricsForLegs(activePosition.currentLegs, scenarioState, activePosition.entryMarketState);
+
+    if (emptyState) emptyState.hidden = true;
+    if (activeCard) activeCard.hidden = false;
+    if (statusBadge) statusBadge.textContent = `Open · ${activePosition.quantity} unit${activePosition.quantity === 1 ? '' : 's'}`;
+
+    const strategyName = document.getElementById('positionStrategyName');
+    const entryMeta = document.getElementById('positionEntryMeta');
+    const entryPrice = document.getElementById('positionEntryPrice');
+    const currentPl = document.getElementById('positionCurrentPL');
+    const currentPlPct = document.getElementById('positionCurrentPLPct');
+    const scenarioMark = document.getElementById('positionScenarioMark');
+
+    if (strategyName) strategyName.textContent = activePosition.label;
+    if (entryMeta) entryMeta.textContent = `Entry ${formatJournalTimestamp(activePosition.openedAt)}`;
+    if (entryPrice) entryPrice.textContent = getEntryPriceText(entryMetrics?.totalCost ?? 0);
+    if (currentPl) {
+        currentPl.textContent = formatPositionMoney(currentMetrics.scenarioPL).replace('+', '');
+        currentPl.className = `position-metric-value ${currentMetrics.scenarioPL > 0 ? 'is-positive' : (currentMetrics.scenarioPL < 0 ? 'is-negative' : '')}`;
+    }
+    if (currentPlPct) {
+        currentPlPct.textContent = formatPositionPct(currentMetrics.scenarioPLPct);
+        currentPlPct.className = `position-metric-sub ${currentMetrics.scenarioPLPct > 0 ? 'is-positive' : (currentMetrics.scenarioPLPct < 0 ? 'is-negative' : '')}`;
+    }
+    if (scenarioMark) scenarioMark.textContent = formatPositionMoney(currentMetrics.totalValue).replace('+', '');
+
+    if (qtyInput) {
+        qtyInput.value = String(activePosition.quantity);
+        qtyInput.disabled = !activePosition.canEditQty || positionState.journal.length > 1;
+    }
+
+    if (trimBtn) trimBtn.disabled = activePosition.quantity <= 1;
+    if (rollBtn) rollBtn.disabled = false;
+    if (closeBtn) closeBtn.disabled = false;
+
+    if (trimSelect) {
+        trimSelect.innerHTML = '';
+        for (let qty = 1; qty < activePosition.quantity; qty++) {
+            const option = document.createElement('option');
+            option.value = String(qty);
+            option.textContent = `${qty}`;
+            trimSelect.appendChild(option);
+        }
+    }
+
+    renderRollPreview();
+}
+
+function updatePositionQty(nextQuantity) {
+    if (!positionState.active) return;
+    const parsed = Math.max(1, Math.round(nextQuantity));
+    positionState.active.quantity = parsed;
+    positionState.active.currentLegs = scaleLegTemplate(positionState.active.baseLegTemplate, parsed);
+    if (positionState.journal[0]?.action === 'Open') {
+        positionState.journal[0].details = buildOpenJournalDetails(positionState.active);
+    }
+    syncBuilderWithPosition();
+    renderPositionManagement();
+}
+
+function handleTrimConfirm() {
+    if (!positionState.active) return;
+    const trimSelect = document.getElementById('positionTrimTargetQty');
+    const remainingQty = trimSelect ? parseInt(trimSelect.value, 10) : NaN;
+    if (!Number.isFinite(remainingQty) || remainingQty < 1 || remainingQty >= positionState.active.quantity) return;
+
+    const closedQty = positionState.active.quantity - remainingQty;
+    const closedLegs = scaleLegTemplate(positionState.active.baseLegTemplate, closedQty);
+    const remainingLegs = scaleLegTemplate(positionState.active.baseLegTemplate, remainingQty);
+    const realized = calculateScenarioMetricsForLegs(closedLegs, scenarioState, positionState.active.entryMarketState);
+    const remainingScenario = calculateScenarioMetricsForLegs(remainingLegs, scenarioState, positionState.active.entryMarketState);
+    const remainingSeries = buildExpirySeries(remainingLegs, positionState.active.entryMarketState);
+    const remainingBreakevens = getBreakevensFromSeries(remainingSeries);
+
+    positionState.active.quantity = remainingQty;
+    positionState.active.currentLegs = remainingLegs;
+    positionState.active.canEditQty = false;
+
+    addPositionJournalEntry(
+        'Trim',
+        `Closed ${closedQty} unit${closedQty === 1 ? '' : 's'}; ${remainingQty} remaining.`,
+        realized.scenarioPL
+    );
+
+    setPositionResult(`
+        <strong>Trim executed.</strong>
+        Realized ${formatPositionMoney(realized.scenarioPL)} on the closed portion.
+        Remaining size ${remainingQty} with Δ ${remainingScenario.greeks.delta.toFixed(2)}, Γ ${remainingScenario.greeks.gamma.toFixed(2)}, ν ${remainingScenario.greeks.vega.toFixed(2)}, Θ ${remainingScenario.greeks.theta.toFixed(2)} and breakevens ${formatBreakevenList(remainingBreakevens)}.
+    `);
+
+    syncBuilderWithPosition();
+    setPositionActionMode(null);
+    renderPositionManagement();
+}
+
+function handleRollConfirm() {
+    if (!positionState.active) return;
+    const preview = positionState.rollPreview || getRollPreview();
+    if (!preview) return;
+
+    addPositionJournalEntry(
+        'Roll',
+        `Rolled to ${preview.strike.toFixed(1)} strike / ${preview.expiryValue}. Roll cost ${formatPositionMoney(preview.costToRoll)}.`,
+        preview.oldMetrics.scenarioPL,
+        preview.rollTimestamp
+    );
+
+    createManagedPosition(positionState.active.label, preview.newLegs, preview.newMarketState, {
+        resetJournal: false,
+        timestamp: preview.rollTimestamp,
+        allowQtyEdit: false
+    });
+
+    setSharedContextMarketState(preview.newMarketState, preview.expiryValue);
+    strategyState.legs = cloneLegs(preview.newLegs);
+    renderLegs();
+    updateStrategyChart();
+    if (window.resetScenarioSandbox) window.resetScenarioSandbox();
+
+    setPositionResult(`
+        <strong>Roll confirmed.</strong>
+        Closed the prior structure for ${formatPositionMoney(preview.oldMetrics.scenarioPL)} and ${preview.costToRoll >= 0 ? 'paid' : 'collected'} ${formatPositionMoney(Math.abs(preview.costToRoll)).replace('+', '')} to open the new one.
+    `);
+    setPositionActionMode(null);
+    renderPositionManagement();
+}
+
+function handleCloseAll() {
+    if (!positionState.active) return;
+
+    const activePosition = positionState.active;
+    const realized = calculateScenarioMetricsForLegs(activePosition.currentLegs, scenarioState, activePosition.entryMarketState);
+    const portfolioPct = (realized.scenarioPL / getPositionPortfolioAum()) * 100;
+
+    addPositionJournalEntry(
+        'Close',
+        `Closed all ${activePosition.quantity} unit${activePosition.quantity === 1 ? '' : 's'} (${portfolioPct.toFixed(2)}% of portfolio).`,
+        realized.scenarioPL
+    );
+
+    setPositionResult(`
+        <strong>Position closed.</strong>
+        Realized ${formatPositionMoney(realized.scenarioPL)} which is ${formatPositionPct(portfolioPct)} of portfolio AUM.
+    `);
+
+    positionState.active = null;
+    setPositionActionMode(null);
+    strategyState.legs = [];
+    renderLegs();
+    updateStrategyChart();
+    renderPositionManagement();
+}
+
+function exportPositionJournal() {
+    if (!positionState.journal.length) return;
+
+    const text = positionState.journal.map(entry => (
+        `${formatJournalTimestamp(entry.timestamp)} | ${entry.action} | ${entry.details} | ${formatPositionMoney(entry.pnl)} | ${formatPositionMoney(entry.cumulative)}`
+    )).join('\n');
+
+    const handleSuccess = () => {
+        positionState.exportStatus = 'Journal copied to clipboard.';
+        renderPositionJournal();
+    };
+
+    const handleFailure = () => {
+        positionState.exportStatus = 'Clipboard unavailable. Copy the journal from the table below.';
+        renderPositionJournal();
+    };
+
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(handleSuccess).catch(handleFailure);
+        return;
+    }
+
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', 'true');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        handleSuccess();
+    } catch {
+        handleFailure();
+    }
+}
+
+export function initPositionManagement() {
+    const panel = document.getElementById('positionManagementPanel');
+    if (!panel) return;
+
+    document.getElementById('positionTrimBtn')?.addEventListener('click', () => {
+        setPositionActionMode(positionState.actionMode === 'trim' ? null : 'trim');
+        renderPositionManagement();
+    });
+
+    document.getElementById('positionRollBtn')?.addEventListener('click', () => {
+        const expiryInput = document.getElementById('positionRollExpiry');
+        const strikeInput = document.getElementById('positionRollStrike');
+        if (positionState.active && strikeInput) {
+            strikeInput.value = getPositionAnchorStrike(positionState.active.currentLegs, positionState.active.entryMarketState.spot).toFixed(1);
+        }
+        if (positionState.active && expiryInput && !expiryInput.value) {
+            const nextDate = new Date();
+            nextDate.setDate(nextDate.getDate() + Math.max(30, Math.round(sharedMarketState.tYears * 365.25)));
+            expiryInput.value = nextDate.toISOString().split('T')[0];
+        }
+        setPositionActionMode(positionState.actionMode === 'roll' ? null : 'roll');
+        renderPositionManagement();
+    });
+
+    document.getElementById('positionCloseBtn')?.addEventListener('click', handleCloseAll);
+    document.getElementById('positionTrimConfirmBtn')?.addEventListener('click', handleTrimConfirm);
+    document.getElementById('positionRollConfirmBtn')?.addEventListener('click', handleRollConfirm);
+    document.getElementById('positionJournalExportBtn')?.addEventListener('click', exportPositionJournal);
+
+    document.getElementById('positionEntryQty')?.addEventListener('input', (event) => {
+        const parsed = parseInt(event.target.value, 10);
+        if (!Number.isFinite(parsed)) return;
+        updatePositionQty(parsed);
+    });
+
+    document.getElementById('positionRollStrike')?.addEventListener('input', renderPositionManagement);
+    document.getElementById('positionRollExpiry')?.addEventListener('input', renderPositionManagement);
+
+    window.refreshPositionManagement = renderPositionManagement;
+    renderPositionManagement();
+}
+
+function isCatalystReady() {
+    return tradeThesisState.catalyst.trim().length > 0 || tradeThesisState.tags.length > 0;
+}
+
+function isThesisReady() {
+    return Boolean(isCatalystReady() && tradeThesisState.priceView && tradeThesisState.volatilityView && tradeThesisState.timeframe);
+}
+
+function inferScenarioFromPriceView(priceView) {
+    if (priceView === 'up') return 'bullish';
+    if (priceView === 'down') return 'bearish';
+    if (priceView === 'move_big') return 'volatile';
+    if (priceView === 'flat') return 'neutral';
+    return null;
+}
+
+function scoreTradeThesisStrategy(strategy) {
+    if (!isThesisReady()) return 0;
+
+    let score = 0;
+
+    if (strategy.priceViews.includes(tradeThesisState.priceView)) {
+        score += 6;
+    } else if (tradeThesisState.priceView === 'move_big' && strategy.priceViews.some(view => view === 'up' || view === 'down')) {
+        score += 1.5;
+    } else if ((tradeThesisState.priceView === 'up' || tradeThesisState.priceView === 'down') && strategy.priceViews.includes('move_big')) {
+        score += 2.5;
+    }
+
+    if (strategy.volViews.includes(tradeThesisState.volatilityView)) {
+        score += 4;
+    } else if (tradeThesisState.volatilityView === 'same') {
+        score += 1;
+    }
+
+    if (strategy.timeframes.includes(tradeThesisState.timeframe)) {
+        score += 3;
+    } else if (
+        (tradeThesisState.timeframe === 'weeks' && (strategy.timeframes.includes('days') || strategy.timeframes.includes('months'))) ||
+        (tradeThesisState.timeframe !== 'weeks' && strategy.timeframes.includes('weeks'))
+    ) {
+        score += 1;
+    }
+
+    const matchingTags = tradeThesisState.tags.filter(tag => strategy.tags.includes(tag)).length;
+    score += matchingTags * 0.75;
+
+    if (strategy.scenario === inferScenarioFromPriceView(tradeThesisState.priceView)) {
+        score += 1;
+    }
+
+    return score;
+}
+
+function getTradeThesisSuggestions() {
+    if (!isThesisReady()) return [];
+
+    return THESIS_STRATEGY_LIBRARY
+        .map(strategy => ({
+            ...strategy,
+            score: scoreTradeThesisStrategy(strategy),
+            label: window.strategyPresets?.[strategy.presetId]?.label || strategy.presetId
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+}
+
+function formatThesisCurrency(value) {
+    if (!Number.isFinite(value)) return '--';
+    return `$${Math.round(value).toLocaleString()}`;
+}
+
+function getSelectedThesisStrategyContext() {
+    const fallbackPresetId = tradeThesisState.suggestions[0]?.presetId || null;
+    const selectedPresetId = tradeThesisState.selectedPresetId || fallbackPresetId;
+    if (!selectedPresetId) return null;
+
+    const useBuilderStrategy = tradeThesisState.loadedPresetId === selectedPresetId && strategyState.legs.length > 0;
+    const legs = useBuilderStrategy ? strategyState.legs : buildPresetLegs(selectedPresetId);
+    if (!legs.length) return null;
+
+    return {
+        presetId: selectedPresetId,
+        label: window.strategyPresets?.[selectedPresetId]?.label || selectedPresetId,
+        metrics: computeStrategyMetrics(legs),
+        useBuilderStrategy
+    };
+}
+
+function setStepDisabled(stepEl, disabled) {
+    if (!stepEl) return;
+    stepEl.classList.toggle('is-blocked', disabled);
+    stepEl.querySelectorAll('button, input, textarea, select').forEach(control => {
+        control.disabled = disabled;
+    });
+}
+
+function updateTradeThesisControls() {
+    document.querySelectorAll('.thesis-tag').forEach(button => {
+        const isActive = tradeThesisState.tags.includes(button.dataset.tag);
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+    });
+
+    document.querySelectorAll('.thesis-choice').forEach(button => {
+        const field = button.dataset.field;
+        const isActive = tradeThesisState[field] === button.dataset.value;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+    });
+}
+
+function updateTradeThesisStepStates() {
+    const step1 = document.getElementById('tradeThesisStep1');
+    const step2 = document.getElementById('tradeThesisStep2');
+    const step3 = document.getElementById('tradeThesisStep3');
+    const step4 = document.getElementById('tradeThesisStep4');
+
+    const catalystReady = isCatalystReady();
+    const thesisReady = isThesisReady();
+    const suggestionsReady = tradeThesisState.suggestions.length > 0;
+
+    step1?.classList.toggle('is-complete', catalystReady);
+    step2?.classList.toggle('is-complete', thesisReady);
+    step3?.classList.toggle('is-complete', suggestionsReady);
+    step4?.classList.toggle('is-complete', suggestionsReady && Boolean(getSelectedThesisStrategyContext()));
+
+    setStepDisabled(step2, !catalystReady);
+    setStepDisabled(step3, !thesisReady);
+    setStepDisabled(step4, !suggestionsReady);
+}
+
+function renderTradeThesisSummary() {
+    const summaryEl = document.getElementById('thesisSummaryLine');
+    if (!summaryEl) return;
+
+    if (!isThesisReady()) {
+        summaryEl.textContent = 'Choose your direction, vol view, and timeframe to build the thesis statement.';
+        summaryEl.classList.remove('is-ready');
+        return;
+    }
+
+    summaryEl.textContent = `You believe price will ${THESIS_SUMMARY_LABELS.priceView[tradeThesisState.priceView]} with ${THESIS_SUMMARY_LABELS.volatilityView[tradeThesisState.volatilityView]} volatility over ${THESIS_SUMMARY_LABELS.timeframe[tradeThesisState.timeframe]}.`;
+    summaryEl.classList.add('is-ready');
+
+    const scenarioId = inferScenarioFromPriceView(tradeThesisState.priceView);
+    if (scenarioId) setActivePlaybookScenario(scenarioId);
+}
+
+function renderTradeThesisSuggestions() {
+    const container = document.getElementById('thesisSuggestions');
+    if (!container) return;
+
+    if (!isThesisReady()) {
+        tradeThesisState.suggestions = [];
+        container.innerHTML = '<div class="thesis-placeholder">Finish the thesis above to see matching strategies.</div>';
+        updateTradeThesisStepStates();
+        return;
+    }
+
+    tradeThesisState.suggestions = getTradeThesisSuggestions();
+    if (!tradeThesisState.suggestions.length) {
+        container.innerHTML = '<div class="thesis-placeholder">No close match found. Refine the thesis inputs and try again.</div>';
+        updateTradeThesisStepStates();
+        return;
+    }
+
+    if (!tradeThesisState.selectedPresetId || !tradeThesisState.suggestions.some(strategy => strategy.presetId === tradeThesisState.selectedPresetId)) {
+        tradeThesisState.selectedPresetId = tradeThesisState.suggestions[0].presetId;
+    }
+
+    container.innerHTML = tradeThesisState.suggestions.map((strategy, index) => `
+        <article class="thesis-suggestion-card ${index === 0 ? 'is-best' : ''} ${tradeThesisState.selectedPresetId === strategy.presetId ? 'is-selected' : ''}" data-preset-id="${strategy.presetId}">
+            <div class="thesis-suggestion-head">
+                <div>
+                    <h5>${strategy.label}</h5>
+                    <p>${strategy.rationale}</p>
+                </div>
+                ${index === 0 ? '<span class="thesis-best-badge">Best Match</span>' : ''}
+            </div>
+            <div class="thesis-suggestion-actions">
+                <span class="thesis-fit-score">Fit ${strategy.score.toFixed(1)}</span>
+                <button type="button" class="thesis-load-btn" data-load-preset="${strategy.presetId}">Load →</button>
+            </div>
+        </article>
+    `).join('');
+
+    container.querySelectorAll('.thesis-suggestion-card').forEach(card => {
+        card.addEventListener('click', (event) => {
+            if (event.target.closest('.thesis-load-btn')) return;
+            tradeThesisState.selectedPresetId = card.dataset.presetId;
+            renderTradeThesisSuggestions();
+            renderTradeThesisRisk();
+        });
+    });
+
+    container.querySelectorAll('.thesis-load-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            loadStrategyPreset(button.dataset.loadPreset);
+        });
+    });
+
+    updateTradeThesisStepStates();
+}
+
+function renderTradeThesisRisk() {
+    const pctValueEl = document.getElementById('thesisRiskPctValue');
+    const trafficEl = document.getElementById('riskTraffic');
+    const trafficLabelEl = document.getElementById('riskTrafficLabel');
+    const contractsEl = document.getElementById('thesisContracts');
+    const maxLossEl = document.getElementById('thesisMaxLossPerContract');
+    const detailsEl = document.getElementById('thesisRiskDetails');
+    const warningEl = document.getElementById('thesisRiskWarning');
+    const peerNoteEl = document.getElementById('thesisPeerNote');
+
+    if (!pctValueEl || !trafficEl || !trafficLabelEl || !contractsEl || !maxLossEl || !detailsEl || !warningEl || !peerNoteEl) {
+        return;
+    }
+
+    pctValueEl.textContent = `${tradeThesisState.riskPct}%`;
+
+    const riskTone = tradeThesisState.riskPct < 3 ? 'green' : (tradeThesisState.riskPct <= 5 ? 'yellow' : 'red');
+    const toneLabel = riskTone === 'green' ? 'Conservative' : (riskTone === 'yellow' ? 'Moderate' : 'Aggressive');
+    trafficEl.dataset.riskTone = riskTone;
+    trafficLabelEl.textContent = toneLabel;
+    warningEl.classList.toggle('is-visible', riskTone === 'red');
+    peerNoteEl.classList.toggle('is-hot', tradeThesisState.riskPct >= 8);
+
+    const strategyContext = getSelectedThesisStrategyContext();
+    if (!strategyContext) {
+        contractsEl.textContent = '--';
+        maxLossEl.textContent = '--';
+        detailsEl.textContent = 'Select a strategy above to calculate a risk budget and contract count.';
+        return;
+    }
+
+    const rawMaxLoss = strategyContext.metrics?.maxLoss;
+    const maxLossPerContract = Number.isFinite(rawMaxLoss) ? Math.abs(Math.min(rawMaxLoss, 0)) : Infinity;
+    const riskBudget = tradeThesisState.aum * (tradeThesisState.riskPct / 100);
+
+    if (!Number.isFinite(maxLossPerContract) || maxLossPerContract === 0) {
+        contractsEl.textContent = 'Manual';
+        maxLossEl.textContent = 'Undefined';
+        detailsEl.textContent = `${strategyContext.label} does not have a clean defined max loss in this model, so size it manually before loading.`;
+        return;
+    }
+
+    const contracts = Math.floor(riskBudget / maxLossPerContract);
+    contractsEl.textContent = `${contracts}`;
+    maxLossEl.textContent = formatThesisCurrency(maxLossPerContract);
+
+    if (contracts < 1) {
+        detailsEl.textContent = `${strategyContext.label} risks ${formatThesisCurrency(maxLossPerContract)} per 1-lot. Your ${tradeThesisState.riskPct}% budget is ${formatThesisCurrency(riskBudget)}, so even one contract is oversized.`;
+        return;
+    }
+
+    detailsEl.textContent = `${strategyContext.label} fits a ${formatThesisCurrency(riskBudget)} risk budget at roughly ${contracts} contract${contracts === 1 ? '' : 's'}, using ${formatThesisCurrency(maxLossPerContract)} max loss per 1-lot.`;
+}
+
+function refreshTradeThesisPanel() {
+    updateTradeThesisControls();
+    renderTradeThesisSummary();
+    renderTradeThesisSuggestions();
+    renderTradeThesisRisk();
+    updateTradeThesisStepStates();
+}
+
+export function initTradeThesisPanel() {
+    const panel = document.getElementById('tradeThesisPanel');
+    if (!panel) return;
+
+    const catalystInput = document.getElementById('thesisCatalystInput');
+    const aumInput = document.getElementById('thesisAumInput');
+    const riskSlider = document.getElementById('thesisRiskPct');
+
+    catalystInput?.addEventListener('input', (event) => {
+        tradeThesisState.catalyst = event.target.value;
+        refreshTradeThesisPanel();
+    });
+
+    panel.querySelectorAll('.thesis-tag').forEach(button => {
+        button.addEventListener('click', () => {
+            const tag = button.dataset.tag;
+            if (tradeThesisState.tags.includes(tag)) {
+                tradeThesisState.tags = tradeThesisState.tags.filter(item => item !== tag);
+            } else {
+                tradeThesisState.tags = [...tradeThesisState.tags, tag];
+            }
+            refreshTradeThesisPanel();
+        });
+    });
+
+    panel.querySelectorAll('.thesis-choice').forEach(button => {
+        button.addEventListener('click', () => {
+            tradeThesisState[button.dataset.field] = button.dataset.value;
+            refreshTradeThesisPanel();
+        });
+    });
+
+    aumInput?.addEventListener('input', (event) => {
+        const parsed = parseFloat(event.target.value);
+        if (!Number.isFinite(parsed)) return;
+        tradeThesisState.aum = Math.max(1000, parsed);
+        renderTradeThesisRisk();
+    });
+
+    riskSlider?.addEventListener('input', (event) => {
+        const parsed = parseInt(event.target.value, 10);
+        if (!Number.isFinite(parsed)) return;
+        tradeThesisState.riskPct = Math.min(10, Math.max(1, parsed));
+        renderTradeThesisRisk();
+    });
+
+    window.refreshTradeThesisPanel = refreshTradeThesisPanel;
+    window.refreshTradeThesisRisk = renderTradeThesisRisk;
+
+    refreshTradeThesisPanel();
+}
+
 // Global exposure for UI onclick handlers
 window.updateLeg = updateLeg;
 window.removeLeg = removeLeg;
@@ -960,14 +2618,14 @@ window.loadStrategyPreset = loadStrategyPreset;
 const STRATEGY_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899'];
 
 // Compute all metrics for a set of legs using the CURRENT sharedMarketState
-function computeStrategyMetrics(legs) {
+function computeStrategyMetrics(legs, marketState = sharedMarketState) {
     if (!legs || legs.length === 0) return null;
 
-    const S = sharedMarketState.spot;
-    const T = sharedMarketState.tYears;
-    const v = sharedMarketState.volatility;
-    const r = sharedMarketState.rate;
-    const q = sharedMarketState.dividend;
+    const S = marketState.spot;
+    const T = marketState.tYears;
+    const v = marketState.volatility;
+    const r = marketState.rate;
+    const q = marketState.dividend;
 
     // Net debit/credit at entry
     let netCost = 0;
@@ -1000,48 +2658,84 @@ function computeStrategyMetrics(legs) {
     });
     const thetaDaily = netTheta / 365.25;
 
-    // Expiration P/L curve for stats (100 points ± 30%)
     const start = S * 0.70;
     const end = S * 1.30;
     const steps = 100;
     const stepSize = (end - start) / steps;
     const expiryData = [];
+    const expiryPoints = [];
     for (let i = 0; i <= steps; i++) {
         const sp = start + i * stepSize;
-        let pl = 0;
-        legs.forEach(leg => {
-            pl += calculateNetValue(sp, leg, 0);
-        });
+        const pl = calculateStrategyPayoffAt(sp, 0, legs, marketState);
         expiryData.push(pl);
+        expiryPoints.push({ x: sp, y: pl });
     }
 
-    const maxGain = Math.max(...expiryData);
-    const maxLoss = Math.min(...expiryData);
+    const analysis = analyzeExpiryProfile(expiryPoints, legs, marketState, S, {
+        delta: netDelta,
+        gamma: netGamma,
+        vega: netVega,
+        theta: thetaDaily,
+        rho: netRho
+    });
+    const maxGainComparable = analysis.maxProfitText.includes('Infinite') ? Infinity : analysis.maxProfitValue;
+    const maxLossComparable = analysis.maxLossText.includes('Unlimited') ? Infinity : Math.abs(analysis.maxLossValue);
+    const riskRewardValue = !Number.isFinite(maxLossComparable) || maxLossComparable <= 0
+        ? null
+        : (!Number.isFinite(maxGainComparable) ? Infinity : maxGainComparable / maxLossComparable);
+    const aumPct = Number.isFinite(maxLossComparable) ? (maxLossComparable / getPositionPortfolioAum()) * 100 : Infinity;
+    const closestBreakEvenMove = analysis.breakevens.length
+        ? Math.min(...analysis.breakevens.map(point => Math.abs(point.pctFromSpot)))
+        : null;
 
-    // Breakevens
-    const breakevens = [];
-    for (let i = 0; i < expiryData.length - 1; i++) {
-        if (expiryData[i] * expiryData[i + 1] <= 0) {
-            const x1 = start + i * stepSize;
-            const x2 = start + (i + 1) * stepSize;
-            const y1 = expiryData[i], y2 = expiryData[i + 1];
-            if (y1 !== y2) breakevens.push(x1 + (0 - y1) * (x2 - x1) / (y2 - y1));
-        }
-    }
+    const formatDollarWhole = (value) => `$${Math.round(value).toLocaleString()}`;
+    const entryCostText = netCost >= 0
+        ? `${formatDollarWhole(netCost)} debit`
+        : `-${formatDollarWhole(Math.abs(netCost))} credit`;
+    const maxProfitText = analysis.maxProfitText.includes('Infinite')
+        ? 'Unlimited'
+        : formatDollarWhole(Math.max(0, analysis.maxProfitValue));
+    const maxLossText = analysis.maxLossText.includes('Unlimited')
+        ? 'Unlimited'
+        : formatDollarWhole(maxLossComparable);
+    const breakevensText = analysis.breakevens.length
+        ? analysis.breakevens.map(point => `$${point.price.toFixed(1)}`).join(' / ')
+        : 'None';
+    const thetaText = `${netTheta >= 0 ? '+' : '-'}$${Math.abs(thetaDaily).toFixed(1)}`;
+    const riskRewardText = riskRewardValue === null
+        ? '--'
+        : (!Number.isFinite(riskRewardValue) ? '1:∞' : `1:${riskRewardValue.toFixed(2)}`);
 
     return {
         legs: legs.length,
         netCost,
-        maxGain: isFinite(maxGain) ? maxGain : Infinity,
-        maxLoss: isFinite(maxLoss) ? maxLoss : -Infinity,
-        lowerBE: breakevens[0] ?? null,
-        upperBE: breakevens[1] ?? null,
+        maxGain: Number.isFinite(maxGainComparable) ? maxGainComparable : Infinity,
+        maxLoss: Number.isFinite(maxLossComparable) ? -maxLossComparable : -Infinity,
+        lowerBE: analysis.breakevens[0]?.price ?? null,
+        upperBE: analysis.breakevens[1]?.price ?? null,
         delta: netDelta,
         gamma: netGamma,
         vega: netVega,
         theta: thetaDaily,
         rho: netRho,
         expiryData,
+        expiryPoints,
+        analysis,
+        winProbability: analysis.probability?.probProfit ?? null,
+        winProbabilityText: analysis.probability ? `${(analysis.probability.probProfit * 100).toFixed(1)}%` : '--',
+        expectedPL: analysis.probability?.expectedPL ?? null,
+        entryCostText,
+        maxProfitText,
+        maxLossText,
+        breakevensText,
+        riskRewardValue,
+        riskRewardText,
+        aumPct,
+        aumPctText: Number.isFinite(aumPct) ? `${aumPct.toFixed(2)}%` : '--',
+        thetaText,
+        maxGainComparable,
+        maxLossComparable,
+        closestBreakEvenMove,
         start, end, stepSize,
         steps
     };
@@ -1062,162 +2756,453 @@ function computeTodayData(legs, start, steps, stepSize) {
     return todayData;
 }
 
-// Render the comparison table
-function renderCompareTable() {
-    const head = document.getElementById('compareTableHead');
-    const body = document.getElementById('compareTableBody');
-    if (!head || !body) return;
+const SNAPSHOT_LABELS = ['Snapshot A', 'Snapshot B', 'Snapshot C'];
+const COMPARE_SLOT_LABELS = ['Strategy A', 'Strategy B', 'Strategy C'];
 
-    const strategies = strategyState.savedStrategies;
-
-    // Build header columns
-    const existingCols = head.querySelectorAll('.strategy-col');
-    existingCols.forEach(el => el.remove());
-    strategies.forEach((s, i) => {
-        const th = document.createElement('th');
-        th.className = 'strategy-col';
-        th.style.cssText = `padding: 0.75rem; color: ${STRATEGY_COLORS[i]}; min-width: 160px;`;
-        th.innerHTML = `<div>${s.name}</div>
-            <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
-                <button onclick="window.loadSavedStrategy(${i})" class="add-leg-btn" style="font-size:0.7rem;padding:2px 8px;">Load</button>
-                <button onclick="window.deleteSavedStrategy(${i})" class="remove-leg-btn" style="position:static;width:auto;height:auto;padding:2px 8px;font-size:0.7rem;">×</button>
-            </div>`;
-        head.appendChild(th);
-    });
-
-    // Compute metrics for each strategy
-    const metrics = strategies.map(s => computeStrategyMetrics(s.legs));
-
-    const fmt = (v, prefix = '', suffix = '') => v === null || v === undefined ? '--'
-        : !isFinite(v) ? (v > 0 ? '∞' : '-∞')
-            : `${prefix}${v.toFixed(2)}${suffix}`;
-
-    const rows = [
-        { label: 'No. of Legs', fn: m => m.legs },
-        { label: 'Net Debit (-) / Credit (+)', fn: m => fmt(m.netCost, '$') },
-        { label: 'Max Loss', fn: m => fmt(m.maxLoss, '$') },
-        { label: 'Max Gain', fn: m => fmt(m.maxGain, '$') },
-        { label: 'Lower Breakeven', fn: m => fmt(m.lowerBE, '$') },
-        { label: 'Upper Breakeven', fn: m => fmt(m.upperBE, '$') },
-        { label: 'Net Delta (Δ)', fn: m => fmt(m.delta) },
-        { label: 'Net Gamma (Γ)', fn: m => fmt(m.gamma) },
-        { label: 'Net Vega (ν)', fn: m => fmt(m.vega) },
-        { label: 'Net Theta/day (Θ)', fn: m => fmt(m.theta) },
-        { label: 'Net Rho (ρ)', fn: m => fmt(m.rho) },
-    ];
-
-    body.innerHTML = '';
-    rows.forEach((row, ri) => {
-        const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid var(--border-light)';
-        tr.style.background = ri % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent';
-        let html = `<td style="padding:0.75rem;font-weight:600;position:sticky;left:0;background:var(--bg-card);color:var(--text-secondary);">${row.label}</td>`;
-        metrics.forEach((m, i) => {
-            const val = m ? row.fn(m) : '--';
-            html += `<td style="padding:0.75rem;font-family:'JetBrains Mono',monospace;color:${STRATEGY_COLORS[i]};">${val}</td>`;
-        });
-        tr.innerHTML = html;
-        body.appendChild(tr);
-    });
-
-    return metrics;
+function getCompareContextSummaryText() {
+    return `${sharedMarketState.ticker} | Spot $${sharedMarketState.spot.toFixed(2)} | IV ${(sharedMarketState.volatility * 100).toFixed(1)}% | ${Math.round(sharedMarketState.tYears * 365.25)} DTE | Rate ${(sharedMarketState.rate * 100).toFixed(1)}%`;
 }
 
-// Render overlaid charts
-function renderCompareCharts(metrics) {
-    const S = sharedMarketState.spot;
-    const start = S * 0.70;
-    const end = S * 1.30;
-    const steps = 100;
-    const stepSize = (end - start) / steps;
-    const labels = [];
-    for (let i = 0; i <= steps; i++) labels.push((start + i * stepSize).toFixed(1));
+function getLegSignature(legs = []) {
+    return cloneLegs(legs)
+        .map(leg => ([
+            leg.type,
+            leg.action,
+            Number(leg.strike ?? 0).toFixed(4),
+            Number(leg.expiry ?? 0).toFixed(6),
+            Number(leg.quantity ?? 0).toFixed(4)
+        ]).join(':'))
+        .sort()
+        .join('|');
+}
 
-    const expiryDatasets = [];
-    const todayDatasets = [];
+function legsMatch(left = [], right = []) {
+    if (left.length !== right.length) return false;
+    return getLegSignature(left) === getLegSignature(right);
+}
 
-    strategyState.savedStrategies.forEach((s, i) => {
-        const m = metrics[i];
-        if (!m) return;
-        const color = STRATEGY_COLORS[i];
-        const todayData = computeTodayData(s.legs, start, steps, stepSize);
+function getCurrentStrategySnapshotMeta(index) {
+    const defaultName = `Custom Strategy ${index}`;
+    const activePosition = positionState.active;
+    if (activePosition && legsMatch(strategyState.legs, activePosition.currentLegs)) {
+        return {
+            displayName: activePosition.label || defaultName,
+            presetId: tradeThesisState.loadedPresetId || null
+        };
+    }
 
-        expiryDatasets.push({
-            label: s.name,
-            data: m.expiryData,
-            borderColor: color,
-            backgroundColor: color + '20',
-            borderWidth: 2.5,
-            pointRadius: 0,
-            tension: 0,
-            fill: false
-        });
-        todayDatasets.push({
-            label: s.name,
-            data: todayData,
-            borderColor: color,
-            backgroundColor: color + '20',
-            borderWidth: 2.5,
-            pointRadius: 0,
-            tension: 0.4,
-            fill: false
-        });
+    return {
+        displayName: defaultName,
+        presetId: null
+    };
+}
+
+function showComparisonToast(message) {
+    const notification = document.createElement('div');
+    notification.style.cssText = 'position:fixed;top:1rem;right:1rem;background:#10b981;color:white;padding:0.75rem 1.25rem;border-radius:8px;z-index:9999;font-family:\'Outfit\',sans-serif;font-weight:600;animation:fadeIn 0.3s ease;';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    window.setTimeout(() => notification.remove(), 2200);
+}
+
+function getCompareSurface(mode = 'desktop') {
+    if (mode === 'modal') {
+        return {
+            mode,
+            contextSummary: document.getElementById('compareModalContextSummary'),
+            copyStatus: document.getElementById('compareModalCopyStatus'),
+            copyBtn: document.getElementById('copyComparisonModalBtn'),
+            chartCanvas: document.getElementById('compareModalExpiryChart'),
+            tableHead: document.getElementById('compareModalTableHead'),
+            tableBody: document.getElementById('compareModalTableBody'),
+            recommendation: document.getElementById('compareModalRecommendationText'),
+            chartKey: 'compareModalExpiryChart'
+        };
+    }
+
+    return {
+        mode,
+        contextSummary: document.getElementById('compareContextSummary'),
+        copyStatus: document.getElementById('compareCopyStatus'),
+        copyBtn: document.getElementById('copyComparisonBtn'),
+        chartCanvas: document.getElementById('compareExpiryChart'),
+        tableHead: document.getElementById('compareTableHead'),
+        tableBody: document.getElementById('compareTableBody'),
+        recommendation: document.getElementById('compareRecommendationText'),
+        chartKey: 'compareExpiryChart'
+    };
+}
+
+function setCompareCopyStatus(text = '', mode = 'desktop') {
+    const surface = getCompareSurface(mode);
+    if (surface.copyStatus) surface.copyStatus.textContent = text;
+}
+
+function getComparisonEntries() {
+    return strategyState.savedStrategies
+        .map((strategy, index) => {
+            const metrics = computeStrategyMetrics(strategy.legs);
+            if (!metrics) return null;
+            return {
+                index,
+                color: STRATEGY_COLORS[index % STRATEGY_COLORS.length],
+                strategy,
+                metrics
+            };
+        })
+        .filter(Boolean);
+}
+
+function getCompareWinnerIndices(entries, row) {
+    if (!row.score) return new Set();
+
+    const scored = entries
+        .map((entry, index) => ({ index, score: row.score(entry) }))
+        .filter(item => item.score !== null && item.score !== undefined && !Number.isNaN(item.score));
+
+    if (!scored.length) return new Set();
+
+    const best = Math.max(...scored.map(item => item.score));
+    if (best === -Infinity || Number.isNaN(best)) return new Set();
+
+    return new Set(
+        scored
+            .filter(item => item.score === best || (Number.isFinite(item.score) && Number.isFinite(best) && Math.abs(item.score - best) < 1e-9))
+            .map(item => item.index)
+    );
+}
+
+function formatComparisonDelta(delta) {
+    return Math.abs(delta) < 0.05 ? '~0' : delta.toFixed(2);
+}
+
+function formatRecommendationLabel(entry) {
+    return `${entry.strategy.slotLabel} (${entry.strategy.displayName})`;
+}
+
+function getComparisonScore(entry) {
+    const metric = entry.metrics;
+    const thesisBonus = (
+        (isThesisReady() && tradeThesisState.priceView === 'move_big' && metric.maxGainComparable === Infinity ? 8 : 0) +
+        (isThesisReady() && tradeThesisState.priceView === 'flat' && metric.theta > 0 ? 8 : 0) +
+        (isThesisReady() && tradeThesisState.priceView === 'up' && metric.delta > 0 ? 5 : 0) +
+        (isThesisReady() && tradeThesisState.priceView === 'down' && metric.delta < 0 ? 5 : 0)
+    );
+
+    return (
+        ((metric.winProbability ?? 0) * 100 * 0.45) +
+        (Number.isFinite(metric.riskRewardValue) ? Math.min(metric.riskRewardValue, 4) * 8 : (metric.riskRewardValue === Infinity ? 32 : 0)) +
+        (Number.isFinite(metric.expectedPL) && Number.isFinite(metric.maxLossComparable) && metric.maxLossComparable > 0
+            ? Math.max(-20, Math.min(20, (metric.expectedPL / metric.maxLossComparable) * 50))
+            : 0) -
+        (Number.isFinite(metric.aumPct) ? metric.aumPct * 2 : 20) +
+        (metric.maxGainComparable === Infinity ? 10 : 0) +
+        thesisBonus
+    );
+}
+
+function buildComparisonRecommendation(entries) {
+    if (entries.length < 2) {
+        return 'Save at least two snapshots to generate a recommendation.';
+    }
+
+    const bestPop = entries.reduce((best, entry) => ((entry.metrics.winProbability ?? -1) > (best.metrics.winProbability ?? -1) ? entry : best), entries[0]);
+    const highestDebit = entries.reduce((best, entry) => (Math.max(entry.metrics.netCost, 0) > Math.max(best.metrics.netCost, 0) ? entry : best), entries[0]);
+    const highestUpside = entries.reduce((best, entry) => ((entry.metrics.maxGainComparable ?? -Infinity) > (best.metrics.maxGainComparable ?? -Infinity) ? entry : best), entries[0]);
+    const highestRisk = entries.reduce((best, entry) => ((entry.metrics.aumPct ?? -Infinity) > (best.metrics.aumPct ?? -Infinity) ? entry : best), entries[0]);
+    const recommended = entries.reduce((best, entry) => {
+        const score = getComparisonScore(entry);
+        if (!best || score > best.score) return { entry, score };
+        return best;
+    }, null)?.entry || entries[0];
+
+    const thesisContext = isThesisReady()
+        ? (tradeThesisState.priceView === 'move_big'
+            ? 'For your volatility thesis,'
+            : tradeThesisState.priceView === 'up'
+                ? 'For your bullish thesis,'
+                : tradeThesisState.priceView === 'down'
+                    ? 'For your bearish thesis,'
+                    : 'For your range-bound thesis,')
+        : 'For the current market context,';
+
+    const sentences = [
+        `${formatRecommendationLabel(highestUpside)} ${highestUpside.metrics.maxGainComparable === Infinity ? 'has unlimited upside' : `offers the highest payoff ceiling at ${highestUpside.metrics.maxProfitText}`}${highestDebit.index === highestUpside.index ? ' but also carries the highest entry cost.' : '.'}`,
+        `${formatRecommendationLabel(bestPop)} has the highest win probability at ${bestPop.metrics.winProbabilityText}${bestPop.metrics.maxGainComparable !== Infinity ? ' but the gains are capped.' : '.'}`,
+        `${thesisContext} ${formatRecommendationLabel(recommended)} looks strongest overall because it balances ${recommended.metrics.winProbabilityText} win probability, ${recommended.metrics.riskRewardText} risk/reward, and ${recommended.metrics.aumPctText} of AUM.`
+    ];
+
+    if (Number.isFinite(highestRisk.metrics.aumPct) && highestRisk.metrics.aumPct > 5) {
+        sentences.push(`Consider trimming ${formatRecommendationLabel(highestRisk)} before the meeting because ${highestRisk.metrics.aumPctText} of AUM is aggressive.`);
+    }
+
+    return sentences.join(' ');
+}
+
+function buildComparisonText(entries, recommendation) {
+    const header = ['Metric', ...entries.map(entry => entry.strategy.slotLabel)];
+    const rows = [
+        ['Name', ...entries.map(entry => entry.strategy.displayName)],
+        ['Entry Cost', ...entries.map(entry => entry.metrics.entryCostText)],
+        ['Max Profit', ...entries.map(entry => entry.metrics.maxProfitText)],
+        ['Max Loss', ...entries.map(entry => entry.metrics.maxLossText)],
+        ['Win Probability', ...entries.map(entry => entry.metrics.winProbabilityText)],
+        ['Breakevens', ...entries.map(entry => entry.metrics.breakevensText)],
+        ['Net Delta', ...entries.map(entry => formatComparisonDelta(entry.metrics.delta))],
+        ['Net Theta/day', ...entries.map(entry => entry.metrics.thetaText)],
+        ['Risk:Reward', ...entries.map(entry => entry.metrics.riskRewardText)],
+        ['% of AUM', ...entries.map(entry => entry.metrics.aumPctText)]
+    ];
+
+    return [
+        'Strategy Comparison',
+        getCompareContextSummaryText(),
+        '',
+        `| ${header.join(' | ')} |`,
+        `| ${header.map(() => '---').join(' | ')} |`,
+        ...rows.map(row => `| ${row.join(' | ')} |`),
+        '',
+        `Recommendation: ${recommendation}`
+    ].join('\n');
+}
+
+function renderCompareContextSummary(surface) {
+    if (surface.contextSummary) surface.contextSummary.textContent = getCompareContextSummaryText();
+}
+
+function renderCompareTable(entries, surface) {
+    const { tableHead, tableBody } = surface;
+    if (!tableHead || !tableBody) return;
+
+    tableHead.querySelectorAll('.compare-strategy-col').forEach(column => column.remove());
+
+    entries.forEach(entry => {
+        const th = document.createElement('th');
+        th.className = 'compare-strategy-col';
+        th.innerHTML = `
+            <div class="compare-snapshot-label">${entry.strategy.slotLabel}</div>
+            <div class="compare-strategy-name" style="color:${entry.color};">${entry.strategy.displayName}</div>
+            <div class="compare-col-actions">
+                <button onclick="window.loadSavedStrategy(${entry.index})" class="add-leg-btn">Load</button>
+                <button onclick="window.deleteSavedStrategy(${entry.index})" class="remove-leg-btn">×</button>
+            </div>
+        `;
+        tableHead.appendChild(th);
     });
 
-    // Zero line
-    const zeroLine = {
+    if (!entries.length) {
+        tableBody.innerHTML = '<tr><td colspan="2" class="position-journal-empty">Save a strategy snapshot to begin comparing.</td></tr>';
+        return;
+    }
+
+    const rows = [
+        { label: 'Name', display: entry => entry.strategy.displayName },
+        { label: 'Entry Cost', display: entry => entry.metrics.entryCostText, score: entry => Number.isFinite(entry.metrics.netCost) ? -entry.metrics.netCost : null },
+        { label: 'Max Profit', display: entry => entry.metrics.maxProfitText, score: entry => entry.metrics.maxGainComparable },
+        { label: 'Max Loss', display: entry => entry.metrics.maxLossText, score: entry => Number.isFinite(entry.metrics.maxLossComparable) ? -entry.metrics.maxLossComparable : -Infinity },
+        { label: 'Win Probability', display: entry => entry.metrics.winProbabilityText, score: entry => entry.metrics.winProbability ?? -Infinity },
+        { label: 'Breakevens', display: entry => entry.metrics.breakevensText, score: entry => Number.isFinite(entry.metrics.closestBreakEvenMove) ? -entry.metrics.closestBreakEvenMove : -Infinity },
+        { label: 'Net Delta', display: entry => formatComparisonDelta(entry.metrics.delta), score: entry => -Math.abs(entry.metrics.delta) },
+        { label: 'Net Theta/day', display: entry => entry.metrics.thetaText, score: entry => entry.metrics.theta },
+        { label: 'Risk:Reward', display: entry => entry.metrics.riskRewardText, score: entry => entry.metrics.riskRewardValue ?? -Infinity },
+        { label: '% of AUM', display: entry => entry.metrics.aumPctText, score: entry => Number.isFinite(entry.metrics.aumPct) ? -entry.metrics.aumPct : -Infinity }
+    ];
+
+    tableBody.innerHTML = '';
+    rows.forEach((row, rowIndex) => {
+        const winnerIndices = getCompareWinnerIndices(entries, row);
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--border-light)';
+        tr.style.background = rowIndex % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent';
+
+        let html = `<td class="compare-row-label">${row.label}</td>`;
+        entries.forEach((entry, index) => {
+            const winnerClass = winnerIndices.has(index) ? 'compare-winner' : '';
+            html += `<td class="compare-value-cell ${winnerClass}">${row.display(entry)}</td>`;
+        });
+        tr.innerHTML = html;
+        tableBody.appendChild(tr);
+    });
+}
+
+function renderCompareCharts(entries, surface) {
+    const { chartCanvas, chartKey } = surface;
+    if (!chartCanvas) return;
+
+    if (strategyState[chartKey]) {
+        strategyState[chartKey].destroy();
+    }
+
+    if (!entries.length) {
+        strategyState[chartKey] = null;
+        return;
+    }
+
+    const datasets = entries.map(entry => ({
+        label: `${entry.strategy.slotLabel} · ${entry.strategy.displayName}`,
+        data: entry.metrics.expiryPoints,
+        borderColor: entry.color,
+        backgroundColor: `${entry.color}20`,
+        borderWidth: entry.strategy.slotLabel === 'Strategy A' ? 3 : 2.5,
+        pointRadius: 0,
+        tension: 0,
+        fill: false
+    }));
+
+    datasets.push({
         label: 'Break Even',
-        data: new Array(labels.length).fill(0),
+        data: entries[0].metrics.expiryPoints.map(point => ({ x: point.x, y: 0 })),
         borderColor: 'rgba(255,255,255,0.35)',
         borderWidth: 1.5,
         borderDash: [8, 4],
         pointRadius: 0,
         fill: false
-    };
-    expiryDatasets.push(zeroLine);
-    todayDatasets.push({ ...zeroLine, label: '' });
+    });
 
-    const commonOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-            legend: { labels: { color: '#f1f5f9' } },
-            tooltip: {
-                mode: 'index',
-                intersect: false,
-                callbacks: {
-                    title: ctx => `Spot: $${ctx[0].label}`,
-                    label: ctx => `${ctx.dataset.label}: $${Number(ctx.parsed.y).toFixed(2)}`
+    strategyState[chartKey] = new Chart(chartCanvas, {
+        type: 'line',
+        data: { datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#f1f5f9',
+                        filter: item => item.text !== 'Break Even'
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        title: context => `Spot: $${Number(context[0].parsed.x).toFixed(2)}`,
+                        label: context => `${context.dataset.label}: $${Number(context.parsed.y).toFixed(2)}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'linear',
+                    ticks: {
+                        color: '#94a3b8',
+                        maxTicksLimit: 8,
+                        callback: value => `$${Number(value).toFixed(0)}`
+                    },
+                    grid: { color: '#334155' },
+                    title: { display: true, text: 'Spot Price', color: '#94a3b8' }
+                },
+                y: {
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: '#334155' },
+                    title: { display: true, text: 'Expiry P&L ($)', color: '#94a3b8' }
                 }
             }
-        },
-        scales: {
-            x: {
-                ticks: { color: '#94a3b8', maxTicksLimit: 8 }, grid: { color: '#334155' },
-                title: { display: true, text: 'Spot Price', color: '#94a3b8' }
-            },
-            y: {
-                ticks: { color: '#94a3b8' }, grid: { color: '#334155' },
-                title: { display: true, text: 'Net P&L ($)', color: '#94a3b8' }
-            }
         }
-    };
+    });
+}
 
-    const expiryCtx = document.getElementById('compareExpiryChart');
-    if (expiryCtx) {
-        if (strategyState.compareExpiryChart) strategyState.compareExpiryChart.destroy();
-        strategyState.compareExpiryChart = new Chart(expiryCtx, {
-            type: 'line', data: { labels, datasets: expiryDatasets }, options: commonOptions
-        });
+function renderCompareRecommendation(entries, surface) {
+    const recommendation = buildComparisonRecommendation(entries);
+    if (surface.recommendation) surface.recommendation.textContent = recommendation;
+    return recommendation;
+}
+
+function refreshCompareView(mode = 'desktop') {
+    const surface = getCompareSurface(mode);
+    const entries = getComparisonEntries();
+    renderCompareContextSummary(surface);
+    renderCompareTable(entries, surface);
+    renderCompareCharts(entries, surface);
+    const recommendation = renderCompareRecommendation(entries, surface);
+    if (surface.copyBtn) surface.copyBtn.disabled = entries.length < 2;
+    return { entries, recommendation };
+}
+
+async function copyComparisonToClipboard(entries, recommendation, mode = 'desktop') {
+    const text = buildComparisonText(entries, recommendation);
+    const success = () => setCompareCopyStatus('Comparison copied to clipboard.', mode);
+    const failure = () => setCompareCopyStatus('Clipboard unavailable. Copy the table directly from the compare view.', mode);
+
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+            success();
+            return;
+        }
+    } catch {
+        // Fall through to legacy method
     }
-    const todayCtx = document.getElementById('compareTodayChart');
-    if (todayCtx) {
-        if (strategyState.compareTodayChart) strategyState.compareTodayChart.destroy();
-        strategyState.compareTodayChart = new Chart(todayCtx, {
-            type: 'line', data: { labels, datasets: todayDatasets }, options: { ...commonOptions }
+
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', 'true');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (copied) {
+            success();
+            return;
+        }
+    } catch {
+        // Fall through to failure state
+    }
+
+    failure();
+}
+
+function setActiveBuilderUtilityPane(pane) {
+    builderUiState.activeUtilityPane = pane;
+
+    document.querySelectorAll('#builderUtilityTabs .builder-utility-tab').forEach(button => {
+        button.classList.toggle('active', button.dataset.pane === pane);
+    });
+
+    document.querySelectorAll('#builderUtilityPanels .builder-utility-pane').forEach(panel => {
+        panel.classList.toggle('active', panel.dataset.pane === pane);
+    });
+
+    if (pane === 'compare') {
+        refreshCompareView('desktop');
+    } else if (pane === 'journal') {
+        window.refreshPositionManagement?.();
+    }
+}
+
+function initBuilderUtilityTabs() {
+    const tabs = document.querySelectorAll('#builderUtilityTabs .builder-utility-tab');
+    if (!tabs.length) return;
+
+    tabs.forEach(button => {
+        button.addEventListener('click', () => {
+            setActiveBuilderUtilityPane(button.dataset.pane);
         });
+    });
+
+    setActiveBuilderUtilityPane(builderUiState.activeUtilityPane);
+}
+
+function prefersCompareModal() {
+    return window.matchMedia('(max-width: 900px)').matches;
+}
+
+export function refreshBuilderViewport() {
+    window.syncStrategyChartControls?.();
+    updateStrategyChart();
+    strategyState.positionRollChart?.resize();
+    window.updateSandboxScenario?.();
+    window.refreshPositionManagement?.();
+    if (builderUiState.activeUtilityPane === 'compare') {
+        refreshCompareView('desktop');
+    }
+    if (document.getElementById('compareModal')?.classList.contains('show')) {
+        refreshCompareView('modal');
     }
 }
 
@@ -1226,64 +3211,131 @@ export function initStrategyComparison() {
     const compareBtn = document.getElementById('compareStrategiesBtn');
     const modal = document.getElementById('compareModal');
     const closeBtn = document.getElementById('closeCompareModal');
+    const presetSelect = document.getElementById('presetSelect');
+
+    initBuilderUtilityTabs();
 
     const updateCompareBtn = () => {
         const count = strategyState.savedStrategies.length;
-        if (compareBtn) {
-            compareBtn.textContent = count >= 2 ? `Compare (${count})` : `Saved: ${count}`;
-            compareBtn.style.display = count >= 1 ? 'inline-block' : 'none';
+        if (!compareBtn || !saveBtn) return;
+        compareBtn.textContent = `Compare (${count})`;
+        compareBtn.style.display = count >= 1 ? 'inline-block' : 'none';
+        saveBtn.disabled = count >= 3;
+        saveBtn.title = count >= 3 ? 'Maximum 3 snapshots saved.' : 'Save the current strategy using the shared market context.';
+    };
+
+    const openCompareSurface = () => {
+        if (!strategyState.savedStrategies.length) {
+            alert('Save at least one snapshot before opening compare mode.');
+            return;
         }
+
+        if (prefersCompareModal()) {
+            refreshCompareView('modal');
+            setCompareCopyStatus('', 'modal');
+            modal?.classList.add('show');
+            return;
+        }
+
+        setActiveBuilderUtilityPane('compare');
+        refreshCompareView('desktop');
+        setCompareCopyStatus('', 'desktop');
     };
 
     saveBtn?.addEventListener('click', () => {
         if (strategyState.legs.length === 0) {
-            alert('Add at least one leg before saving a strategy.');
+            alert('Add at least one leg before saving a comparison snapshot.');
             return;
         }
-        if (strategyState.savedStrategies.length >= 4) {
-            alert('Maximum 4 strategies allowed. Delete one to save a new one.');
+
+        if (strategyState.savedStrategies.length >= 3) {
+            alert('Maximum 3 snapshots allowed. Delete one to save a new one.');
             return;
         }
-        const n = strategyState.savedStrategies.length + 1;
-        const name = `Strategy ${n}`;
-        // Deep clone legs
-        const legsCopy = strategyState.legs.map(l => ({ ...l }));
-        strategyState.savedStrategies.push({ id: Date.now(), name, legs: legsCopy });
+
+        const index = strategyState.savedStrategies.length;
+        const snapshotMeta = getCurrentStrategySnapshotMeta(index + 1);
+        const snapshot = {
+            id: Date.now(),
+            snapshotLabel: SNAPSHOT_LABELS[index],
+            slotLabel: COMPARE_SLOT_LABELS[index],
+            displayName: snapshotMeta.displayName,
+            presetId: snapshotMeta.presetId,
+            legs: cloneLegs(strategyState.legs),
+            savedAt: Date.now()
+        };
+
+        strategyState.savedStrategies.push(snapshot);
         updateCompareBtn();
-        const notification = document.createElement('div');
-        notification.style.cssText = `position:fixed;top:1rem;right:1rem;background:#10b981;color:white;padding:0.75rem 1.25rem;border-radius:8px;z-index:9999;font-family:'Outfit',sans-serif;font-weight:600;animation:fadeIn 0.3s ease;`;
-        notification.textContent = `✓ "${name}" saved!`;
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 2500);
-    });
+        setCompareCopyStatus('', 'desktop');
+        setCompareCopyStatus('', 'modal');
+        showComparisonToast(`${snapshot.snapshotLabel} saved`);
 
-    compareBtn?.addEventListener('click', () => {
-        if (strategyState.savedStrategies.length < 2) {
-            alert('Save at least 2 strategies to compare.');
-            return;
+        if (builderUiState.activeUtilityPane === 'compare') {
+            refreshCompareView('desktop');
         }
-        const metrics = renderCompareTable();
-        renderCompareCharts(metrics);
-        modal?.classList.add('show');
+        if (modal?.classList.contains('show')) {
+            refreshCompareView('modal');
+        }
     });
 
+    compareBtn?.addEventListener('click', openCompareSurface);
     closeBtn?.addEventListener('click', () => modal?.classList.remove('show'));
-    modal?.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
+    modal?.addEventListener('click', event => {
+        if (event.target === modal) modal.classList.remove('show');
+    });
+
+    document.getElementById('copyComparisonBtn')?.addEventListener('click', async () => {
+        const entries = getComparisonEntries();
+        if (entries.length < 2) return;
+        const recommendation = buildComparisonRecommendation(entries);
+        await copyComparisonToClipboard(entries, recommendation, 'desktop');
+    });
+
+    document.getElementById('copyComparisonModalBtn')?.addEventListener('click', async () => {
+        const entries = getComparisonEntries();
+        if (entries.length < 2) return;
+        const recommendation = buildComparisonRecommendation(entries);
+        await copyComparisonToClipboard(entries, recommendation, 'modal');
+    });
 
     window.loadSavedStrategy = (index) => {
         const saved = strategyState.savedStrategies[index];
         if (!saved) return;
-        // Clear current legs and reload from snapshot
-        strategyState.legs = saved.legs.map(l => ({ ...l }));
+
+        strategyState.legs = cloneLegs(saved.legs);
+        if (presetSelect) presetSelect.value = saved.presetId || '';
+        tradeThesisState.loadedPresetId = saved.presetId || null;
+        if (saved.presetId) tradeThesisState.selectedPresetId = saved.presetId;
+
+        createManagedPosition(saved.displayName, strategyState.legs, sharedMarketState, {
+            resetJournal: true,
+            allowQtyEdit: true
+        });
         renderLegs();
         updateStrategyChart();
+        window.updateSandboxScenario?.();
+        window.refreshPositionManagement?.();
+        window.refreshTradeThesisPanel?.();
         modal?.classList.remove('show');
     };
 
     window.deleteSavedStrategy = (index) => {
         strategyState.savedStrategies.splice(index, 1);
+        strategyState.savedStrategies.forEach((strategy, strategyIndex) => {
+            strategy.snapshotLabel = SNAPSHOT_LABELS[strategyIndex];
+            strategy.slotLabel = COMPARE_SLOT_LABELS[strategyIndex];
+        });
         updateCompareBtn();
-        const metrics = renderCompareTable();
-        if (strategyState.savedStrategies.length >= 1) renderCompareCharts(metrics);
+        setCompareCopyStatus('', 'desktop');
+        setCompareCopyStatus('', 'modal');
+
+        refreshCompareView('desktop');
+        if (modal?.classList.contains('show')) {
+            refreshCompareView('modal');
+        }
     };
+
+    updateCompareBtn();
+    refreshCompareView('desktop');
 }
