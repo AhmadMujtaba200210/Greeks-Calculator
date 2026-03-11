@@ -910,30 +910,344 @@ function analyzeExpiryProfile(expiryPoints, legs, marketState, currentSpot, curr
     };
 }
 
-function drawAnnotationLabel(ctx, chartArea, x, y, lines, borderColor, fillColor = 'rgba(10, 12, 18, 0.92)') {
+function measureAnnotationLabel(ctx, lines) {
     ctx.save();
-    ctx.font = "10px 'JetBrains Mono', monospace";
-    const paddingX = 6;
-    const paddingY = 4;
-    const lineHeight = 12;
+    ctx.font = "11px 'JetBrains Mono', monospace";
+    const paddingX = 8;
+    const paddingY = 6;
+    const lineHeight = 13;
     const width = Math.max(...lines.map(line => ctx.measureText(line).width)) + (paddingX * 2);
     const height = (lines.length * lineHeight) + (paddingY * 2);
-    const left = Math.min(Math.max(x - (width / 2), chartArea.left + 4), chartArea.right - width - 4);
-    const top = Math.min(Math.max(y, chartArea.top + 4), chartArea.bottom - height - 4);
+    ctx.restore();
+    return { width, height, paddingX, paddingY, lineHeight };
+}
 
+function clampAnnotationRect(rect, chartArea, padding = 8) {
+    const left = Math.min(
+        Math.max(rect.left, chartArea.left + padding),
+        chartArea.right - rect.width - padding
+    );
+    const top = Math.min(
+        Math.max(rect.top, chartArea.top + padding),
+        chartArea.bottom - rect.height - padding
+    );
+    return {
+        left,
+        top,
+        width: rect.width,
+        height: rect.height,
+        right: left + rect.width,
+        bottom: top + rect.height
+    };
+}
+
+function annotationRectsOverlap(leftRect, rightRect, padding = 10) {
+    return !(
+        leftRect.right + padding < rightRect.left ||
+        rightRect.right + padding < leftRect.left ||
+        leftRect.bottom + padding < rightRect.top ||
+        rightRect.bottom + padding < leftRect.top
+    );
+}
+
+function getAnnotationConnectorPoint(rect, anchorX, anchorY) {
+    return {
+        x: Math.min(Math.max(anchorX, rect.left), rect.right),
+        y: Math.min(Math.max(anchorY, rect.top), rect.bottom)
+    };
+}
+
+function buildAnnotationCandidate(position, anchorX, anchorY, width, height, chartArea) {
+    const topBand = chartArea.top + 10;
+    const bottomBand = chartArea.bottom - height - 10;
+    const gap = 14;
+
+    switch (position) {
+        case 'top-band':
+            return { left: anchorX - (width / 2), top: topBand, width, height };
+        case 'top-band-right':
+            return { left: anchorX + gap, top: topBand, width, height };
+        case 'top-band-left':
+            return { left: anchorX - width - gap, top: topBand, width, height };
+        case 'above-right':
+            return { left: anchorX + gap, top: anchorY - height - gap, width, height };
+        case 'above-left':
+            return { left: anchorX - width - gap, top: anchorY - height - gap, width, height };
+        case 'mid-right':
+            return { left: anchorX + gap, top: anchorY - (height / 2), width, height };
+        case 'mid-left':
+            return { left: anchorX - width - gap, top: anchorY - (height / 2), width, height };
+        case 'below-right':
+            return { left: anchorX + gap, top: anchorY + gap, width, height };
+        case 'below-left':
+            return { left: anchorX - width - gap, top: anchorY + gap, width, height };
+        case 'bottom-band':
+            return { left: anchorX - (width / 2), top: bottomBand, width, height };
+        default:
+            return { left: anchorX - (width / 2), top: topBand, width, height };
+    }
+}
+
+function placeAnnotationLabel(ctx, chartArea, anchorX, anchorY, lines, borderColor, occupiedRects, placements, fillColor = 'rgba(10, 12, 18, 0.94)') {
+    const metrics = measureAnnotationLabel(ctx, lines);
+    let bestRect = null;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    placements.forEach(position => {
+        const requestedRect = buildAnnotationCandidate(position, anchorX, anchorY, metrics.width, metrics.height, chartArea);
+        const rect = clampAnnotationRect(requestedRect, chartArea);
+        const centerX = rect.left + (rect.width / 2);
+        const centerY = rect.top + (rect.height / 2);
+        const clampPenalty = Math.abs(rect.left - requestedRect.left) + Math.abs(rect.top - requestedRect.top);
+        const distancePenalty = Math.hypot(centerX - anchorX, centerY - anchorY);
+        const overlapPenalty = occupiedRects.some(existingRect => annotationRectsOverlap(rect, existingRect)) ? 10000 : 0;
+        const score = overlapPenalty + (clampPenalty * 3) + distancePenalty;
+
+        if (score < bestScore) {
+            bestScore = score;
+            bestRect = rect;
+        }
+    });
+
+    if (!bestRect) {
+        bestRect = clampAnnotationRect(
+            { left: anchorX - (metrics.width / 2), top: chartArea.top + 10, width: metrics.width, height: metrics.height },
+            chartArea
+        );
+    }
+
+    const connector = getAnnotationConnectorPoint(bestRect, anchorX, anchorY);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(connector.x, connector.y);
+    ctx.lineTo(anchorX, anchorY);
+    ctx.strokeStyle = borderColor;
+    ctx.globalAlpha = 0.8;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font = "11px 'JetBrains Mono', monospace";
     ctx.fillStyle = fillColor;
     ctx.strokeStyle = borderColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(left, top, width, height, 4);
+    ctx.roundRect(bestRect.left, bestRect.top, bestRect.width, bestRect.height, 6);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#e2e4f0';
     lines.forEach((line, index) => {
-        ctx.fillText(line, left + paddingX, top + paddingY + 9 + (index * lineHeight));
+        ctx.fillText(
+            line,
+            bestRect.left + metrics.paddingX,
+            bestRect.top + metrics.paddingY + 9 + (index * metrics.lineHeight)
+        );
     });
     ctx.restore();
+
+    occupiedRects.push(bestRect);
+    return bestRect;
+}
+
+function drawPinnedValueTag(ctx, chartArea, {
+    x,
+    y,
+    text,
+    borderColor,
+    fillColor,
+    textColor = '#e2e4f0',
+    placement = 'above',
+    occupiedRects = []
+}) {
+    ctx.save();
+    ctx.font = "10px 'JetBrains Mono', monospace";
+    const paddingX = 7;
+    const paddingY = 5;
+    const width = ctx.measureText(text).width + (paddingX * 2);
+    const height = 22;
+    const gap = 10;
+
+    const candidates = placement === 'left-axis'
+        ? [
+            { left: chartArea.left + 10, top: y - (height / 2), width, height },
+            { left: chartArea.left + 10, top: y - height - gap, width, height },
+            { left: chartArea.left + 10, top: y + gap, width, height }
+        ]
+        : placement === 'below'
+            ? [
+                { left: x - (width / 2), top: y + gap, width, height },
+                { left: x + gap, top: y - (height / 2), width, height },
+                { left: x - width - gap, top: y - (height / 2), width, height },
+                { left: x - (width / 2), top: y - height - gap, width, height }
+            ]
+        : [
+            { left: x - (width / 2), top: y - height - gap, width, height },
+            { left: x + gap, top: y - (height / 2), width, height },
+            { left: x - width - gap, top: y - (height / 2), width, height },
+            { left: x - (width / 2), top: y + gap, width, height }
+        ];
+
+    let bestRect = null;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    candidates.forEach(candidate => {
+        const rect = clampAnnotationRect(candidate, chartArea, 8);
+        const centerX = rect.left + (rect.width / 2);
+        const centerY = rect.top + (rect.height / 2);
+        const overlapPenalty = occupiedRects.some(existingRect => annotationRectsOverlap(rect, existingRect, 6)) ? 10000 : 0;
+        const distancePenalty = Math.hypot(centerX - x, centerY - y);
+        const clampPenalty = Math.abs(rect.left - candidate.left) + Math.abs(rect.top - candidate.top);
+        const score = overlapPenalty + distancePenalty + (clampPenalty * 2);
+
+        if (score < bestScore) {
+            bestScore = score;
+            bestRect = rect;
+        }
+    });
+
+    if (!bestRect) {
+        bestRect = clampAnnotationRect(candidates[0], chartArea, 8);
+    }
+
+    const connector = getAnnotationConnectorPoint(bestRect, x, y);
+
+    ctx.beginPath();
+    ctx.moveTo(connector.x, connector.y);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.85;
+    ctx.stroke();
+
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = fillColor;
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(bestRect.left, bestRect.top, bestRect.width, bestRect.height, 999);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = textColor;
+    ctx.fillText(text, bestRect.left + paddingX, bestRect.top + paddingY + 8);
+    ctx.restore();
+
+    occupiedRects.push(bestRect);
+    return bestRect;
+}
+
+const htmlLegendPlugin = {
+    id: 'htmlLegend',
+    afterUpdate(chart, _args, options) {
+        const container = document.getElementById(options?.containerID || '');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        const labelGenerator = chart.options.plugins.legend.labels.generateLabels;
+        const legendItems = labelGenerator(chart)
+            .filter(item => !options?.filter || options.filter(item, chart));
+
+        legendItems.forEach(item => {
+            const dataset = chart.data.datasets[item.datasetIndex];
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `chart-legend-chip${item.hidden ? ' is-hidden' : ''}`;
+            button.setAttribute('aria-pressed', item.hidden ? 'false' : 'true');
+            button.title = item.hidden ? 'Show curve' : 'Hide curve';
+
+            const swatch = document.createElement('span');
+            swatch.className = 'chart-legend-swatch';
+            swatch.style.borderTopColor = item.strokeStyle || item.fillStyle || dataset?.borderColor || '#94a3b8';
+            if (Array.isArray(item.lineDash) && item.lineDash.length) {
+                swatch.classList.add('is-dashed');
+            }
+
+            const text = document.createElement('span');
+            text.className = 'chart-legend-text';
+            text.textContent = dataset?.legendLabel || item.text;
+
+            button.appendChild(swatch);
+            button.appendChild(text);
+            button.addEventListener('click', () => {
+                chart.setDatasetVisibility(item.datasetIndex, !chart.isDatasetVisible(item.datasetIndex));
+                chart.update();
+            });
+
+            container.appendChild(button);
+        });
+    }
+};
+
+function clearChartLegend(containerId) {
+    const container = document.getElementById(containerId);
+    if (container) container.innerHTML = '';
+}
+
+function renderStrategyChartReadouts(analysis) {
+    const container = document.getElementById('strategyChartReadouts');
+    if (!container) return;
+
+    if (!analysis) {
+        container.innerHTML = `
+            <div class="chart-readout" data-tone="muted">
+                <span class="chart-readout-label">Chart Readouts</span>
+                <strong class="chart-readout-value">Waiting for strategy</strong>
+                <span class="chart-readout-meta">Load or build a position to see breakevens, loss limits, and probability context.</span>
+            </div>
+        `;
+        return;
+    }
+
+    const readouts = [];
+    const breakevenLabels = analysis.breakevens.length === 1
+        ? ['Expiry B/E']
+        : ['Lower B/E', 'Upper B/E'];
+
+    if (analysis.breakevens.length) {
+        analysis.breakevens.forEach((breakeven, index) => {
+            readouts.push({
+                label: breakevenLabels[index] || `B/E ${index + 1}`,
+                value: `$${breakeven.price.toFixed(2)}`,
+                meta: `${formatChartSignedPct(breakeven.pctFromSpot)} from spot`,
+                tone: 'amber'
+            });
+        });
+    } else {
+        readouts.push({
+            label: 'Expiry B/E',
+            value: 'None',
+            meta: 'No payoff crossover within the plotted expiry range.',
+            tone: 'muted'
+        });
+    }
+
+    readouts.push({
+        label: 'Max Loss',
+        value: formatChartCurrency(analysis.maxLossPoint.totalLoss),
+        meta: `${formatChartCurrency(analysis.maxLossPoint.perContractLoss)} / contract`,
+        tone: 'red'
+    });
+
+    if (analysis.probability) {
+        readouts.push({
+            label: 'Profit Odds',
+            value: `${(analysis.probability.probProfit * 100).toFixed(1)}%`,
+            meta: `Expected ${formatChartSignedCurrency(analysis.probability.expectedPL)}`,
+            tone: analysis.probability.probProfit >= 0.5 ? 'green' : 'muted'
+        });
+    }
+
+    container.innerHTML = readouts.map(readout => `
+        <div class="chart-readout" data-tone="${readout.tone}">
+            <span class="chart-readout-label">${readout.label}</span>
+            <strong class="chart-readout-value">${readout.value}</strong>
+            <span class="chart-readout-meta">${readout.meta}</span>
+        </div>
+    `).join('');
 }
 
 const strategyPayoffOverlayPlugin = {
@@ -978,10 +1292,6 @@ const strategyPayoffOverlayPlugin = {
             ctx.lineWidth = 1;
             ctx.stroke();
         }
-
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
-        ctx.font = "10px 'JetBrains Mono', monospace";
-        ctx.fillText(`P(Profit): ${(options.analysis.probability.probProfit * 100).toFixed(1)}%`, chartArea.left + 6, topY + 12);
         ctx.restore();
     },
     afterDatasetsDraw(chart, _args, options) {
@@ -993,6 +1303,7 @@ const strategyPayoffOverlayPlugin = {
         const yScale = scales.y;
 
         ctx.save();
+        const occupiedRects = [];
 
         analysis.breakevens.forEach((breakeven, index) => {
             const xPixel = xScale.getPixelForValue(breakeven.price);
@@ -1015,14 +1326,15 @@ const strategyPayoffOverlayPlugin = {
             ctx.lineWidth = 1;
             ctx.stroke();
 
-            drawAnnotationLabel(
-                ctx,
-                chartArea,
-                xPixel,
-                chartArea.top + 8 + ((index % 2) * 32),
-                [`B/E: $${breakeven.price.toFixed(2)}`, formatChartSignedPct(breakeven.pctFromSpot)],
-                'rgba(255, 176, 32, 0.45)'
-            );
+            drawPinnedValueTag(ctx, chartArea, {
+                x: xPixel,
+                y: yPixel,
+                text: `$${breakeven.price.toFixed(2)}`,
+                borderColor: 'rgba(255, 176, 32, 0.55)',
+                fillColor: 'rgba(10, 12, 18, 0.94)',
+                placement: index === 0 ? 'above' : 'below',
+                occupiedRects
+            });
         });
 
         if (Number.isFinite(analysis.maxLossPoint.value)) {
@@ -1043,17 +1355,16 @@ const strategyPayoffOverlayPlugin = {
             ctx.arc(xPixel, yPixel, 4, 0, Math.PI * 2);
             ctx.fill();
 
-            drawAnnotationLabel(
-                ctx,
-                chartArea,
-                xPixel + 40,
-                yPixel - 34,
-                [
-                    `Max Loss: ${formatChartCurrency(analysis.maxLossPoint.perContractLoss)} per contract`,
-                    `(${formatChartCurrency(analysis.maxLossPoint.totalLoss)} total)`
-                ],
-                'rgba(239, 68, 68, 0.45)'
-            );
+            drawPinnedValueTag(ctx, chartArea, {
+                x: xPixel,
+                y: yPixel,
+                text: `-${formatChartCurrency(analysis.maxLossPoint.totalLoss)}`,
+                borderColor: 'rgba(239, 68, 68, 0.55)',
+                fillColor: 'rgba(10, 12, 18, 0.94)',
+                textColor: '#fca5a5',
+                placement: 'left-axis',
+                occupiedRects
+            });
         }
 
         ctx.restore();
@@ -1068,6 +1379,9 @@ export function updateStrategyChart() {
     if (strategyState.legs.length === 0) {
         if (strategyState.chart) strategyState.chart.destroy();
         if (strategyState.greeksChart) strategyState.greeksChart.destroy();
+        clearChartLegend('strategyChartLegend');
+        clearChartLegend('greeksChartLegend');
+        renderStrategyChartReadouts(null);
         updateNetGreeksDisplay({ delta: 0, gamma: 0, vega: 0, theta: 0, rho: 0 });
         updateStrategyStats(null);
         updateStrategyChartMetrics(null);
@@ -1086,12 +1400,15 @@ export function updateStrategyChart() {
     const xValues = [];
 
     const originalT = sharedMarketState.tYears;
+    const seventyFiveDays = Math.round(originalT * 0.75 * 365);
+    const fiftyDays = Math.round(originalT * 0.50 * 365);
+    const twentyFiveDays = Math.round(originalT * 0.25 * 365);
     const timeProfiles = [
-        { label: 'Today', tRemain: originalT, color: '#2563eb', data: [] },
-        { label: `75% time (${Math.round(originalT * 0.75 * 365)}d)`, tRemain: originalT * 0.75, color: '#8b5cf6', data: [] },
-        { label: `50% time (${Math.round(originalT * 0.50 * 365)}d)`, tRemain: originalT * 0.50, color: '#ec4899', data: [] },
-        { label: `25% time (${Math.round(originalT * 0.25 * 365)}d)`, tRemain: originalT * 0.25, color: '#f59e0b', data: [] },
-        { label: 'At Expiration', tRemain: 0, color: '#10b981', data: [] }
+        { label: 'Today', legendLabel: 'Today', tooltipLabel: 'Today', tRemain: originalT, color: '#2563eb', data: [] },
+        { label: `75% T (${seventyFiveDays}d)`, legendLabel: `75% T · ${seventyFiveDays}d`, tooltipLabel: `75% time (${seventyFiveDays}d)`, tRemain: originalT * 0.75, color: '#8b5cf6', data: [] },
+        { label: `50% T (${fiftyDays}d)`, legendLabel: `50% T · ${fiftyDays}d`, tooltipLabel: `50% time (${fiftyDays}d)`, tRemain: originalT * 0.50, color: '#ec4899', data: [] },
+        { label: `25% T (${twentyFiveDays}d)`, legendLabel: `25% T · ${twentyFiveDays}d`, tooltipLabel: `25% time (${twentyFiveDays}d)`, tRemain: originalT * 0.25, color: '#f59e0b', data: [] },
+        { label: 'Expiry', legendLabel: 'At Expiry', tooltipLabel: 'At Expiration', tRemain: 0, color: '#10b981', data: [] }
     ];
 
     for (let i = 0; i <= steps; i++) {
@@ -1114,6 +1431,7 @@ export function updateStrategyChart() {
     const expiryAnalysis = analyzeExpiryProfile(timeProfiles[4].data, strategyState.legs, sharedMarketState, currentSpot, currentNetGreeks);
     updateStrategyStats(expiryAnalysis);
     updateStrategyChartMetrics(expiryAnalysis);
+    renderStrategyChartReadouts(expiryAnalysis);
 
     const datasets = [
         {
@@ -1140,16 +1458,18 @@ export function updateStrategyChart() {
         },
         ...timeProfiles.map(profile => ({
             label: profile.label,
+            legendLabel: profile.legendLabel,
+            tooltipLabel: profile.tooltipLabel,
             data: profile.data,
             borderColor: profile.color,
             backgroundColor: `${profile.color}20`,
-            borderWidth: profile.label === 'At Expiration' ? 3 : 2,
-            borderDash: profile.label === 'At Expiration' ? [5, 5] : undefined,
+            borderWidth: profile.label === 'Expiry' ? 3 : 2,
+            borderDash: profile.label === 'Expiry' ? [5, 5] : undefined,
             fill: false,
-            tension: profile.label === 'At Expiration' ? 0 : 0.35,
+            tension: profile.label === 'Expiry' ? 0 : 0.35,
             pointRadius: 0,
             pointHitRadius: 10,
-            order: profile.label === 'At Expiration' ? 4 : 3
+            order: profile.label === 'Expiry' ? 4 : 3
         })),
         {
             label: 'Break Even ($0)',
@@ -1166,10 +1486,15 @@ export function updateStrategyChart() {
 
     const plugins = {
         legend: {
+            display: false,
             labels: {
                 color: '#f1f5f9',
                 filter: (_item, data) => !data.datasets[_item.datasetIndex]?.helperDataset
             }
+        },
+        htmlLegend: {
+            containerID: 'strategyChartLegend',
+            filter: (item, chart) => !chart.data.datasets[item.datasetIndex]?.helperDataset
         },
         tooltip: {
             mode: 'index',
@@ -1177,7 +1502,7 @@ export function updateStrategyChart() {
             filter: (tooltipItem) => !tooltipItem.dataset?.helperDataset,
             callbacks: {
                 title: (context) => `Spot Price: $${Number(context[0].parsed.x).toFixed(2)}`,
-                label: (tooltipItem) => `${tooltipItem.dataset.label}: $${Number(tooltipItem.parsed.y).toFixed(2)}`
+                label: (tooltipItem) => `${tooltipItem.dataset.tooltipLabel || tooltipItem.dataset.label}: $${Number(tooltipItem.parsed.y).toFixed(2)}`
             }
         },
         strategyPayoffOverlay: {
@@ -1191,7 +1516,7 @@ export function updateStrategyChart() {
         data: {
             datasets: datasets
         },
-        plugins: [strategyPayoffOverlayPlugin],
+        plugins: [htmlLegendPlugin, strategyPayoffOverlayPlugin],
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -1204,20 +1529,32 @@ export function updateStrategyChart() {
                 mode: 'index',
                 intersect: false
             },
+            layout: {
+                padding: {
+                    top: 6,
+                    right: 10,
+                    bottom: 4,
+                    left: 6
+                }
+            },
             scales: {
                 x: {
                     type: 'linear',
                     title: { display: true, text: 'Spot Price', color: '#94a3b8' },
                     ticks: {
                         color: '#94a3b8',
-                        maxTicksLimit: 10,
+                        maxTicksLimit: 8,
                         callback: (value) => `$${Number(value).toFixed(0)}`
                     },
                     grid: { color: '#334155' }
                 },
                 y: {
                     title: { display: true, text: 'Net P&L ($)', color: '#94a3b8' },
-                    ticks: { color: '#94a3b8' },
+                    ticks: {
+                        color: '#94a3b8',
+                        maxTicksLimit: 7,
+                        callback: (value) => Number(value).toLocaleString()
+                    },
                     grid: { color: '#334155', zeroLineColor: 'rgba(255,255,255,0.5)' }
                 }
             }
@@ -1289,13 +1626,20 @@ function drawGreeksVsSpotChart(start, end, steps, stepSize, labels) {
                 { label: 'Net Rho', data: rhoData, borderColor: '#8b5cf6', hidden: true, tension: 0.4, pointRadius: 0 }
             ]
         },
+        plugins: [htmlLegendPlugin],
         options: {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { labels: { color: '#f1f5f9' }, position: 'top' },
+                legend: {
+                    display: false,
+                    labels: { color: '#f1f5f9' }
+                },
+                htmlLegend: {
+                    containerID: 'greeksChartLegend'
+                },
                 tooltip: {
                     mode: 'index', intersect: false,
                     callbacks: {

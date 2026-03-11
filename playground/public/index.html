@@ -881,10 +881,12 @@
                             <div class="terminal-panel-header">
                                 <span class="panel-label">P/L Over Time</span>
                                 <div class="chart-header-controls">
-                                    <span class="panel-hint">Today · 75% · 50% · 25% · Expiry</span>
+                                    <span class="panel-hint">Toggle curve visibility below</span>
                                     <button type="button" class="chart-toggle-btn" id="probabilityOverlayToggle">Probability Overlay: Off</button>
                                 </div>
                             </div>
+                            <div class="chart-external-legend" id="strategyChartLegend" aria-label="Payoff curve legend"></div>
+                            <div class="chart-readouts" id="strategyChartReadouts" aria-label="Payoff chart readouts"></div>
                             <div class="strategy-chart-container chart-pl">
                                 <canvas id="strategyChart"></canvas>
                             </div>
@@ -916,6 +918,7 @@
                                     <span class="builder-inline-metric">Rho <strong id="netRhoResult">0.00</strong></span>
                                 </div>
                             </div>
+                            <div class="chart-external-legend chart-external-legend-compact" id="greeksChartLegend" aria-label="Greeks chart legend"></div>
                             <div class="strategy-chart-container chart-greeks">
                                 <canvas id="netGreeksChart"></canvas>
                             </div>
