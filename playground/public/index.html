@@ -753,6 +753,9 @@
                                             <button type="button" class="thesis-tag" data-tag="Technical Breakout">Technical Breakout</button>
                                             <button type="button" class="thesis-tag" data-tag="Volatility Event">Volatility Event</button>
                                         </div>
+                                        <div class="thesis-catalyst-hint" id="thesisCatalystHint">
+                                            Quick tags and catalyst text drive event and strategy matching.
+                                        </div>
                                     </div>
                                 </section>
 
@@ -790,8 +793,46 @@
                                                 <button type="button" class="thesis-choice" data-field="timeframe" data-value="months">Months (1-3)</button>
                                             </div>
                                         </div>
+                                        <div class="thesis-question">
+                                            <label>Objective...</label>
+                                            <div class="thesis-button-group thesis-button-group-wide">
+                                                <button type="button" class="thesis-choice" data-field="objective" data-value="directional">Directional</button>
+                                                <button type="button" class="thesis-choice" data-field="objective" data-value="income">Income</button>
+                                                <button type="button" class="thesis-choice" data-field="objective" data-value="hedge">Hedge</button>
+                                                <button type="button" class="thesis-choice" data-field="objective" data-value="event">Event / Vol</button>
+                                                <button type="button" class="thesis-choice" data-field="objective" data-value="target">Target Price</button>
+                                            </div>
+                                        </div>
+                                        <div class="thesis-question">
+                                            <label>Risk style...</label>
+                                            <div class="thesis-button-group thesis-button-group-wide">
+                                                <button type="button" class="thesis-choice" data-field="riskProfile" data-value="defined">Defined Risk Only</button>
+                                                <button type="button" class="thesis-choice" data-field="riskProfile" data-value="stock">Stock Overlay OK</button>
+                                                <button type="button" class="thesis-choice" data-field="riskProfile" data-value="advanced">Advanced Structures</button>
+                                            </div>
+                                        </div>
+                                        <div class="thesis-question">
+                                            <label>Premium style...</label>
+                                            <div class="thesis-button-group">
+                                                <button type="button" class="thesis-choice" data-field="premiumStyle" data-value="debit">Pay Debit</button>
+                                                <button type="button" class="thesis-choice" data-field="premiumStyle" data-value="credit">Collect Credit</button>
+                                                <button type="button" class="thesis-choice" data-field="premiumStyle" data-value="either">Either</button>
+                                            </div>
+                                        </div>
+                                        <div class="thesis-question">
+                                            <label>IV setup...</label>
+                                            <div class="thesis-button-group thesis-button-group-wide">
+                                                <button type="button" class="thesis-choice" data-field="volRegime" data-value="cheap">IV Cheap</button>
+                                                <button type="button" class="thesis-choice" data-field="volRegime" data-value="rich">IV Rich</button>
+                                                <button type="button" class="thesis-choice" data-field="volRegime" data-value="event">Event Premium</button>
+                                                <button type="button" class="thesis-choice" data-field="volRegime" data-value="neutral">Neutral / Unsure</button>
+                                            </div>
+                                        </div>
                                         <div class="thesis-summary-line" id="thesisSummaryLine">
                                             Choose your direction, vol view, and timeframe to build the thesis statement.
+                                        </div>
+                                        <div class="thesis-research-line" id="thesisResearchLine">
+                                            Optional preferences sharpen the shortlist around objective, risk structure, and current IV regime.
                                         </div>
                                     </div>
                                 </section>
@@ -804,6 +845,9 @@
                                         <div class="thesis-step-heading">
                                             <h4>Suggested Strategies</h4>
                                             <p>These auto-populate from your thesis and connect directly to the playbook.</p>
+                                        </div>
+                                        <div class="thesis-research-method" id="thesisResearchMethod">
+                                            Confidence weighs outlook, volatility, structure, and catalyst fit.
                                         </div>
                                         <div class="thesis-suggestions" id="thesisSuggestions">
                                             <div class="thesis-placeholder">Finish the thesis above to see matching strategies.</div>

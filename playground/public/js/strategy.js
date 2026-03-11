@@ -29,6 +29,10 @@ const tradeThesisState = {
     priceView: null,
     volatilityView: null,
     timeframe: null,
+    objective: null,
+    riskProfile: 'defined',
+    premiumStyle: 'either',
+    volRegime: 'neutral',
     suggestions: [],
     selectedPresetId: null,
     loadedPresetId: null,
@@ -1811,28 +1815,24 @@ export function initStrategyGuide() {
 // ─── Strategy Playbook Logic ──────────────────────────────────────────────
 const PLAYBOOK_DATA = {
     bullish: {
-        title: "Steady Bullish View",
-        thinking: "You expect the stock to rise, but don't want to pay 'full price' for a naked call. A Bull Call Spread reduces your cost basis by selling upside you don't expect to hit.",
-        recommendation: "Bull Call Spread",
-        presetId: "bull_call_spread"
+        title: "Bullish Research Deck",
+        thinking: "Start with defined-risk bullish expressions, then expand into income or stock-overlay structures only if that matches your objective. The trade should reflect whether you want breakout convexity, steady upside, or carry.",
+        strategyIds: ['bull_call_spread', 'bull_put_spread', 'covered_call', 'protective_put', 'collar', 'synthetic_stock', 'call_backspread', 'diagonal_spread']
     },
     bearish: {
-        title: "Controlled Bearish View",
-        thinking: "You think the market is overextended. Buying a put is expensive due to high demand. A Bear Put Spread caps your cost while giving you a defined window of profit.",
-        recommendation: "Bear Put Spread",
-        presetId: "bear_put_spread"
+        title: "Bearish Research Deck",
+        thinking: "Separate controlled downside views from crash/hedge views. Defined-risk put structures fit measured bearish theses; backspreads belong in sharper downside or volatility shock setups.",
+        strategyIds: ['bear_put_spread', 'bear_call_spread', 'protective_put', 'put_backspread', 'long_put_butterfly', 'ratio_spread']
     },
     neutral: {
-        title: "Range-Bound / Flat",
-        thinking: "Vol is high but the stock isn't moving. Sell an Iron Condor to collect 'Rent' (Theta decay). You win if the stock stays between your two short strikes.",
-        recommendation: "Iron Condor",
-        presetId: "iron_condor"
+        title: "Neutral / Range Research Deck",
+        thinking: "For flat or pinning views, decide whether you want to collect premium, target a price zone precisely, or own term-structure exposure into a known event window.",
+        strategyIds: ['iron_condor', 'iron_butterfly', 'long_call_butterfly', 'long_put_butterfly', 'broken_wing_butterfly', 'calendar_spread', 'diagonal_spread', 'short_strangle']
     },
     volatile: {
-        title: "Explosive Breakout",
-        thinking: "Earnings or news is coming. You don't know the direction, but you know it won't stay here. A Straddle wins if the price moves hard in EITHER direction.",
-        recommendation: "Long Straddle",
-        presetId: "long_straddle"
+        title: "Event & Volatility Research Deck",
+        thinking: "A proper event setup distinguishes between long-vol breakout trades, convex tail hedges, and premium-selling event fades. The right choice depends on whether IV is cheap, rich, or event-loaded.",
+        strategyIds: ['long_straddle', 'long_strangle', 'call_backspread', 'put_backspread', 'double_calendar', 'calendar_spread', 'short_straddle', 'short_strangle']
     }
 };
 
@@ -1852,140 +1852,380 @@ const THESIS_SUMMARY_LABELS = {
         days: 'DAYS',
         weeks: 'WEEKS',
         months: 'MONTHS'
+    },
+    objective: {
+        directional: 'Directional',
+        income: 'Income / Carry',
+        hedge: 'Hedge',
+        event: 'Event / Vol',
+        target: 'Target Price'
+    },
+    riskProfile: {
+        defined: 'Defined Risk Only',
+        stock: 'Stock Overlay OK',
+        advanced: 'Advanced Structures'
+    },
+    premiumStyle: {
+        debit: 'Paying Debit',
+        credit: 'Collecting Credit',
+        either: 'Debit or Credit'
+    },
+    volRegime: {
+        cheap: 'IV Cheap',
+        rich: 'IV Rich',
+        event: 'Event Premium',
+        neutral: 'Neutral / Unsure'
     }
 };
 
+const CATALYST_KEYWORDS = {
+    Earnings: ['earnings', 'guidance', 'eps', 'quarter', 'results', 'revenue'],
+    'Macro Event': ['macro', 'cpi', 'ppi', 'jobs', 'payroll', 'inflation', 'gdp', 'pmi'],
+    Geopolitical: ['war', 'conflict', 'sanction', 'tariff', 'middle east', 'ukraine', 'china', 'opec'],
+    'Fed/Central Bank': ['fed', 'fomc', 'powell', 'ecb', 'boj', 'rate cut', 'rate hike', 'central bank'],
+    'Sector Rotation': ['sector', 'rotation', 'semis', 'banks', 'energy', 'financials', 'cyclicals', 'defensives'],
+    'Technical Breakout': ['breakout', 'breakdown', 'support', 'resistance', 'trendline', 'range break', 'momentum'],
+    'Volatility Event': ['volatility', 'event', 'gap', 'move', 'implied move', 'uncertainty', 'squeeze']
+};
+
 const THESIS_STRATEGY_LIBRARY = [
-    {
-        presetId: 'bull_call_spread',
-        scenario: 'bullish',
-        priceViews: ['up'],
-        volViews: ['decrease', 'same'],
-        timeframes: ['days', 'weeks'],
-        tags: ['Technical Breakout', 'Sector Rotation'],
-        rationale: 'Defined-risk upside spread for a controlled bullish move without paying for unlimited upside.'
-    },
-    {
-        presetId: 'bull_put_spread',
-        scenario: 'bullish',
-        priceViews: ['up', 'flat'],
-        volViews: ['decrease', 'same'],
-        timeframes: ['days', 'weeks'],
-        tags: ['Sector Rotation', 'Macro Event'],
-        rationale: 'Short premium structure that benefits when price holds up and implied volatility cools off.'
-    },
-    {
-        presetId: 'call_backspread',
-        scenario: 'volatile',
-        priceViews: ['up', 'move_big'],
-        volViews: ['increase'],
-        timeframes: ['days', 'weeks'],
-        tags: ['Earnings', 'Technical Breakout', 'Volatility Event'],
-        rationale: 'Convex upside expression for breakout setups where you want long gamma and rising vol.'
-    },
-    {
-        presetId: 'bear_put_spread',
-        scenario: 'bearish',
-        priceViews: ['down'],
-        volViews: ['increase', 'same'],
-        timeframes: ['days', 'weeks'],
-        tags: ['Macro Event', 'Geopolitical', 'Sector Rotation'],
-        rationale: 'Defined-risk bearish spread that targets downside while keeping the debit contained.'
-    },
-    {
-        presetId: 'bear_call_spread',
-        scenario: 'bearish',
-        priceViews: ['down', 'flat'],
-        volViews: ['decrease', 'same'],
-        timeframes: ['days', 'weeks'],
-        tags: ['Macro Event', 'Sector Rotation'],
-        rationale: 'Premium-selling bearish structure when you expect weak price action without a volatility shock.'
-    },
-    {
-        presetId: 'put_backspread',
-        scenario: 'volatile',
-        priceViews: ['down', 'move_big'],
-        volViews: ['increase'],
-        timeframes: ['days', 'weeks'],
-        tags: ['Geopolitical', 'Macro Event', 'Volatility Event'],
-        rationale: 'Downside convexity play that thrives when panic expands volatility and price drops hard.'
-    },
-    {
-        presetId: 'long_straddle',
-        scenario: 'volatile',
-        priceViews: ['move_big'],
-        volViews: ['increase'],
-        timeframes: ['days', 'weeks'],
-        tags: ['Earnings', 'Geopolitical', 'Fed/Central Bank', 'Volatility Event'],
-        rationale: 'Pure long-vol expression for catalysts that can force a large move in either direction.'
-    },
-    {
-        presetId: 'long_strangle',
-        scenario: 'volatile',
-        priceViews: ['move_big'],
-        volViews: ['increase'],
-        timeframes: ['weeks', 'months'],
-        tags: ['Earnings', 'Macro Event', 'Geopolitical', 'Volatility Event'],
-        rationale: 'Cheaper long-vol alternative when you expect expansion over a wider time window.'
-    },
-    {
-        presetId: 'iron_condor',
-        scenario: 'neutral',
-        priceViews: ['flat'],
-        volViews: ['decrease'],
-        timeframes: ['days', 'weeks'],
-        tags: ['Sector Rotation'],
-        rationale: 'Defined-risk premium seller for range-bound markets and compressing implied volatility.'
-    },
-    {
-        presetId: 'iron_butterfly',
-        scenario: 'neutral',
-        priceViews: ['flat'],
-        volViews: ['decrease', 'same'],
-        timeframes: ['days', 'weeks'],
-        tags: ['Fed/Central Bank', 'Sector Rotation'],
-        rationale: 'Higher-credit neutral structure when you have a tight pinning view around the current spot.'
-    },
-    {
-        presetId: 'calendar_spread',
-        scenario: 'neutral',
-        priceViews: ['flat'],
-        volViews: ['increase', 'same'],
-        timeframes: ['weeks', 'months'],
-        tags: ['Earnings', 'Fed/Central Bank'],
-        rationale: 'Time-spread setup for sticky price action with stable-to-firmer implied volatility.'
-    },
-    {
-        presetId: 'double_calendar',
-        scenario: 'neutral',
-        priceViews: ['flat', 'move_big'],
-        volViews: ['increase'],
-        timeframes: ['weeks', 'months'],
-        tags: ['Earnings', 'Macro Event', 'Volatility Event'],
-        rationale: 'Longer-horizon volatility structure when you expect movement but want defined wings.'
-    }
+    { presetId: 'bull_call_spread', scenario: 'bullish', priceViews: ['up'], volViews: ['decrease', 'same'], timeframes: ['days', 'weeks'], tags: ['Technical Breakout', 'Sector Rotation', 'Earnings'], objectives: ['directional'], riskProfiles: ['defined'], premiumStyles: ['debit'], volRegimes: ['cheap', 'neutral'], complexity: 'core', rationale: 'Defined-risk debit spread for a measured upside thesis.', fitTags: ['Bullish', 'Defined Risk', 'Debit'], caution: 'Upside is capped if the rally overshoots your target.' },
+    { presetId: 'bull_put_spread', scenario: 'bullish', priceViews: ['up', 'flat'], volViews: ['decrease', 'same'], timeframes: ['days', 'weeks'], tags: ['Sector Rotation', 'Macro Event', 'Technical Breakout'], objectives: ['income', 'directional'], riskProfiles: ['defined'], premiumStyles: ['credit'], volRegimes: ['rich', 'neutral'], complexity: 'core', rationale: 'Short-premium bullish structure for hold-up or modest upside views.', fitTags: ['Income', 'Defined Risk', 'Credit'], caution: 'Weak reward if you sell the spread too close to support.' },
+    { presetId: 'covered_call', scenario: 'bullish', priceViews: ['up', 'flat'], volViews: ['decrease', 'same'], timeframes: ['weeks', 'months'], tags: ['Sector Rotation', 'Macro Event'], objectives: ['income'], riskProfiles: ['stock'], premiumStyles: ['credit'], volRegimes: ['rich', 'neutral'], complexity: 'core', rationale: 'Stock-overlay income trade for mild upside or sideways views.', fitTags: ['Income', 'Stock Overlay', 'Credit'], caution: 'Do not use it if you need uncapped upside.' },
+    { presetId: 'protective_put', scenario: 'bullish', priceViews: ['up', 'flat', 'down'], volViews: ['increase', 'same'], timeframes: ['days', 'weeks', 'months'], tags: ['Macro Event', 'Geopolitical', 'Volatility Event'], objectives: ['hedge'], riskProfiles: ['stock'], premiumStyles: ['debit'], volRegimes: ['cheap', 'event', 'neutral'], complexity: 'core', rationale: 'Long-stock hedge that preserves upside while defining tail risk.', fitTags: ['Hedge', 'Stock Overlay', 'Debit'], caution: 'Insurance gets expensive if you buy protection after volatility has already exploded.' },
+    { presetId: 'collar', scenario: 'bullish', priceViews: ['up', 'flat'], volViews: ['decrease', 'same'], timeframes: ['weeks', 'months'], tags: ['Macro Event', 'Geopolitical', 'Fed/Central Bank'], objectives: ['hedge', 'income'], riskProfiles: ['stock'], premiumStyles: ['either', 'credit'], volRegimes: ['rich', 'neutral'], complexity: 'core', rationale: 'Cost-controlled hedge for long stock when you can cap some upside.', fitTags: ['Hedge', 'Income', 'Stock Overlay'], caution: 'The call cap can become painful if the underlying squeezes higher.' },
+    { presetId: 'synthetic_stock', scenario: 'bullish', priceViews: ['up'], volViews: ['same'], timeframes: ['weeks', 'months'], tags: ['Technical Breakout'], objectives: ['directional'], riskProfiles: ['advanced'], premiumStyles: ['either'], volRegimes: ['neutral', 'cheap'], complexity: 'advanced', rationale: 'Capital-efficient stock replacement for advanced users comfortable with short-put exposure.', fitTags: ['Directional', 'Capital Efficient', 'Advanced'], caution: 'Short-put risk makes this inappropriate unless assignment and margin are acceptable.' },
+    { presetId: 'bear_put_spread', scenario: 'bearish', priceViews: ['down'], volViews: ['increase', 'same'], timeframes: ['days', 'weeks'], tags: ['Macro Event', 'Geopolitical', 'Sector Rotation', 'Fed/Central Bank'], objectives: ['directional', 'hedge'], riskProfiles: ['defined'], premiumStyles: ['debit'], volRegimes: ['cheap', 'neutral'], complexity: 'core', rationale: 'Defined-risk downside spread for controlled bearish setups.', fitTags: ['Bearish', 'Defined Risk', 'Debit'], caution: 'Crash-like moves may outrun the spread’s capped payoff.' },
+    { presetId: 'bear_call_spread', scenario: 'bearish', priceViews: ['down', 'flat'], volViews: ['decrease', 'same'], timeframes: ['days', 'weeks'], tags: ['Macro Event', 'Sector Rotation', 'Fed/Central Bank'], objectives: ['income', 'directional'], riskProfiles: ['defined'], premiumStyles: ['credit'], volRegimes: ['rich', 'neutral'], complexity: 'core', rationale: 'Credit spread for bearish or stalled price action without paying long premium.', fitTags: ['Bearish', 'Income', 'Defined Risk'], caution: 'Avoid it if a catalyst can force a sharp short-covering rally.' },
+    { presetId: 'put_backspread', scenario: 'volatile', priceViews: ['down', 'move_big'], volViews: ['increase'], timeframes: ['days', 'weeks'], tags: ['Geopolitical', 'Macro Event', 'Volatility Event'], objectives: ['event', 'hedge'], riskProfiles: ['advanced'], premiumStyles: ['either', 'debit'], volRegimes: ['cheap', 'event'], complexity: 'advanced', rationale: 'Convex downside hedge when you expect panic and volatility expansion.', fitTags: ['Crash Hedge', 'Long Vol', 'Convex'], caution: 'There is still a loss zone around the short strike, so this needs active management.' },
+    { presetId: 'long_straddle', scenario: 'volatile', priceViews: ['move_big'], volViews: ['increase'], timeframes: ['days', 'weeks'], tags: ['Earnings', 'Geopolitical', 'Fed/Central Bank', 'Volatility Event'], objectives: ['event'], riskProfiles: ['defined'], premiumStyles: ['debit'], volRegimes: ['cheap', 'event'], complexity: 'core', rationale: 'Pure long-vol expression when realized movement may exceed the implied move.', fitTags: ['Event', 'Long Vol', 'Defined Risk'], caution: 'If IV is already rich, the move still has to beat what the market priced in.' },
+    { presetId: 'long_strangle', scenario: 'volatile', priceViews: ['move_big'], volViews: ['increase'], timeframes: ['weeks', 'months'], tags: ['Earnings', 'Macro Event', 'Geopolitical', 'Volatility Event'], objectives: ['event'], riskProfiles: ['defined'], premiumStyles: ['debit'], volRegimes: ['cheap', 'event'], complexity: 'core', rationale: 'Lower-cost long-vol trade when you expect a wider move over a broader window.', fitTags: ['Event', 'Long Vol', 'Debit'], caution: 'Because the strikes are wider, modest moves will not pay enough.' },
+    { presetId: 'short_straddle', scenario: 'neutral', priceViews: ['flat'], volViews: ['decrease'], timeframes: ['days', 'weeks'], tags: ['Sector Rotation', 'Macro Event'], objectives: ['income'], riskProfiles: ['advanced'], premiumStyles: ['credit'], volRegimes: ['rich'], complexity: 'advanced', rationale: 'High-theta event fade only for advanced users comfortable with undefined risk.', fitTags: ['Income', 'Short Vol', 'Advanced'], caution: 'Undefined risk means it should never appear unless the user explicitly allows advanced structures.' },
+    { presetId: 'short_strangle', scenario: 'neutral', priceViews: ['flat'], volViews: ['decrease', 'same'], timeframes: ['days', 'weeks'], tags: ['Sector Rotation', 'Macro Event'], objectives: ['income'], riskProfiles: ['advanced'], premiumStyles: ['credit'], volRegimes: ['rich'], complexity: 'advanced', rationale: 'OTM premium seller for range-bound markets with rich implied volatility.', fitTags: ['Income', 'Short Vol', 'Advanced'], caution: 'Tail risk remains substantial and requires active risk limits.' },
+    { presetId: 'call_backspread', scenario: 'volatile', priceViews: ['up', 'move_big'], volViews: ['increase'], timeframes: ['days', 'weeks'], tags: ['Earnings', 'Technical Breakout', 'Volatility Event'], objectives: ['event', 'directional'], riskProfiles: ['advanced'], premiumStyles: ['either', 'debit'], volRegimes: ['cheap', 'event'], complexity: 'advanced', rationale: 'Upside-convex structure when you expect a squeeze or breakout with higher vol.', fitTags: ['Breakout', 'Convexity', 'Long Gamma'], caution: 'The middle loss zone around the short call needs to be understood before entry.' },
+    { presetId: 'iron_condor', scenario: 'neutral', priceViews: ['flat'], volViews: ['decrease'], timeframes: ['days', 'weeks'], tags: ['Sector Rotation', 'Macro Event', 'Fed/Central Bank'], objectives: ['income', 'target'], riskProfiles: ['defined'], premiumStyles: ['credit'], volRegimes: ['rich', 'neutral'], complexity: 'core', rationale: 'Defined-risk premium seller for range-bound markets and cooling IV.', fitTags: ['Neutral', 'Defined Risk', 'Credit'], caution: 'Poor fit when trend or event risk is still unresolved.' },
+    { presetId: 'iron_butterfly', scenario: 'neutral', priceViews: ['flat'], volViews: ['decrease', 'same'], timeframes: ['days', 'weeks'], tags: ['Fed/Central Bank', 'Sector Rotation'], objectives: ['income', 'target'], riskProfiles: ['defined'], premiumStyles: ['credit'], volRegimes: ['rich', 'neutral'], complexity: 'intermediate', rationale: 'Higher-credit pinning trade when you have a tighter center-strike view.', fitTags: ['Pin Risk Trade', 'Credit', 'Defined Risk'], caution: 'The payoff is narrow enough that even modest drift can damage the trade.' },
+    { presetId: 'long_call_butterfly', scenario: 'neutral', priceViews: ['flat'], volViews: ['decrease', 'same'], timeframes: ['days', 'weeks'], tags: ['Earnings', 'Fed/Central Bank'], objectives: ['target'], riskProfiles: ['defined'], premiumStyles: ['debit'], volRegimes: ['rich', 'neutral'], complexity: 'intermediate', rationale: 'Low-cost target-price structure when you expect a pin or a narrow terminal range.', fitTags: ['Target Price', 'Defined Risk', 'Low Cost'], caution: 'Not appropriate if your view is “move big”; it needs price to settle near the body.' },
+    { presetId: 'long_put_butterfly', scenario: 'neutral', priceViews: ['flat', 'down'], volViews: ['decrease', 'same'], timeframes: ['days', 'weeks'], tags: ['Macro Event', 'Fed/Central Bank'], objectives: ['target'], riskProfiles: ['defined'], premiumStyles: ['debit'], volRegimes: ['rich', 'neutral'], complexity: 'intermediate', rationale: 'Downside-tilted target structure when you want a precise settlement zone.', fitTags: ['Target Price', 'Defined Risk', 'Downside Tilt'], caution: 'Like all butterflies, it loses quickly if price drifts away from the body.' },
+    { presetId: 'broken_wing_butterfly', scenario: 'neutral', priceViews: ['flat', 'up'], volViews: ['decrease', 'same'], timeframes: ['days', 'weeks'], tags: ['Sector Rotation', 'Technical Breakout'], objectives: ['target', 'income'], riskProfiles: ['defined'], premiumStyles: ['either', 'credit'], volRegimes: ['rich', 'neutral'], complexity: 'intermediate', rationale: 'Asymmetric butterfly for users who want a cheap range trade with one-sided bias.', fitTags: ['Asymmetric', 'Target Price', 'Defined Risk'], caution: 'The wider wing still leaves one tail more vulnerable than the other.' },
+    { presetId: 'ratio_spread', scenario: 'bearish', priceViews: ['up', 'flat'], volViews: ['decrease', 'same'], timeframes: ['days', 'weeks'], tags: ['Technical Breakout', 'Sector Rotation'], objectives: ['income', 'target'], riskProfiles: ['advanced'], premiumStyles: ['either', 'credit'], volRegimes: ['rich', 'neutral'], complexity: 'advanced', rationale: 'Advanced ratio trade for price drifting toward a target then stalling.', fitTags: ['Target Zone', 'Advanced', 'Short Vol'], caution: 'This becomes dangerous if price runs through the short strike.' },
+    { presetId: 'calendar_spread', scenario: 'neutral', priceViews: ['flat'], volViews: ['increase', 'same'], timeframes: ['weeks', 'months'], tags: ['Earnings', 'Fed/Central Bank', 'Volatility Event'], objectives: ['event', 'target'], riskProfiles: ['defined'], premiumStyles: ['debit'], volRegimes: ['event', 'rich', 'neutral'], complexity: 'intermediate', rationale: 'Time-spread expression for pinning around a strike with favorable term structure.', fitTags: ['Time Spread', 'Long Vega', 'Defined Risk'], caution: 'A fast directional break can overwhelm the calendar before the front leg decays.' },
+    { presetId: 'diagonal_spread', scenario: 'bullish', priceViews: ['up', 'flat'], volViews: ['increase', 'same'], timeframes: ['weeks', 'months'], tags: ['Earnings', 'Technical Breakout', 'Sector Rotation'], objectives: ['directional', 'income'], riskProfiles: ['defined'], premiumStyles: ['debit'], volRegimes: ['rich', 'neutral'], complexity: 'intermediate', rationale: 'Directional time spread when you want theta help without abandoning upside bias.', fitTags: ['Directional', 'Time Spread', 'Defined Risk'], caution: 'The position evolves over time, so the short strike needs active rolling.' },
+    { presetId: 'double_calendar', scenario: 'volatile', priceViews: ['flat', 'move_big'], volViews: ['increase'], timeframes: ['weeks', 'months'], tags: ['Earnings', 'Macro Event', 'Volatility Event'], objectives: ['event', 'target'], riskProfiles: ['defined'], premiumStyles: ['debit'], volRegimes: ['event', 'rich'], complexity: 'intermediate', rationale: 'Defined-risk event structure when the market is pricing rich front-month vol around a catalyst.', fitTags: ['Event', 'Time Spread', 'Defined Risk'], caution: 'The trade still depends on managing the front expiry rather than simply holding to the back month.' }
 ];
+
+const THESIS_STRATEGY_MAP = Object.fromEntries(
+    THESIS_STRATEGY_LIBRARY.map(strategy => [strategy.presetId, strategy])
+);
+
+function getStrategyResearchCopy(presetId) {
+    return window.strategyResearchLibrary?.[presetId] || null;
+}
+
+function getStrategyDisplayLabel(presetId) {
+    return window.strategyPresets?.[presetId]?.label || getStrategyResearchCopy(presetId)?.title || presetId;
+}
+
+function inferCatalystTagsFromText(text = '') {
+    const normalized = text.toLowerCase();
+    if (!normalized.trim()) return [];
+
+    return Object.entries(CATALYST_KEYWORDS)
+        .filter(([, keywords]) => keywords.some(keyword => normalized.includes(keyword)))
+        .map(([tag]) => tag);
+}
+
+function getEffectiveCatalystTags() {
+    return Array.from(new Set([...tradeThesisState.tags, ...inferCatalystTagsFromText(tradeThesisState.catalyst)]));
+}
+
+function isRiskProfileCompatible(strategy, selectedRiskProfile) {
+    if (!selectedRiskProfile) return true;
+    if (selectedRiskProfile === 'defined') {
+        return strategy.riskProfiles.includes('defined');
+    }
+    if (selectedRiskProfile === 'stock') {
+        return strategy.riskProfiles.includes('stock') || strategy.riskProfiles.includes('defined');
+    }
+    return true;
+}
+
+function getTimeframeCompatibilityScore(strategy) {
+    if (strategy.timeframes.includes(tradeThesisState.timeframe)) return 10;
+    if (
+        (tradeThesisState.timeframe === 'weeks' && (strategy.timeframes.includes('days') || strategy.timeframes.includes('months'))) ||
+        (tradeThesisState.timeframe === 'days' && strategy.timeframes.includes('weeks')) ||
+        (tradeThesisState.timeframe === 'months' && strategy.timeframes.includes('weeks'))
+    ) {
+        return 5;
+    }
+    return 0;
+}
+
+function getPremiumPreferenceScore(strategy) {
+    if (!tradeThesisState.premiumStyle || tradeThesisState.premiumStyle === 'either') return { score: 0, max: 0 };
+    return {
+        score: strategy.premiumStyles.includes(tradeThesisState.premiumStyle) ? 8 : 0,
+        max: 8
+    };
+}
+
+function getObjectivePreferenceScore(strategy) {
+    if (!tradeThesisState.objective) return { score: 0, max: 0 };
+    const exactMatch = strategy.objectives.includes(tradeThesisState.objective);
+    const partialMatch = (
+        (tradeThesisState.objective === 'directional' && (strategy.scenario === 'bullish' || strategy.scenario === 'bearish')) ||
+        (tradeThesisState.objective === 'event' && strategy.scenario === 'volatile') ||
+        (tradeThesisState.objective === 'target' && strategy.scenario === 'neutral')
+    );
+    return {
+        score: exactMatch ? 12 : (partialMatch ? 5 : 0),
+        max: 12
+    };
+}
+
+function getRiskPreferenceScore(strategy) {
+    if (!tradeThesisState.riskProfile) return { score: 0, max: 0 };
+    if (tradeThesisState.riskProfile === 'advanced') {
+        return {
+            score: strategy.riskProfiles.includes('advanced') ? 10 : 7,
+            max: 10
+        };
+    }
+
+    if (tradeThesisState.riskProfile === 'stock') {
+        return {
+            score: strategy.riskProfiles.includes('stock') ? 10 : (strategy.riskProfiles.includes('defined') ? 6 : 0),
+            max: 10
+        };
+    }
+
+    return {
+        score: strategy.riskProfiles.includes('defined') ? 10 : 0,
+        max: 10
+    };
+}
+
+function getVolRegimePreferenceScore(strategy) {
+    if (!tradeThesisState.volRegime || tradeThesisState.volRegime === 'neutral') return { score: 0, max: 0 };
+    return {
+        score: strategy.volRegimes.includes(tradeThesisState.volRegime) ? 8 : 0,
+        max: 8
+    };
+}
+
+function getConfidenceTone(confidence) {
+    if (confidence >= 80) return 'high';
+    if (confidence >= 60) return 'medium';
+    return 'low';
+}
+
+function formatScoreBreakdown(breakdown) {
+    return [
+        `Outlook ${breakdown.outlook.score}/${breakdown.outlook.max}`,
+        `Vol ${breakdown.volatility.score}/${breakdown.volatility.max}`,
+        breakdown.structure.max ? `Structure ${breakdown.structure.score}/${breakdown.structure.max}` : null,
+        breakdown.catalyst.max ? `Catalyst ${breakdown.catalyst.score}/${breakdown.catalyst.max}` : null
+    ].filter(Boolean).join(' • ');
+}
+
+function scoreTradeThesisStrategy(strategy) {
+    if (!isThesisReady()) return null;
+    if (!isRiskProfileCompatible(strategy, tradeThesisState.riskProfile)) return null;
+
+    const effectiveTags = getEffectiveCatalystTags();
+    const breakdown = {
+        outlook: { score: 0, max: 35 },
+        volatility: { score: 0, max: 16 + (tradeThesisState.volRegime && tradeThesisState.volRegime !== 'neutral' ? 8 : 0) },
+        structure: { score: 0, max: 0 },
+        catalyst: { score: 0, max: effectiveTags.length ? Math.min(effectiveTags.length * 3, 12) : 0 }
+    };
+    const fitReasons = [];
+
+    if (strategy.priceViews.includes(tradeThesisState.priceView)) {
+        breakdown.outlook.score += 20;
+        fitReasons.push(`${THESIS_SUMMARY_LABELS.priceView[tradeThesisState.priceView]} outlook`);
+    } else if (tradeThesisState.priceView === 'move_big' && strategy.priceViews.some(view => view === 'up' || view === 'down')) {
+        breakdown.outlook.score += 8;
+    } else if ((tradeThesisState.priceView === 'up' || tradeThesisState.priceView === 'down') && strategy.priceViews.includes('move_big')) {
+        breakdown.outlook.score += 8;
+    }
+
+    const timeframeScore = getTimeframeCompatibilityScore(strategy);
+    breakdown.outlook.score += timeframeScore;
+    if (timeframeScore >= 10) {
+        fitReasons.push(`${THESIS_SUMMARY_LABELS.timeframe[tradeThesisState.timeframe]} horizon`);
+    }
+
+    if (strategy.scenario === inferScenarioFromPriceView(tradeThesisState.priceView)) {
+        breakdown.outlook.score += 5;
+    }
+
+    if (strategy.volViews.includes(tradeThesisState.volatilityView)) {
+        breakdown.volatility.score += 16;
+        fitReasons.push(`${THESIS_SUMMARY_LABELS.volatilityView[tradeThesisState.volatilityView]} volatility`);
+    } else if (tradeThesisState.volatilityView === 'same' || strategy.volViews.includes('same')) {
+        breakdown.volatility.score += 6;
+    }
+
+    const volRegimeScore = getVolRegimePreferenceScore(strategy);
+    breakdown.volatility.score += volRegimeScore.score;
+    if (volRegimeScore.score) {
+        fitReasons.push(THESIS_SUMMARY_LABELS.volRegime[tradeThesisState.volRegime]);
+    }
+
+    const objectiveScore = getObjectivePreferenceScore(strategy);
+    breakdown.structure.score += objectiveScore.score;
+    breakdown.structure.max += objectiveScore.max;
+    if (objectiveScore.score) {
+        fitReasons.push(THESIS_SUMMARY_LABELS.objective[tradeThesisState.objective]);
+    }
+
+    const premiumScore = getPremiumPreferenceScore(strategy);
+    breakdown.structure.score += premiumScore.score;
+    breakdown.structure.max += premiumScore.max;
+    if (premiumScore.score) {
+        fitReasons.push(THESIS_SUMMARY_LABELS.premiumStyle[tradeThesisState.premiumStyle]);
+    }
+
+    const riskScore = getRiskPreferenceScore(strategy);
+    breakdown.structure.score += riskScore.score;
+    breakdown.structure.max += riskScore.max;
+    if (riskScore.score && tradeThesisState.riskProfile) {
+        fitReasons.push(THESIS_SUMMARY_LABELS.riskProfile[tradeThesisState.riskProfile]);
+    }
+
+    const matchingTags = effectiveTags.filter(tag => strategy.tags.includes(tag)).slice(0, 4);
+    if (matchingTags.length) {
+        breakdown.catalyst.score += Math.min(matchingTags.length * 3, breakdown.catalyst.max);
+        fitReasons.push(...matchingTags.slice(0, 2));
+    }
+
+    const total = breakdown.outlook.score + breakdown.volatility.score + breakdown.structure.score + breakdown.catalyst.score;
+    const max = breakdown.outlook.max + breakdown.volatility.max + breakdown.structure.max + breakdown.catalyst.max;
+    const confidence = Math.round((total / Math.max(1, max)) * 100);
+
+    return {
+        total,
+        max,
+        confidence,
+        confidenceTone: getConfidenceTone(confidence),
+        breakdown,
+        breakdownText: formatScoreBreakdown(breakdown),
+        fitReasons: Array.from(new Set(fitReasons)).slice(0, 3)
+    };
+}
+
+function getTradeThesisSuggestions() {
+    if (!isThesisReady()) return [];
+
+    return THESIS_STRATEGY_LIBRARY
+        .map(strategy => {
+            const scorecard = scoreTradeThesisStrategy(strategy);
+            if (!scorecard) return null;
+
+            return {
+                ...strategy,
+                label: getStrategyDisplayLabel(strategy.presetId),
+                research: getStrategyResearchCopy(strategy.presetId),
+                scorecard
+            };
+        })
+        .filter(Boolean)
+        .filter(strategy => strategy.scorecard.confidence >= 35)
+        .sort((left, right) => right.scorecard.total - left.scorecard.total)
+        .slice(0, 4);
+}
+
+function getPlaybookStrategiesForScenario(scenarioId) {
+    const scenario = PLAYBOOK_DATA[scenarioId];
+    if (!scenario) return [];
+
+    return scenario.strategyIds
+        .map(presetId => {
+            const strategy = THESIS_STRATEGY_MAP[presetId];
+            if (!strategy) return null;
+            if (!isRiskProfileCompatible(strategy, tradeThesisState.riskProfile)) return null;
+
+            return {
+                ...strategy,
+                label: getStrategyDisplayLabel(presetId),
+                research: getStrategyResearchCopy(presetId),
+                scorecard: isThesisReady() ? scoreTradeThesisStrategy(strategy) : null
+            };
+        })
+        .filter(Boolean)
+        .sort((left, right) => {
+            if (left.scorecard && right.scorecard) {
+                return right.scorecard.total - left.scorecard.total;
+            }
+            if (left.complexity === right.complexity) return 0;
+            if (left.complexity === 'core') return -1;
+            if (right.complexity === 'core') return 1;
+            if (left.complexity === 'intermediate') return -1;
+            if (right.complexity === 'intermediate') return 1;
+            return 0;
+        });
+}
+
+function renderPlaybookStrategyCard(strategy, index) {
+    const summary = strategy.research?.summary || strategy.rationale;
+    const caution = strategy.caution || strategy.research?.avoid?.[0] || 'Review liquidity, event timing, and assignment risk before loading.';
+    const fitPill = strategy.scorecard
+        ? `<span class="playbook-fit-pill is-${strategy.scorecard.confidenceTone}">${strategy.scorecard.confidence}% confidence</span>`
+        : '';
+    const fitBreakdown = strategy.scorecard
+        ? `<div class="playbook-fit-breakdown">${strategy.scorecard.breakdownText}</div>`
+        : '';
+    const thesisFit = strategy.scorecard?.fitReasons?.length
+        ? `<div class="playbook-fit-copy">Why it fits: ${strategy.scorecard.fitReasons.join(' • ')}</div>`
+        : '';
+
+    return `
+        <article class="playbook-strategy-card ${index === 0 ? 'is-featured' : ''}">
+            <div class="playbook-strategy-head">
+                <div>
+                    <h5>${strategy.label}</h5>
+                    <p>${summary}</p>
+                </div>
+                ${fitPill}
+            </div>
+            <div class="playbook-strategy-flags">
+                ${strategy.fitTags.map(tag => `<span class="playbook-flag">${tag}</span>`).join('')}
+                <span class="playbook-flag playbook-flag-muted">${strategy.complexity}</span>
+            </div>
+            ${fitBreakdown}
+            ${thesisFit}
+            <div class="playbook-caution">Avoid if: ${caution}</div>
+            <div class="action-row">
+                <button class="btn-playbook-load" onclick="window.loadStrategyPreset('${strategy.presetId}')">
+                    Load →
+                </button>
+            </div>
+        </article>
+    `;
+}
 
 function renderPlaybookScenario(scenarioId) {
     const data = PLAYBOOK_DATA[scenarioId];
     const contentArea = document.getElementById('playbookContent');
     if (!data || !contentArea) return;
 
+    const strategies = getPlaybookStrategiesForScenario(scenarioId);
+    const thesisNote = isThesisReady()
+        ? '<div class="playbook-fit-copy playbook-fit-copy-top">Cards are thesis-ranked using outlook, volatility, structure, and catalyst fit.</div>'
+        : '<div class="playbook-fit-copy playbook-fit-copy-top">Choose a catalyst and thesis to rank this deck automatically.</div>';
+
     contentArea.innerHTML = `
         <div class="playbook-card active">
             <h4>${data.title}</h4>
             <div class="thinking-section">
-                <h5>Thinking Like a Trader</h5>
+                <h5>Research Framing</h5>
                 <p>${data.thinking}</p>
             </div>
-            <div class="thinking-section" style="border-left-color: var(--t-green);">
-                <h5 style="color: var(--t-green);">Strategy Choice</h5>
-                <p>${data.recommendation}</p>
-            </div>
-            <div class="action-row">
-                <button class="btn-playbook-load" onclick="window.loadStrategyPreset('${data.presetId}')">
-                    Load Example →
-                </button>
+            ${thesisNote}
+            <div class="playbook-library-grid">
+                ${strategies.map((strategy, index) => renderPlaybookStrategyCard(strategy, index)).join('')}
             </div>
         </div>
     `;
@@ -2014,6 +2254,8 @@ export function initStrategyPlaybook() {
             setActivePlaybookScenario(btn.dataset.scenario);
         });
     });
+
+    setActivePlaybookScenario('bullish');
 }
 
 function buildPresetLegs(presetId, options = {}) {
@@ -2647,57 +2889,6 @@ function inferScenarioFromPriceView(priceView) {
     return null;
 }
 
-function scoreTradeThesisStrategy(strategy) {
-    if (!isThesisReady()) return 0;
-
-    let score = 0;
-
-    if (strategy.priceViews.includes(tradeThesisState.priceView)) {
-        score += 6;
-    } else if (tradeThesisState.priceView === 'move_big' && strategy.priceViews.some(view => view === 'up' || view === 'down')) {
-        score += 1.5;
-    } else if ((tradeThesisState.priceView === 'up' || tradeThesisState.priceView === 'down') && strategy.priceViews.includes('move_big')) {
-        score += 2.5;
-    }
-
-    if (strategy.volViews.includes(tradeThesisState.volatilityView)) {
-        score += 4;
-    } else if (tradeThesisState.volatilityView === 'same') {
-        score += 1;
-    }
-
-    if (strategy.timeframes.includes(tradeThesisState.timeframe)) {
-        score += 3;
-    } else if (
-        (tradeThesisState.timeframe === 'weeks' && (strategy.timeframes.includes('days') || strategy.timeframes.includes('months'))) ||
-        (tradeThesisState.timeframe !== 'weeks' && strategy.timeframes.includes('weeks'))
-    ) {
-        score += 1;
-    }
-
-    const matchingTags = tradeThesisState.tags.filter(tag => strategy.tags.includes(tag)).length;
-    score += matchingTags * 0.75;
-
-    if (strategy.scenario === inferScenarioFromPriceView(tradeThesisState.priceView)) {
-        score += 1;
-    }
-
-    return score;
-}
-
-function getTradeThesisSuggestions() {
-    if (!isThesisReady()) return [];
-
-    return THESIS_STRATEGY_LIBRARY
-        .map(strategy => ({
-            ...strategy,
-            score: scoreTradeThesisStrategy(strategy),
-            label: window.strategyPresets?.[strategy.presetId]?.label || strategy.presetId
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 3);
-}
-
 function formatThesisCurrency(value) {
     if (!Number.isFinite(value)) return '--';
     return `$${Math.round(value).toLocaleString()}`;
@@ -2763,18 +2954,50 @@ function updateTradeThesisStepStates() {
     setStepDisabled(step4, !suggestionsReady);
 }
 
+function renderCatalystHint() {
+    const hintEl = document.getElementById('thesisCatalystHint');
+    if (!hintEl) return;
+
+    const inferredOnly = inferCatalystTagsFromText(tradeThesisState.catalyst)
+        .filter(tag => !tradeThesisState.tags.includes(tag));
+
+    if (inferredOnly.length) {
+        hintEl.textContent = `Detected from catalyst text: ${inferredOnly.join(' • ')}`;
+        return;
+    }
+
+    hintEl.textContent = tradeThesisState.tags.length
+        ? 'Manual tags are active and will steer the event match.'
+        : 'Quick tags and catalyst text drive event and strategy matching.';
+}
+
 function renderTradeThesisSummary() {
     const summaryEl = document.getElementById('thesisSummaryLine');
-    if (!summaryEl) return;
+    const researchEl = document.getElementById('thesisResearchLine');
+    if (!summaryEl || !researchEl) return;
 
     if (!isThesisReady()) {
         summaryEl.textContent = 'Choose your direction, vol view, and timeframe to build the thesis statement.';
         summaryEl.classList.remove('is-ready');
+        researchEl.textContent = 'Optional preferences sharpen the shortlist around objective, risk structure, and current IV regime.';
+        researchEl.classList.remove('is-ready');
         return;
     }
 
     summaryEl.textContent = `You believe price will ${THESIS_SUMMARY_LABELS.priceView[tradeThesisState.priceView]} with ${THESIS_SUMMARY_LABELS.volatilityView[tradeThesisState.volatilityView]} volatility over ${THESIS_SUMMARY_LABELS.timeframe[tradeThesisState.timeframe]}.`;
     summaryEl.classList.add('is-ready');
+
+    const researchPreferences = [
+        tradeThesisState.objective ? `Objective: ${THESIS_SUMMARY_LABELS.objective[tradeThesisState.objective]}` : null,
+        tradeThesisState.riskProfile ? `Risk: ${THESIS_SUMMARY_LABELS.riskProfile[tradeThesisState.riskProfile]}` : null,
+        tradeThesisState.premiumStyle && tradeThesisState.premiumStyle !== 'either' ? `Premium: ${THESIS_SUMMARY_LABELS.premiumStyle[tradeThesisState.premiumStyle]}` : null,
+        tradeThesisState.volRegime && tradeThesisState.volRegime !== 'neutral' ? `IV: ${THESIS_SUMMARY_LABELS.volRegime[tradeThesisState.volRegime]}` : null
+    ].filter(Boolean);
+
+    researchEl.textContent = researchPreferences.length
+        ? researchPreferences.join(' • ')
+        : 'Add objective, risk style, premium, or IV setup to sharpen the shortlist.';
+    researchEl.classList.toggle('is-ready', researchPreferences.length > 0);
 
     const scenarioId = inferScenarioFromPriceView(tradeThesisState.priceView);
     if (scenarioId) setActivePlaybookScenario(scenarioId);
@@ -2807,12 +3030,21 @@ function renderTradeThesisSuggestions() {
             <div class="thesis-suggestion-head">
                 <div>
                     <h5>${strategy.label}</h5>
-                    <p>${strategy.rationale}</p>
+                    <p>${strategy.research?.summary || strategy.rationale}</p>
                 </div>
-                ${index === 0 ? '<span class="thesis-best-badge">Best Match</span>' : ''}
+                <div class="thesis-suggestion-badges">
+                    ${index === 0 ? '<span class="thesis-best-badge">Best Match</span>' : ''}
+                    <span class="thesis-confidence-badge is-${strategy.scorecard.confidenceTone}">${strategy.scorecard.confidence}% confidence</span>
+                </div>
             </div>
+            <div class="thesis-score-breakdown">${strategy.scorecard.breakdownText}</div>
+            <div class="thesis-suggestion-flags">
+                ${strategy.fitTags.map(tag => `<span class="thesis-fit-flag">${tag}</span>`).join('')}
+            </div>
+            <div class="thesis-fit-copy">Why it fits: ${strategy.scorecard.fitReasons.join(' • ')}</div>
+            <div class="thesis-suggestion-caution">Avoid if: ${strategy.caution || strategy.research?.avoid?.[0] || 'Liquidity or event pricing does not support the thesis.'}</div>
             <div class="thesis-suggestion-actions">
-                <span class="thesis-fit-score">Fit ${strategy.score.toFixed(1)}</span>
+                <span class="thesis-fit-score">Score ${strategy.scorecard.total}/${strategy.scorecard.max}</span>
                 <button type="button" class="thesis-load-btn" data-load-preset="${strategy.presetId}">Load →</button>
             </div>
         </article>
@@ -2893,6 +3125,7 @@ function renderTradeThesisRisk() {
 
 function refreshTradeThesisPanel() {
     updateTradeThesisControls();
+    renderCatalystHint();
     renderTradeThesisSummary();
     renderTradeThesisSuggestions();
     renderTradeThesisRisk();

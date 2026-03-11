@@ -918,6 +918,9 @@ const strategyGroups = {
     }
 };
 
+window.strategyResearchLibrary = strategyLibrary;
+window.strategyResearchGroups = strategyGroups;
+
 const renderStrategyCard = (id) => {
     const s = strategyLibrary[id];
     if (!s) return '';

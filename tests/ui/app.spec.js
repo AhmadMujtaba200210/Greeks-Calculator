@@ -42,6 +42,42 @@ test('builder stays hidden outside its tab and uses the full desktop width', asy
   await expect(page.locator('#builder')).toHaveCSS('display', 'none');
 });
 
+test('builder reflows for small laptop viewports without shrinking into overlap', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  await page.click('.nav-btn[data-section="builder"]');
+
+  const laptopState = await page.evaluate(() => {
+    const splitTracks = (value) => value.split(/\s+/).filter(Boolean).length;
+    const workspace = document.querySelector('.builder-workspace');
+    const contextBar = document.querySelector('#builder .strategy-context-bar');
+    const kpiStrip = document.querySelector('.builder-kpi-strip');
+    const thesisCard = document.querySelector('.builder-thesis-card');
+    const chartCard = document.querySelector('.builder-chart-card');
+    const chartSurface = document.querySelector('.builder-chart-card .chart-pl');
+
+    return {
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      workspaceColumns: splitTracks(window.getComputedStyle(workspace).gridTemplateColumns),
+      contextColumns: splitTracks(window.getComputedStyle(contextBar).gridTemplateColumns),
+      kpiColumns: splitTracks(window.getComputedStyle(kpiStrip).gridTemplateColumns),
+      thesisWidth: thesisCard?.getBoundingClientRect().width ?? 0,
+      chartWidth: chartCard?.getBoundingClientRect().width ?? 0,
+      chartHeight: chartSurface?.getBoundingClientRect().height ?? 0,
+      bodyOverflowY: window.getComputedStyle(document.body).overflowY
+    };
+  });
+
+  expect(laptopState.horizontalOverflow).toBe(false);
+  expect(laptopState.workspaceColumns).toBe(2);
+  expect(laptopState.contextColumns).toBe(2);
+  expect(laptopState.kpiColumns).toBe(3);
+  expect(laptopState.thesisWidth).toBeGreaterThan(300);
+  expect(laptopState.chartWidth).toBeGreaterThan(560);
+  expect(laptopState.chartHeight).toBeGreaterThan(400);
+  expect(laptopState.bodyOverflowY).not.toBe('hidden');
+});
+
 test('strategy library charts render and stay bounded', async ({ page }) => {
   await page.goto('/');
   await page.click('.nav-btn[data-section="learn"]');
@@ -93,9 +129,13 @@ test('trade thesis wizard suggests and loads a matching strategy', async ({ page
   await page.click('.thesis-choice[data-field="priceView"][data-value="move_big"]');
   await page.click('.thesis-choice[data-field="volatilityView"][data-value="increase"]');
   await page.click('.thesis-choice[data-field="timeframe"][data-value="weeks"]');
+  await page.click('.thesis-choice[data-field="objective"][data-value="event"]');
+  await page.click('.thesis-choice[data-field="volRegime"][data-value="cheap"]');
 
   await expect(page.locator('#thesisSummaryLine')).toContainText('MOVE BIG');
-  await expect(page.locator('.thesis-suggestion-card')).toHaveCount(3);
+  await expect(page.locator('#thesisResearchLine')).toContainText('Objective: Event / Vol');
+  await expect(page.locator('.thesis-suggestion-card')).toHaveCount(4);
+  await expect(page.locator('.thesis-confidence-badge').first()).toContainText('confidence');
   const straddleSuggestion = page.locator('.thesis-suggestion-card').filter({ hasText: 'Long Straddle' });
   await expect(straddleSuggestion).toHaveCount(1);
   await expect(page.locator('#thesisContracts')).not.toHaveText('--');
@@ -120,6 +160,8 @@ test('builder utility tabs switch and playbook still loads presets', async ({ pa
   await expect(page.locator('#strategyPlaybookPane')).toHaveClass(/active/);
 
   await page.click('#strategyPlaybookPane .scenario-btn[data-scenario="volatile"]');
+  await expect(page.locator('#strategyPlaybookPane .playbook-strategy-card').first()).toBeVisible();
+  await expect(page.locator('#strategyPlaybookPane .playbook-strategy-card')).toHaveCount(4);
   await page.click('#strategyPlaybookPane .btn-playbook-load');
 
   await expect(page.locator('.leg-card')).toHaveCount(2);
