@@ -63,12 +63,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const derivCont = document.getElementById('derivationsContainer');
     if (derivCont) renderDerivationPanels(derivCont);
 
-    const greekNames = ['Delta', 'Gamma', 'Vega', 'Theta', 'Rho'];
-    greekNames.forEach(g => {
-        const el = document.getElementById(`miniDeriv${g}`);
-        if (el) renderMiniDerivation(g.toLowerCase(), el);
-    });
-
     renderCitationIcon(document.getElementById('modelCitationIcon'), state.pricingModel);
     renderCitationIcon(document.getElementById('titleCitationIcon'), state.pricingModel);
 
