@@ -1,5 +1,6 @@
 // Strategy Builder Module
 import { customTooltip } from './ui_utils.js';
+import { computePnLAttribution, renderPnLAttribution } from './pnlAttribution.js';
 
 export const strategyState = {
     legs: [],
@@ -410,6 +411,8 @@ export function initScenarioSandbox() {
             if (gEl) gEl.textContent = '0.00';
             if (vEl) vEl.textContent = '0.00';
             if (thEl) thEl.textContent = '0.00';
+            const pnlPanel = document.getElementById('pnlAttributionPanel');
+            if (pnlPanel) pnlPanel.style.display = 'none';
             if (window.refreshPositionManagement) window.refreshPositionManagement();
             return;
         }
@@ -426,6 +429,19 @@ export function initScenarioSandbox() {
         gEl.textContent = metrics.greeks.gamma.toFixed(2);
         vEl.textContent = metrics.greeks.vega.toFixed(2);
         thEl.textContent = metrics.greeks.theta.toFixed(2);
+
+        // Update PnL Attribution Panel
+        const pnlPanel = document.getElementById('pnlAttributionPanel');
+        if (pnlPanel) {
+            try {
+                const attribution = computePnLAttribution(strategyState.legs, entryMarketState, scenarioState);
+                pnlPanel.style.display = 'block';
+                renderPnLAttribution(attribution, pnlPanel);
+            } catch (e) {
+                console.error("PnL Attribution error:", e);
+                pnlPanel.style.display = 'none';
+            }
+        }
 
         if (window.refreshPositionManagement) window.refreshPositionManagement();
     }
@@ -1087,12 +1103,12 @@ function drawPinnedValueTag(ctx, chartArea, {
                 { left: x - width - gap, top: y - (height / 2), width, height },
                 { left: x - (width / 2), top: y - height - gap, width, height }
             ]
-        : [
-            { left: x - (width / 2), top: y - height - gap, width, height },
-            { left: x + gap, top: y - (height / 2), width, height },
-            { left: x - width - gap, top: y - (height / 2), width, height },
-            { left: x - (width / 2), top: y + gap, width, height }
-        ];
+            : [
+                { left: x - (width / 2), top: y - height - gap, width, height },
+                { left: x + gap, top: y - (height / 2), width, height },
+                { left: x - width - gap, top: y - (height / 2), width, height },
+                { left: x - (width / 2), top: y + gap, width, height }
+            ];
 
     let bestRect = null;
     let bestScore = Number.POSITIVE_INFINITY;

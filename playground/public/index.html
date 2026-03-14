@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 </head>
 
 <body>
@@ -48,7 +50,7 @@
                         </div>
 
                         <div class="control-group">
-                            <label for="pricingModel">Pricing Model</label>
+                            <label for="pricingModel">Pricing Model <span id="modelCitationIcon"></span></label>
                             <select id="pricingModel">
                                 <option value="black_scholes">Black-Scholes (Analytical)</option>
                                 <option value="binomial">Binomial Tree (CRR)</option>
@@ -93,12 +95,17 @@
 
                     <!-- Center Panel: Results -->
                     <div class="results-panel">
-                        <h2>Option Valuation & Greeks</h2>
+                        <div id="warningsBanner"></div>
+                        <h2 style="display: flex; align-items: center; justify-content: space-between;">
+                            Option Valuation & Greeks
+                            <span id="titleCitationIcon"></span>
+                        </h2>
 
                         <div class="results-grid">
                             <div class="result-card price-card">
                                 <div class="result-label">Option Price</div>
                                 <div class="result-value" id="priceResult">$0.00</div>
+                                <div id="aiBadge" style="display: none; margin-top: 5px;"></div>
                                 <div class="result-desc">Fair value of the option</div>
                             </div>
 
@@ -111,7 +118,7 @@
                                         Helps estimate probability of ITM and hedge directional risk.
                                     </div>
                                 </div>
-                                <div class="result-label">Delta (Δ)</div>
+                                <div class="result-label">Delta (Δ) <span id="miniDerivDelta"></span></div>
                                 <div class="result-value" id="deltaResult">0.000</div>
                                 <div class="result-desc">Price sensitivity to spot</div>
                             </div>
@@ -125,7 +132,7 @@
                                         High Gamma means explosive P&L swings.
                                     </div>
                                 </div>
-                                <div class="result-label">Gamma (Γ)</div>
+                                <div class="result-label">Gamma (Γ) <span id="miniDerivGamma"></span></div>
                                 <div class="result-value" id="gammaResult">0.000</div>
                                 <div class="result-desc">Rate of change of delta</div>
                             </div>
@@ -139,7 +146,7 @@
                                         in IV. Critical for earnings plays and volatility traders.
                                     </div>
                                 </div>
-                                <div class="result-label">Vega (ν)</div>
+                                <div class="result-label">Vega (ν) <span id="miniDerivVega"></span></div>
                                 <div class="result-value" id="vegaResult">0.000</div>
                                 <div class="result-desc">Sensitivity to volatility</div>
                             </div>
@@ -153,7 +160,7 @@
                                         burn'). Sellers collect theta; buyers pay it.
                                     </div>
                                 </div>
-                                <div class="result-label">Theta (Θ)</div>
+                                <div class="result-label">Theta (Θ) <span id="miniDerivTheta"></span></div>
                                 <div class="result-value" id="thetaResult">0.000</div>
                                 <div class="result-desc">Time decay per day</div>
                             </div>
@@ -167,11 +174,13 @@
                                         cost of carry.
                                     </div>
                                 </div>
-                                <div class="result-label">Rho (ρ)</div>
+                                <div class="result-label">Rho (ρ) <span id="miniDerivRho"></span></div>
                                 <div class="result-value" id="rhoResult">0.000</div>
                                 <div class="result-desc">Interest rate sensitivity</div>
                             </div>
                         </div>
+
+                        <div id="derivationsContainer" style="margin-top: 15px; margin-bottom: 15px;"></div>
 
                         <!-- Visualization Tabs -->
                         <div class="viz-tabs">
@@ -182,12 +191,20 @@
                             <button class="viz-tab compare-tab" data-viz="comparison">Compare</button>
                             <button class="viz-tab convergence-tab" data-viz="convergence">Convergence</button>
                             <button class="viz-tab surface-tab" data-viz="surface3d">3D Surface</button>
+                            <button class="viz-tab" data-viz="validation">Health Check</button>
                         </div>
 
                         <div class="chart-container">
                             <canvas id="mainChart"></canvas>
                             <div id="plotlyChart" style="display: none; width: 100%; height: 100%;"></div>
+                            <div id="validationPanel"
+                                style="display: none; width: 100%; height: 100%; overflow-y: auto; padding: 10px;">
+                                <button id="runHealthCheckBtn" class="reset-btn" style="margin-bottom: 15px;">Run Health
+                                    Check</button>
+                                <div id="healthCheckDashboard"></div>
+                            </div>
                         </div>
+                        <div id="mcQualityPanel" style="display: none; margin-top: 15px;"></div>
                     </div>
 
                     <!-- Right Panel: Insights -->
@@ -647,7 +664,8 @@
                         <button class="add-leg-btn" id="loadPresetBtn">Load</button>
                         <button class="guide-btn" id="builderGuideBtn">? Guide</button>
                         <button class="add-leg-btn btn-save" id="saveStrategyBtn">Save for Comparison</button>
-                        <button class="add-leg-btn btn-compare" id="compareStrategiesBtn" style="display: none;">Compare (0)</button>
+                        <button class="add-leg-btn btn-compare" id="compareStrategiesBtn" style="display: none;">Compare
+                            (0)</button>
                         <button class="add-leg-btn" id="addLegBtn">+ Add Leg</button>
                     </div>
                 </div>
@@ -745,13 +763,20 @@
                                         <textarea id="thesisCatalystInput" class="thesis-catalyst-input"
                                             placeholder="Middle East conflict causing oil supply uncertainty..."></textarea>
                                         <div class="thesis-tags" aria-label="Catalyst categories">
-                                            <button type="button" class="thesis-tag" data-tag="Earnings">Earnings</button>
-                                            <button type="button" class="thesis-tag" data-tag="Macro Event">Macro Event</button>
-                                            <button type="button" class="thesis-tag" data-tag="Geopolitical">Geopolitical</button>
-                                            <button type="button" class="thesis-tag" data-tag="Fed/Central Bank">Fed/Central Bank</button>
-                                            <button type="button" class="thesis-tag" data-tag="Sector Rotation">Sector Rotation</button>
-                                            <button type="button" class="thesis-tag" data-tag="Technical Breakout">Technical Breakout</button>
-                                            <button type="button" class="thesis-tag" data-tag="Volatility Event">Volatility Event</button>
+                                            <button type="button" class="thesis-tag"
+                                                data-tag="Earnings">Earnings</button>
+                                            <button type="button" class="thesis-tag" data-tag="Macro Event">Macro
+                                                Event</button>
+                                            <button type="button" class="thesis-tag"
+                                                data-tag="Geopolitical">Geopolitical</button>
+                                            <button type="button" class="thesis-tag"
+                                                data-tag="Fed/Central Bank">Fed/Central Bank</button>
+                                            <button type="button" class="thesis-tag" data-tag="Sector Rotation">Sector
+                                                Rotation</button>
+                                            <button type="button" class="thesis-tag"
+                                                data-tag="Technical Breakout">Technical Breakout</button>
+                                            <button type="button" class="thesis-tag"
+                                                data-tag="Volatility Event">Volatility Event</button>
                                         </div>
                                         <div class="thesis-catalyst-hint" id="thesisCatalystHint">
                                             Quick tags and catalyst text drive event and strategy matching.
@@ -771,68 +796,95 @@
                                         <div class="thesis-question">
                                             <label>Price will...</label>
                                             <div class="thesis-button-group">
-                                                <button type="button" class="thesis-choice" data-field="priceView" data-value="up">Go Up</button>
-                                                <button type="button" class="thesis-choice" data-field="priceView" data-value="down">Go Down</button>
-                                                <button type="button" class="thesis-choice" data-field="priceView" data-value="move_big">Move Big (Either Way)</button>
-                                                <button type="button" class="thesis-choice" data-field="priceView" data-value="flat">Stay Flat</button>
+                                                <button type="button" class="thesis-choice" data-field="priceView"
+                                                    data-value="up">Go Up</button>
+                                                <button type="button" class="thesis-choice" data-field="priceView"
+                                                    data-value="down">Go Down</button>
+                                                <button type="button" class="thesis-choice" data-field="priceView"
+                                                    data-value="move_big">Move Big (Either Way)</button>
+                                                <button type="button" class="thesis-choice" data-field="priceView"
+                                                    data-value="flat">Stay Flat</button>
                                             </div>
                                         </div>
                                         <div class="thesis-question">
                                             <label>Volatility will...</label>
                                             <div class="thesis-button-group">
-                                                <button type="button" class="thesis-choice" data-field="volatilityView" data-value="increase">Increase</button>
-                                                <button type="button" class="thesis-choice" data-field="volatilityView" data-value="decrease">Decrease</button>
-                                                <button type="button" class="thesis-choice" data-field="volatilityView" data-value="same">Stay Same</button>
+                                                <button type="button" class="thesis-choice" data-field="volatilityView"
+                                                    data-value="increase">Increase</button>
+                                                <button type="button" class="thesis-choice" data-field="volatilityView"
+                                                    data-value="decrease">Decrease</button>
+                                                <button type="button" class="thesis-choice" data-field="volatilityView"
+                                                    data-value="same">Stay Same</button>
                                             </div>
                                         </div>
                                         <div class="thesis-question">
                                             <label>Timeframe...</label>
                                             <div class="thesis-button-group">
-                                                <button type="button" class="thesis-choice" data-field="timeframe" data-value="days">Days (1-5)</button>
-                                                <button type="button" class="thesis-choice" data-field="timeframe" data-value="weeks">Weeks (1-4)</button>
-                                                <button type="button" class="thesis-choice" data-field="timeframe" data-value="months">Months (1-3)</button>
+                                                <button type="button" class="thesis-choice" data-field="timeframe"
+                                                    data-value="days">Days (1-5)</button>
+                                                <button type="button" class="thesis-choice" data-field="timeframe"
+                                                    data-value="weeks">Weeks (1-4)</button>
+                                                <button type="button" class="thesis-choice" data-field="timeframe"
+                                                    data-value="months">Months (1-3)</button>
                                             </div>
                                         </div>
                                         <div class="thesis-question">
                                             <label>Objective...</label>
                                             <div class="thesis-button-group thesis-button-group-wide">
-                                                <button type="button" class="thesis-choice" data-field="objective" data-value="directional">Directional</button>
-                                                <button type="button" class="thesis-choice" data-field="objective" data-value="income">Income</button>
-                                                <button type="button" class="thesis-choice" data-field="objective" data-value="hedge">Hedge</button>
-                                                <button type="button" class="thesis-choice" data-field="objective" data-value="event">Event / Vol</button>
-                                                <button type="button" class="thesis-choice" data-field="objective" data-value="target">Target Price</button>
+                                                <button type="button" class="thesis-choice" data-field="objective"
+                                                    data-value="directional">Directional</button>
+                                                <button type="button" class="thesis-choice" data-field="objective"
+                                                    data-value="income">Income</button>
+                                                <button type="button" class="thesis-choice" data-field="objective"
+                                                    data-value="hedge">Hedge</button>
+                                                <button type="button" class="thesis-choice" data-field="objective"
+                                                    data-value="event">Event / Vol</button>
+                                                <button type="button" class="thesis-choice" data-field="objective"
+                                                    data-value="target">Target Price</button>
                                             </div>
                                         </div>
                                         <div class="thesis-question">
                                             <label>Risk style...</label>
                                             <div class="thesis-button-group thesis-button-group-wide">
-                                                <button type="button" class="thesis-choice" data-field="riskProfile" data-value="defined">Defined Risk Only</button>
-                                                <button type="button" class="thesis-choice" data-field="riskProfile" data-value="stock">Stock Overlay OK</button>
-                                                <button type="button" class="thesis-choice" data-field="riskProfile" data-value="advanced">Advanced Structures</button>
+                                                <button type="button" class="thesis-choice" data-field="riskProfile"
+                                                    data-value="defined">Defined Risk Only</button>
+                                                <button type="button" class="thesis-choice" data-field="riskProfile"
+                                                    data-value="stock">Stock Overlay OK</button>
+                                                <button type="button" class="thesis-choice" data-field="riskProfile"
+                                                    data-value="advanced">Advanced Structures</button>
                                             </div>
                                         </div>
                                         <div class="thesis-question">
                                             <label>Premium style...</label>
                                             <div class="thesis-button-group">
-                                                <button type="button" class="thesis-choice" data-field="premiumStyle" data-value="debit">Pay Debit</button>
-                                                <button type="button" class="thesis-choice" data-field="premiumStyle" data-value="credit">Collect Credit</button>
-                                                <button type="button" class="thesis-choice" data-field="premiumStyle" data-value="either">Either</button>
+                                                <button type="button" class="thesis-choice" data-field="premiumStyle"
+                                                    data-value="debit">Pay Debit</button>
+                                                <button type="button" class="thesis-choice" data-field="premiumStyle"
+                                                    data-value="credit">Collect Credit</button>
+                                                <button type="button" class="thesis-choice" data-field="premiumStyle"
+                                                    data-value="either">Either</button>
                                             </div>
                                         </div>
                                         <div class="thesis-question">
                                             <label>IV setup...</label>
                                             <div class="thesis-button-group thesis-button-group-wide">
-                                                <button type="button" class="thesis-choice" data-field="volRegime" data-value="cheap">IV Cheap</button>
-                                                <button type="button" class="thesis-choice" data-field="volRegime" data-value="rich">IV Rich</button>
-                                                <button type="button" class="thesis-choice" data-field="volRegime" data-value="event">Event Premium</button>
-                                                <button type="button" class="thesis-choice" data-field="volRegime" data-value="neutral">Neutral / Unsure</button>
+                                                <button type="button" class="thesis-choice" data-field="volRegime"
+                                                    data-value="cheap">IV Cheap</button>
+                                                <button type="button" class="thesis-choice" data-field="volRegime"
+                                                    data-value="rich">IV Rich</button>
+                                                <button type="button" class="thesis-choice" data-field="volRegime"
+                                                    data-value="event">Event Premium</button>
+                                                <button type="button" class="thesis-choice" data-field="volRegime"
+                                                    data-value="neutral">Neutral / Unsure</button>
                                             </div>
                                         </div>
                                         <div class="thesis-summary-line" id="thesisSummaryLine">
-                                            Choose your direction, vol view, and timeframe to build the thesis statement.
+                                            Choose your direction, vol view, and timeframe to build the thesis
+                                            statement.
                                         </div>
                                         <div class="thesis-research-line" id="thesisResearchLine">
-                                            Optional preferences sharpen the shortlist around objective, risk structure, and current IV regime.
+                                            Optional preferences sharpen the shortlist around objective, risk structure,
+                                            and current IV regime.
                                         </div>
                                     </div>
                                 </section>
@@ -844,13 +896,15 @@
                                     <div class="thesis-step-body">
                                         <div class="thesis-step-heading">
                                             <h4>Suggested Strategies</h4>
-                                            <p>These auto-populate from your thesis and connect directly to the playbook.</p>
+                                            <p>These auto-populate from your thesis and connect directly to the
+                                                playbook.</p>
                                         </div>
                                         <div class="thesis-research-method" id="thesisResearchMethod">
                                             Confidence weighs outlook, volatility, structure, and catalyst fit.
                                         </div>
                                         <div class="thesis-suggestions" id="thesisSuggestions">
-                                            <div class="thesis-placeholder">Finish the thesis above to see matching strategies.</div>
+                                            <div class="thesis-placeholder">Finish the thesis above to see matching
+                                                strategies.</div>
                                         </div>
                                     </div>
                                 </section>
@@ -867,12 +921,15 @@
                                         <div class="thesis-risk-grid">
                                             <div class="thesis-risk-field">
                                                 <label for="thesisAumInput">Portfolio AUM</label>
-                                                <input type="number" id="thesisAumInput" min="1000" step="1000" value="100000">
+                                                <input type="number" id="thesisAumInput" min="1000" step="1000"
+                                                    value="100000">
                                             </div>
                                             <div class="thesis-risk-field thesis-risk-field-slider">
-                                                <label for="thesisRiskPct">How much of your portfolio are you willing to risk?</label>
+                                                <label for="thesisRiskPct">How much of your portfolio are you willing to
+                                                    risk?</label>
                                                 <div class="thesis-risk-slider-row">
-                                                    <input type="range" id="thesisRiskPct" min="1" max="10" step="1" value="3">
+                                                    <input type="range" id="thesisRiskPct" min="1" max="10" step="1"
+                                                        value="3">
                                                     <span id="thesisRiskPctValue">3%</span>
                                                 </div>
                                             </div>
@@ -896,7 +953,9 @@
                                         <div class="thesis-risk-details" id="thesisRiskDetails">
                                             Select a strategy above to calculate a risk budget and contract count.
                                         </div>
-                                        <div class="thesis-risk-warning" id="thesisRiskWarning">Aggressive sizing above 5% of AUM can create a hard-to-recover drawdown if the thesis is wrong.</div>
+                                        <div class="thesis-risk-warning" id="thesisRiskWarning">Aggressive sizing above
+                                            5% of AUM can create a hard-to-recover drawdown if the thesis is wrong.
+                                        </div>
                                         <div class="thesis-peer-note" id="thesisPeerNote">
                                             Your peer risked 8% on the crude straddle - that's aggressive.
                                         </div>
@@ -926,11 +985,14 @@
                                 <span class="panel-label">P/L Over Time</span>
                                 <div class="chart-header-controls">
                                     <span class="panel-hint">Toggle curve visibility below</span>
-                                    <button type="button" class="chart-toggle-btn" id="probabilityOverlayToggle">Probability Overlay: Off</button>
+                                    <button type="button" class="chart-toggle-btn"
+                                        id="probabilityOverlayToggle">Probability Overlay: Off</button>
                                 </div>
                             </div>
-                            <div class="chart-external-legend" id="strategyChartLegend" aria-label="Payoff curve legend"></div>
-                            <div class="chart-readouts" id="strategyChartReadouts" aria-label="Payoff chart readouts"></div>
+                            <div class="chart-external-legend" id="strategyChartLegend"
+                                aria-label="Payoff curve legend"></div>
+                            <div class="chart-readouts" id="strategyChartReadouts" aria-label="Payoff chart readouts">
+                            </div>
                             <div class="strategy-chart-container chart-pl">
                                 <canvas id="strategyChart"></canvas>
                             </div>
@@ -958,11 +1020,14 @@
                             <div class="terminal-panel-header">
                                 <span class="panel-label">Greeks vs Spot</span>
                                 <div class="builder-card-inline-metrics">
-                                    <span class="builder-inline-metric">Gamma <strong id="netGammaResult">0.00</strong></span>
-                                    <span class="builder-inline-metric">Rho <strong id="netRhoResult">0.00</strong></span>
+                                    <span class="builder-inline-metric">Gamma <strong
+                                            id="netGammaResult">0.00</strong></span>
+                                    <span class="builder-inline-metric">Rho <strong
+                                            id="netRhoResult">0.00</strong></span>
                                 </div>
                             </div>
-                            <div class="chart-external-legend chart-external-legend-compact" id="greeksChartLegend" aria-label="Greeks chart legend"></div>
+                            <div class="chart-external-legend chart-external-legend-compact" id="greeksChartLegend"
+                                aria-label="Greeks chart legend"></div>
                             <div class="strategy-chart-container chart-greeks">
                                 <canvas id="netGreeksChart"></canvas>
                             </div>
@@ -986,21 +1051,24 @@
                                             <span>Spot Delta</span>
                                             <span class="sandbox-val" id="valSpotChange">0%</span>
                                         </div>
-                                        <input type="range" id="scenarioSpotChange" min="-30" max="30" value="0" step="1">
+                                        <input type="range" id="scenarioSpotChange" min="-30" max="30" value="0"
+                                            step="1">
                                     </div>
                                     <div class="sandbox-control">
                                         <div class="sandbox-label">
                                             <span>IV Delta Pts</span>
                                             <span class="sandbox-val" id="valVolChange">0</span>
                                         </div>
-                                        <input type="range" id="scenarioVolChange" min="-20" max="20" value="0" step="1">
+                                        <input type="range" id="scenarioVolChange" min="-20" max="20" value="0"
+                                            step="1">
                                     </div>
                                     <div class="sandbox-control">
                                         <div class="sandbox-label">
                                             <span>Days</span>
                                             <span class="sandbox-val" id="valDaysElapsed">0</span>
                                         </div>
-                                        <input type="range" id="scenarioDaysElapsed" min="0" max="365" value="0" step="1">
+                                        <input type="range" id="scenarioDaysElapsed" min="0" max="365" value="0"
+                                            step="1">
                                     </div>
                                 </div>
                                 <div class="sandbox-results">
@@ -1020,7 +1088,10 @@
                             </div>
                         </section>
 
-                        <section class="builder-card position-management-panel builder-position-card" id="positionManagementPanel">
+                        <div id="pnlAttributionPanel" style="display: none; margin-top: 20px;"></div>
+
+                        <section class="builder-card position-management-panel builder-position-card"
+                            id="positionManagementPanel">
                             <div class="position-panel-header">
                                 <span class="panel-label">Position Management</span>
                                 <span class="panel-hint" id="positionStatusBadge">Load a strategy to activate</span>
@@ -1063,9 +1134,12 @@
                             <section class="position-section">
                                 <div class="position-section-title">Section 2 · Position Actions</div>
                                 <div class="position-actions" id="positionActions">
-                                    <button type="button" class="position-action-btn" id="positionTrimBtn" disabled>Trim</button>
-                                    <button type="button" class="position-action-btn" id="positionRollBtn" disabled>Roll</button>
-                                    <button type="button" class="position-action-btn danger" id="positionCloseBtn" disabled>Close All</button>
+                                    <button type="button" class="position-action-btn" id="positionTrimBtn"
+                                        disabled>Trim</button>
+                                    <button type="button" class="position-action-btn" id="positionRollBtn"
+                                        disabled>Roll</button>
+                                    <button type="button" class="position-action-btn danger" id="positionCloseBtn"
+                                        disabled>Close All</button>
                                 </div>
 
                                 <div class="position-action-form" id="positionTrimForm" hidden>
@@ -1073,7 +1147,8 @@
                                         <label for="positionTrimTargetQty">Remaining Qty After Trim</label>
                                         <select id="positionTrimTargetQty"></select>
                                     </div>
-                                    <button type="button" class="position-submit-btn" id="positionTrimConfirmBtn">Apply Trim</button>
+                                    <button type="button" class="position-submit-btn" id="positionTrimConfirmBtn">Apply
+                                        Trim</button>
                                 </div>
 
                                 <div class="position-action-form" id="positionRollForm" hidden>
@@ -1093,7 +1168,8 @@
                                     <div class="position-roll-chart-wrap" id="positionRollChartWrap" hidden>
                                         <canvas id="positionRollChart"></canvas>
                                     </div>
-                                    <button type="button" class="position-submit-btn" id="positionRollConfirmBtn">Confirm Roll</button>
+                                    <button type="button" class="position-submit-btn"
+                                        id="positionRollConfirmBtn">Confirm Roll</button>
                                 </div>
 
                                 <div class="position-action-result" id="positionActionResult">
@@ -1126,7 +1202,8 @@
                             </div>
                             <div id="playbookContent" class="playbook-content">
                                 <div class="playbook-card active">
-                                    <p class="playbook-placeholder">Select a market view above to get started with a strategy idea.</p>
+                                    <p class="playbook-placeholder">Select a market view above to get started with a
+                                        strategy idea.</p>
                                 </div>
                             </div>
                         </section>
@@ -1134,7 +1211,8 @@
                         <section class="builder-utility-pane" id="positionJournalPane" data-pane="journal">
                             <div class="builder-pane-topline">
                                 <span class="panel-label">Trade Journal</span>
-                                <button type="button" class="position-export-btn" id="positionJournalExportBtn" disabled>Export</button>
+                                <button type="button" class="position-export-btn" id="positionJournalExportBtn"
+                                    disabled>Export</button>
                             </div>
                             <div class="position-journal-status" id="positionJournalExportStatus"></div>
                             <div class="position-journal-wrap">
@@ -1187,9 +1265,11 @@
                             <div class="builder-pane-topline">
                                 <div>
                                     <span class="panel-label">Compare Strategies</span>
-                                    <p id="compareContextSummary" class="compare-context-summary">Same market context applied to every saved snapshot.</p>
+                                    <p id="compareContextSummary" class="compare-context-summary">Same market context
+                                        applied to every saved snapshot.</p>
                                 </div>
-                                <button type="button" class="add-leg-btn btn-save" id="copyComparisonBtn">Copy Comparison</button>
+                                <button type="button" class="add-leg-btn btn-save" id="copyComparisonBtn">Copy
+                                    Comparison</button>
                             </div>
                             <div class="compare-copy-status" id="compareCopyStatus"></div>
                             <div class="builder-compare-layout">
@@ -1221,7 +1301,8 @@
                                 <div class="compare-notes-card">
                                     <div class="compare-section-title">Snapshot Notes</div>
                                     <div class="compare-notes-text">
-                                        Save up to three strategies. Every snapshot is re-priced using the current shared market context so the comparison stays apples-to-apples for the meeting.
+                                        Save up to three strategies. Every snapshot is re-priced using the current
+                                        shared market context so the comparison stays apples-to-apples for the meeting.
                                     </div>
                                 </div>
                             </div>
@@ -1259,7 +1340,8 @@
                     <p id="compareModalContextSummary">Same market context applied to every saved snapshot.</p>
                 </div>
                 <div class="compare-modal-actions">
-                    <button type="button" class="add-leg-btn btn-save" id="copyComparisonModalBtn">Copy Comparison</button>
+                    <button type="button" class="add-leg-btn btn-save" id="copyComparisonModalBtn">Copy
+                        Comparison</button>
                     <span class="close-modal" id="closeCompareModal" style="position: static;">&times;</span>
                 </div>
             </div>
@@ -1295,7 +1377,8 @@
                 <div class="compare-notes-card">
                     <div class="compare-section-title">Snapshot Notes</div>
                     <div class="compare-notes-text">
-                        Save up to three strategies. Every snapshot is re-priced using the current shared market context so the comparison stays apples-to-apples for the meeting.
+                        Save up to three strategies. Every snapshot is re-priced using the current shared market context
+                        so the comparison stays apples-to-apples for the meeting.
                     </div>
                 </div>
             </div>

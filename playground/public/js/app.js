@@ -20,6 +20,13 @@ import init, { calculate_greeks_wasm, calculate_binomial_wasm, calculate_mc_wasm
 import { addLeg, initPositionManagement, initStrategyChartControls, initTradeThesisPanel, initStrategyGuide, initStrategyPresets, initStrategyContextBar, initScenarioSandbox, initStrategyComparison, initStrategyPlaybook, refreshBuilderViewport } from './strategy.js';
 import { customTooltip } from './ui_utils.js';
 
+import { guardedPrice, renderWarnings } from './numericalGuards.js';
+import { runCrossModelComparison, renderValidationPanel, runHealthCheck, renderHealthCheckDashboard } from './validation.js';
+import { validateSurrogate, renderSurrogateBadge } from './surrogateGuard.js';
+import { renderDerivationPanels, renderMiniDerivation } from './derivations.js';
+import { CITATIONS, renderCitationIcon } from './citations.js';
+import { computeConvergenceDiagnostics, renderConvergenceChart, renderMCQualityPanel } from './mcDiagnostics.js';
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -51,6 +58,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         initStrategyGuide();
         initStrategyPresets();
     }
+
+    // Module Initializations
+    const derivCont = document.getElementById('derivationsContainer');
+    if (derivCont) renderDerivationPanels(derivCont);
+
+    const greekNames = ['Delta', 'Gamma', 'Vega', 'Theta', 'Rho'];
+    greekNames.forEach(g => {
+        const el = document.getElementById(`miniDeriv${g}`);
+        if (el) renderMiniDerivation(g.toLowerCase(), el);
+    });
+
+    renderCitationIcon(document.getElementById('modelCitationIcon'), state.pricingModel);
+    renderCitationIcon(document.getElementById('titleCitationIcon'), state.pricingModel);
+
+    const healthCheckBtn = document.getElementById('runHealthCheckBtn');
+    if (healthCheckBtn) {
+        healthCheckBtn.addEventListener('click', async () => {
+            const dashboard = document.getElementById('healthCheckDashboard');
+            dashboard.innerHTML = "<div class='info-message' style='padding:15px;text-align:center;'>Loading benchmark data...</div>";
+            try {
+                // Fetch from the root depending on hosting, try /benchmarks.json or locally
+                let response = await fetch('../data/benchmark.json').catch(() => fetch('data/benchmark.json')).catch(() => fetch('/benchmarks.json'));
+                if (!response || !response.ok) throw new Error("Could not load benchmarks.json");
+                const benchmarkData = await response.json();
+                const results = runHealthCheck(benchmarkData);
+                renderHealthCheckDashboard(results, dashboard);
+            } catch (err) {
+                console.error("Health check error", err);
+                dashboard.innerHTML = `<div style='color:#ef4444;padding:15px;'>Health check failed to execute. Ensure benchmark.json is accessible. Error: ${err.message}</div>`;
+            }
+        });
+    }
 });
 
 // Initialize control panel
@@ -64,6 +103,8 @@ function initializeControls() {
     // Pricing Model
     document.getElementById('pricingModel').addEventListener('change', (e) => {
         state.pricingModel = e.target.value;
+        renderCitationIcon(document.getElementById('modelCitationIcon'), state.pricingModel);
+        renderCitationIcon(document.getElementById('titleCitationIcon'), state.pricingModel);
         updateCalculations();
     });
 
@@ -213,20 +254,40 @@ function updateCalculations() {
         document.body.style.cursor = 'wait';
     }
 
-    if (wasmLoaded) {
-        // Use high-performance Rust backend based on selected model
+    const priceParams = { S: spot, K: strike, T: maturity, sigma: volatility, r: rate, q: dividend, isCall };
+
+    const pricingFn = (p) => {
+        if (!wasmLoaded) return calculator.calculateGreeks(p.S, p.K, p.T, p.sigma, p.r, p.q, p.isCall);
+
         if (pricingModel === 'ai_surrogate' && window.aiSurrogate && window.aiSurrogate.ready) {
-            greeks = window.aiSurrogate.predictGreeks(spot, strike, maturity, volatility, rate, dividend, isCall);
+            return window.aiSurrogate.predictGreeks(p.S, p.K, p.T, p.sigma, p.r, p.q, p.isCall);
         } else if (pricingModel === 'binomial') {
-            greeks = calculate_binomial_wasm(spot, strike, maturity, volatility, rate, dividend, isCall, 500);
+            return calculate_binomial_wasm(p.S, p.K, p.T, p.sigma, p.r, p.q, p.isCall, 500);
         } else if (pricingModel === 'monte_carlo') {
-            greeks = calculate_mc_wasm(spot, strike, maturity, volatility, rate, dividend, isCall, 50000);
+            return calculate_mc_wasm(p.S, p.K, p.T, p.sigma, p.r, p.q, p.isCall, 50000);
         } else {
-            greeks = calculate_greeks_wasm(spot, strike, maturity, volatility, rate, dividend, isCall);
+            return calculate_greeks_wasm(p.S, p.K, p.T, p.sigma, p.r, p.q, p.isCall);
         }
-    } else {
-        // Fallback to JS (or if WASM failed to load), only Black-Scholes is available in pure JS
-        greeks = calculator.calculateGreeks(spot, strike, maturity, volatility, rate, dividend, isCall);
+    };
+
+    const guarded = guardedPrice(priceParams, pricingFn);
+    greeks = guarded.result;
+
+    // Render any edge-case warnings
+    const warningsBanner = document.getElementById('warningsBanner');
+    if (warningsBanner) renderWarnings(guarded.warnings, warningsBanner);
+
+    // AI Surrogate Badge Validations
+    const aiBadgeEl = document.getElementById('aiBadge');
+    if (aiBadgeEl) {
+        if (pricingModel === 'ai_surrogate' && window.aiSurrogate && window.aiSurrogate.ready) {
+            const validation = validateSurrogate(priceParams, greeks);
+            aiBadgeEl.style.display = 'inline-block';
+            renderSurrogateBadge(validation, aiBadgeEl);
+        } else {
+            aiBadgeEl.style.display = 'none';
+            aiBadgeEl.innerHTML = '';
+        }
     }
 
     document.body.style.cursor = 'default';
@@ -336,13 +397,23 @@ function updateChart() {
     // Manage canvas vs Plotly div visibility
     const canvas = document.getElementById('mainChart');
     const plotlyDiv = document.getElementById('plotlyChart');
+    const validationPanel = document.getElementById('validationPanel');
+    const mcQualityPanel = document.getElementById('mcQualityPanel');
+
+    // Default reset blocks
+    canvas.style.display = 'block';
+    plotlyDiv.style.display = 'none';
+    if (validationPanel) validationPanel.style.display = 'none';
+    if (mcQualityPanel) mcQualityPanel.style.display = 'none';
 
     if (currentViz === 'surface3d') {
         canvas.style.display = 'none';
         plotlyDiv.style.display = 'block';
-    } else {
-        canvas.style.display = 'block';
-        plotlyDiv.style.display = 'none';
+    } else if (currentViz === 'validation') {
+        canvas.style.display = 'none';
+        if (validationPanel) validationPanel.style.display = 'block';
+    } else if (currentViz === 'convergence') {
+        if (mcQualityPanel) mcQualityPanel.style.display = 'block';
     }
 
     switch (currentViz) {
@@ -367,7 +438,35 @@ function updateChart() {
         case 'surface3d':
             draw3DSurfaceChart();
             break;
+        case 'validation':
+            drawValidationView();
+            break;
     }
+}
+
+function drawValidationView() {
+    const { spot, strike, maturity, volatility, rate, dividend, optionType } = state;
+    const isCall = optionType === 'call';
+    const params = { S: spot, K: strike, T: maturity, sigma: volatility, r: rate, q: dividend, isCall };
+
+    if (!state.wasmLoaded) {
+        const panel = document.getElementById('validationPanel');
+        if (panel) panel.innerHTML = "<div class='info-message' style='padding: 15px;'>WASM required for cross-model validation.</div>";
+        return;
+    }
+
+    const container = document.getElementById('validationPanel');
+    if (!container) return;
+
+    let comparisonDiv = document.getElementById('crossModelComparisonDiv');
+    if (!comparisonDiv) {
+        comparisonDiv = document.createElement('div');
+        comparisonDiv.id = 'crossModelComparisonDiv';
+        container.insertBefore(comparisonDiv, container.firstChild);
+    }
+
+    const comparison = runCrossModelComparison(params);
+    renderValidationPanel(comparison, comparisonDiv);
 }
 
 // Helper to get Greeks for the current chart using selected model
@@ -775,93 +874,52 @@ function drawModelComparisonChart() {
 }
 
 // Draw convergence chart
-function drawConvergenceChart() {
+async function drawConvergenceChart() {
     const { spot, strike, maturity, volatility, rate, dividend, optionType, pricingModel, wasmLoaded } = state;
 
     const ctx = document.getElementById('mainChart').getContext('2d');
     if (state.currentChart) {
         state.currentChart.destroy();
+        state.currentChart = null; // Important context wipe for pure canvas reuse
     }
 
-    if (!wasmLoaded || pricingModel === 'black_scholes') {
+    if (!wasmLoaded || pricingModel === 'black_scholes' || pricingModel === 'ai_surrogate') {
         state.currentChart = new Chart(ctx, {
             type: 'bar',
             data: { labels: ['Info'], datasets: [{ data: [0], label: 'Please select Binomial or Monte Carlo model to see convergence' }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
+        const mcQualityPanel = document.getElementById('mcQualityPanel');
+        if (mcQualityPanel) mcQualityPanel.style.display = 'none';
         return;
     }
 
     const isCall = optionType === 'call';
+    const params = { S: spot, K: strike, T: maturity, sigma: volatility, r: rate, q: dividend, isCall };
+
     document.body.style.cursor = 'wait';
 
-    const exact_bs = calculate_greeks_wasm(spot, strike, maturity, volatility, rate, dividend, isCall).price;
-    const labels = [];
-    const prices = [];
-
-    if (pricingModel === 'binomial') {
-        const stepsToTest = [10, 50, 100, 200, 300, 500, 1000];
-        for (let steps of stepsToTest) {
-            labels.push(steps.toString());
-            prices.push(calculate_binomial_wasm(spot, strike, maturity, volatility, rate, dividend, isCall, steps).price);
-        }
-    } else if (pricingModel === 'monte_carlo') {
-        const pathsToTest = [1000, 5000, 10000, 25000, 50000, 100000];
-        for (let paths of pathsToTest) {
-            labels.push((paths / 1000) + 'k');
-            prices.push(calculate_mc_wasm(spot, strike, maturity, volatility, rate, dividend, isCall, paths).price);
-        }
-    }
+    // Defer heavy computation to allow UI thread to breathe
+    const diagnostics = await new Promise(resolve => {
+        setTimeout(() => {
+            resolve(computeConvergenceDiagnostics(params));
+        }, 10);
+    });
 
     document.body.style.cursor = 'default';
 
-    state.currentChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: pricingModel === 'binomial' ? 'Binomial Price (Steps)' : 'MC Price (Paths)',
-                    data: prices,
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.1
-                },
-                {
-                    label: 'Black-Scholes (Exact)',
-                    data: labels.map(() => exact_bs),
-                    borderColor: '#3b82f6',
-                    borderDash: [5, 5],
-                    borderWidth: 2,
-                    fill: false,
-                    pointRadius: 0
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { labels: { color: '#f1f5f9' } },
-                title: { display: true, text: 'Model Convergence Analysis', color: '#f8fafc' },
-                tooltip: { enabled: true }
-            },
-            scales: {
-                x: {
-                    title: { display: true, text: pricingModel === 'binomial' ? 'Number of Tree Steps' : 'Number of Paths', color: '#94a3b8' },
-                    ticks: { color: '#94a3b8' },
-                    grid: { color: '#334155' }
-                },
-                y: {
-                    title: { display: true, text: 'Estimated Option Price ($)', color: '#94a3b8' },
-                    ticks: { color: '#94a3b8' },
-                    grid: { color: '#334155' }
-                }
-            }
-        }
+    // renderConvergenceChart creates/mutates a chart on the given ctx and returns the instance
+    state.currentChart = renderConvergenceChart({
+        diagnostics,
+        pricingModel,
+        canvasCtx: ctx,
+        existingChart: state.currentChart
     });
+
+    const mcQualityPanel = document.getElementById('mcQualityPanel');
+    if (mcQualityPanel) {
+        renderMCQualityPanel(diagnostics, mcQualityPanel);
+    }
 }
 
 // Draw 3D Surface Chart using Plotly

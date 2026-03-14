@@ -1,0 +1,710 @@
+{
+  "benchmark_version": "1.0",
+  "conventions": {
+    "theta": "per-day (annual/365)",
+    "vega": "per-1%-vol-change (annual/100)",
+    "rho": "per-1%-rate-change (annual/100)"
+  },
+  "cases": [
+    {
+      "id": "STD_01",
+      "category": "standard",
+      "description": "ATM call, no dividends",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 10.450584,
+        "delta": 0.636831,
+        "gamma": 0.018762,
+        "vega": 0.37524,
+        "theta": -0.017573,
+        "rho": 0.532325
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "STD_02",
+      "category": "standard",
+      "description": "ATM put, no dividends",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "put",
+      "isCall": false,
+      "expected": {
+        "price": 5.573526,
+        "delta": -0.363169,
+        "gamma": 0.018762,
+        "vega": 0.37524,
+        "theta": -0.004542,
+        "rho": -0.418905
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "STD_03",
+      "category": "standard",
+      "description": "ITM call, no dividends",
+      "params": {
+        "S": 110,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 17.662954,
+        "delta": 0.795754,
+        "gamma": 0.012887,
+        "vega": 0.311854,
+        "theta": -0.018115,
+        "rho": 0.6987
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "STD_04",
+      "category": "standard",
+      "description": "OTM call, no dividends",
+      "params": {
+        "S": 90,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 5.091222,
+        "delta": 0.429832,
+        "gamma": 0.02182,
+        "vega": 0.35348,
+        "theta": -0.014286,
+        "rho": 0.335936
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "STD_05",
+      "category": "standard",
+      "description": "ITM put, no dividends",
+      "params": {
+        "S": 90,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "put",
+      "isCall": false,
+      "expected": {
+        "price": 10.214165,
+        "delta": -0.570168,
+        "gamma": 0.02182,
+        "vega": 0.35348,
+        "theta": -0.001256,
+        "rho": -0.615293
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "STD_06",
+      "category": "standard",
+      "description": "OTM put, no dividends",
+      "params": {
+        "S": 110,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "put",
+      "isCall": false,
+      "expected": {
+        "price": 2.785896,
+        "delta": -0.204246,
+        "gamma": 0.012887,
+        "vega": 0.311854,
+        "theta": -0.005085,
+        "rho": -0.252529
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "STD_07",
+      "category": "standard",
+      "description": "ATM call with dividend",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.02,
+        "sigma": 0.2
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 9.227006,
+        "delta": 0.586851,
+        "gamma": 0.018951,
+        "vega": 0.379012,
+        "theta": -0.013943,
+        "rho": 0.494581
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "STD_08",
+      "category": "standard",
+      "description": "ATM put with dividend",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.02,
+        "sigma": 0.2
+      },
+      "optionType": "put",
+      "isCall": false,
+      "expected": {
+        "price": 6.330081,
+        "delta": -0.393348,
+        "gamma": 0.018951,
+        "vega": 0.379012,
+        "theta": -0.006284,
+        "rho": -0.456648
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "DEEP_01",
+      "category": "deep money",
+      "description": "Deep ITM call",
+      "params": {
+        "S": 200,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 104.877724,
+        "delta": 0.999932,
+        "gamma": 7e-06,
+        "vega": 0.00055,
+        "theta": -0.013044,
+        "rho": 0.951087
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "DEEP_02",
+      "category": "deep money",
+      "description": "Deep OTM call",
+      "params": {
+        "S": 50,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 0.002399,
+        "delta": 0.000917,
+        "gamma": 0.000311,
+        "vega": 0.001555,
+        "theta": -4.9e-05,
+        "rho": 0.000435
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "DEEP_03",
+      "category": "deep money",
+      "description": "Deep ITM put",
+      "params": {
+        "S": 50,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "put",
+      "isCall": false,
+      "expected": {
+        "price": 45.125342,
+        "delta": -0.999083,
+        "gamma": 0.000311,
+        "vega": 0.001555,
+        "theta": 0.012982,
+        "rho": -0.950795
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "DEEP_04",
+      "category": "deep money",
+      "description": "Deep OTM put",
+      "params": {
+        "S": 200,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "put",
+      "isCall": false,
+      "expected": {
+        "price": 0.000667,
+        "delta": -6.8e-05,
+        "gamma": 7e-06,
+        "vega": 0.00055,
+        "theta": -1.3e-05,
+        "rho": -0.000142
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "EDGE_01",
+      "category": "edge cases",
+      "description": "Near expiry call",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 0.001,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 0.254814,
+        "delta": 0.504415,
+        "gamma": 0.630744,
+        "vega": 0.012615,
+        "theta": -0.352488,
+        "rho": 0.000502
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "EDGE_02",
+      "category": "edge cases",
+      "description": "Near expiry put",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 0.001,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "put",
+      "isCall": false,
+      "expected": {
+        "price": 0.249814,
+        "delta": -0.495585,
+        "gamma": 0.630744,
+        "vega": 0.012615,
+        "theta": -0.33879,
+        "rho": -0.000498
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "EDGE_03",
+      "category": "edge cases",
+      "description": "Long dated call",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 5.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 29.13862,
+        "delta": 0.783076,
+        "gamma": 0.006567,
+        "vega": 0.656738,
+        "theta": -0.010334,
+        "rho": 2.458449
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "EDGE_04",
+      "category": "edge cases",
+      "description": "Long dated put",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 5.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "put",
+      "isCall": false,
+      "expected": {
+        "price": 7.018698,
+        "delta": -0.216924,
+        "gamma": 0.006567,
+        "vega": 0.656738,
+        "theta": 0.000334,
+        "rho": -1.435555
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "EDGE_05",
+      "category": "edge cases",
+      "description": "Low vol call",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 0.01
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 4.877058,
+        "delta": 1.0,
+        "gamma": 1e-06,
+        "vega": 1e-06,
+        "theta": -0.013031,
+        "rho": 0.951229
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "EDGE_06",
+      "category": "edge cases",
+      "description": "High vol call",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.0,
+        "sigma": 1.5
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 55.804278,
+        "delta": 0.783284,
+        "gamma": 0.001957,
+        "vega": 0.293539,
+        "theta": -0.063402,
+        "rho": 0.225242
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "EDGE_07",
+      "category": "edge cases",
+      "description": "Negative rate call",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 1.0,
+        "r": -0.005,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 7.737392,
+        "delta": 0.529893,
+        "gamma": 0.019891,
+        "vega": 0.397822,
+        "theta": -0.010279,
+        "rho": 0.452519
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "EDGE_08",
+      "category": "edge cases",
+      "description": "Negative rate put",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 1.0,
+        "r": -0.005,
+        "q": 0.0,
+        "sigma": 0.2
+      },
+      "optionType": "put",
+      "isCall": false,
+      "expected": {
+        "price": 8.238644,
+        "delta": -0.470107,
+        "gamma": 0.019891,
+        "vega": 0.397822,
+        "theta": -0.011656,
+        "rho": -0.552494
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "REAL_01",
+      "category": "realistic",
+      "description": "AAPL-like call",
+      "params": {
+        "S": 180,
+        "K": 185,
+        "T": 0.0822,
+        "r": 0.053,
+        "q": 0.005,
+        "sigma": 0.25
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 3.346038,
+        "delta": 0.385224,
+        "gamma": 0.029624,
+        "vega": 0.197244,
+        "theta": -0.09081,
+        "rho": 0.054247
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "REAL_02",
+      "category": "realistic",
+      "description": "SPX-like put",
+      "params": {
+        "S": 5200,
+        "K": 5000,
+        "T": 0.25,
+        "r": 0.053,
+        "q": 0.014,
+        "sigma": 0.15
+      },
+      "optionType": "put",
+      "isCall": false,
+      "expected": {
+        "price": 58.612938,
+        "delta": -0.244102,
+        "gamma": 0.000803,
+        "vega": 8.14417,
+        "theta": -0.525246,
+        "rho": -3.319859
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "REAL_03",
+      "category": "realistic",
+      "description": "TSLA-like call",
+      "params": {
+        "S": 250,
+        "K": 300,
+        "T": 0.5,
+        "r": 0.053,
+        "q": 0.0,
+        "sigma": 0.55
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 23.9782,
+        "delta": 0.418314,
+        "gamma": 0.004017,
+        "vega": 0.690401,
+        "theta": -0.115737,
+        "rho": 0.403001
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "REAL_04",
+      "category": "realistic",
+      "description": "High-div stock call",
+      "params": {
+        "S": 50,
+        "K": 50,
+        "T": 1.0,
+        "r": 0.05,
+        "q": 0.06,
+        "sigma": 0.3
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 5.409285,
+        "delta": 0.514616,
+        "gamma": 0.024877,
+        "vega": 0.186581,
+        "theta": -0.006222,
+        "rho": 0.203215
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    },
+    {
+      "id": "REAL_05",
+      "category": "realistic",
+      "description": "Penny time call",
+      "params": {
+        "S": 100,
+        "K": 100,
+        "T": 0.01,
+        "r": 0.001,
+        "q": 0.0,
+        "sigma": 0.05
+      },
+      "optionType": "call",
+      "isCall": true,
+      "expected": {
+        "price": 0.19997,
+        "delta": 0.501795,
+        "gamma": 0.797876,
+        "vega": 0.039894,
+        "theta": -0.027461,
+        "rho": 0.004998
+      },
+      "tolerance": {
+        "price": 0.01,
+        "greeks": 0.005
+      },
+      "notes": ""
+    }
+  ]
+}
