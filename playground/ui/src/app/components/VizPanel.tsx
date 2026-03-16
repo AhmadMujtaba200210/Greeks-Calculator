@@ -363,7 +363,7 @@ function ChartCanvas({ activeViz, params, computed }: Omit<VizPanelProps, "onViz
               </HoverCardTrigger>
               <HoverCardContent>
                 <p className="text-sm font-semibold">Convergence constraint</p>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm text-slate-600">
                   Convergence is only meaningful for Binomial and Monte Carlo because the x-axis depends on step or path count.
                 </p>
               </HoverCardContent>
@@ -423,7 +423,7 @@ export default function VizPanel({ activeViz, computed, params, isPending, onViz
               </HoverCardTrigger>
               <HoverCardContent>
                 <p className="text-sm font-semibold">View context</p>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm text-slate-600">
                   The chart desk reuses the same contract state across every view, so tab changes do not reset the pricing assumptions.
                 </p>
               </HoverCardContent>

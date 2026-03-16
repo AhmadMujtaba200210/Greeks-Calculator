@@ -40,7 +40,7 @@ export default function HealthHoverCard({ label, status, description, compact = 
             <p className="text-sm font-semibold">{label}</p>
             <Badge variant={badgeVariant(status)}>{statusLabel(status)}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-sm text-slate-600">{description}</p>
         </div>
       </HoverCardContent>
     </HoverCard>
