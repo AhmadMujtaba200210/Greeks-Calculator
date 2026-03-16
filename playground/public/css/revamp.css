@@ -1901,13 +1901,35 @@ body.builder-active {
 }
 
 @media (max-width: 768px) {
+    body[data-active-section="playground"],
+    body[data-active-section="playground"] .container,
+    body[data-active-section="playground"] .main-content,
+    body[data-active-section="playground"] #playground.section,
+    body[data-active-section="playground"] #playground-app-root {
+        width: 100%;
+        max-width: 100vw;
+        overflow-x: clip;
+    }
+
     .section:not(.builder-section) {
         padding: 1rem 1rem calc(5.75rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    body[data-active-section="playground"] .mobile-tabbar {
+        display: none;
+    }
+
+    body[data-active-section="playground"] .main-content {
+        padding-bottom: 1rem;
     }
 
     .navbar {
         min-height: auto;
         padding: 1rem;
+    }
+
+    .nav-utility {
+        display: none !important;
     }
 
     .brand-copy h1 {

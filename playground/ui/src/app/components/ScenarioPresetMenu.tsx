@@ -64,7 +64,7 @@ export default function ScenarioPresetMenu({ onSelect }: ScenarioPresetMenuProps
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="sm" data-testid="playground-preset-menu">
+        <Button variant="secondary" size="sm" className="h-8 px-2.5" data-testid="playground-preset-menu">
           <Sparkles className="h-4 w-4" />
           Presets
         </Button>

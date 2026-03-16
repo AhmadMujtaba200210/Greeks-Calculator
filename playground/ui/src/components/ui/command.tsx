@@ -9,7 +9,7 @@ const Command = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive
     ref={ref}
-    className={cn("flex h-full w-full flex-col overflow-hidden rounded-xl bg-card text-card-foreground", className)}
+    className={cn("flex h-full w-full flex-col overflow-hidden rounded-xl bg-white text-slate-950", className)}
     {...props}
   />
 ));
@@ -19,11 +19,11 @@ const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b border-border px-3" cmdk-input-wrapper="">
-    <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+  <div className="flex items-center border-b border-slate-200 px-3" cmdk-input-wrapper="">
+    <Search className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
     <CommandPrimitive.Input
       ref={ref}
-      className={cn("flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground", className)}
+      className={cn("flex h-11 w-full rounded-md bg-transparent py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400", className)}
       {...props}
     />
   </div>
@@ -42,7 +42,7 @@ const CommandEmpty = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Empty>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
 >(({ className, ...props }, ref) => (
-  <CommandPrimitive.Empty ref={ref} className={cn("py-6 text-center text-sm text-muted-foreground", className)} {...props} />
+  <CommandPrimitive.Empty ref={ref} className={cn("py-6 text-center text-sm text-slate-500", className)} {...props} />
 ));
 CommandEmpty.displayName = CommandPrimitive.Empty.displayName;
 
@@ -52,7 +52,7 @@ const CommandGroup = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.Group
     ref={ref}
-    className={cn("overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.12em] [&_[cmdk-group-heading]]:text-muted-foreground", className)}
+    className={cn("overflow-hidden p-1 text-slate-950 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.12em] [&_[cmdk-group-heading]]:text-slate-500", className)}
     {...props}
   />
 ));
@@ -62,7 +62,7 @@ const CommandSeparator = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
 >(({ className, ...props }, ref) => (
-  <CommandPrimitive.Separator ref={ref} className={cn("-mx-1 h-px bg-border", className)} {...props} />
+  <CommandPrimitive.Separator ref={ref} className={cn("-mx-1 h-px bg-slate-200", className)} {...props} />
 ));
 CommandSeparator.displayName = CommandPrimitive.Separator.displayName;
 
@@ -73,7 +73,7 @@ const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-lg px-2 py-2 text-sm outline-none data-[selected=true]:bg-muted data-[selected=true]:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
+      "relative flex cursor-default select-none items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-900 outline-none data-[selected=true]:bg-slate-100 data-[selected=true]:text-slate-950 data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
       className,
     )}
     {...props}
@@ -82,7 +82,7 @@ const CommandItem = React.forwardRef<
 CommandItem.displayName = CommandPrimitive.Item.displayName;
 
 const CommandShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn("ml-auto text-xs tracking-[0.12em] text-muted-foreground", className)} {...props} />
+  <span className={cn("ml-auto text-xs tracking-[0.12em] text-slate-500", className)} {...props} />
 );
 CommandShortcut.displayName = "CommandShortcut";
 

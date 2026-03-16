@@ -18,14 +18,18 @@ type HealthHoverCardProps = {
   label: string;
   status: HealthState;
   description: string;
+  compact?: boolean;
 };
 
-export default function HealthHoverCard({ label, status, description }: HealthHoverCardProps) {
+export default function HealthHoverCard({ label, status, description, compact = false }: HealthHoverCardProps) {
   return (
     <HoverCard openDelay={120} closeDelay={120}>
       <HoverCardTrigger asChild>
         <div>
-          <Badge variant={badgeVariant(status)} className="cursor-default">
+          <Badge
+            variant={badgeVariant(status)}
+            className={compact ? "cursor-default px-1.5 py-0 text-[10px] leading-5" : "cursor-default"}
+          >
             {label}: {statusLabel(status)}
           </Badge>
         </div>

@@ -347,12 +347,12 @@ function ChartCanvas({ activeViz, params, computed }: Omit<VizPanelProps, "onViz
   }, [activeViz, params, computed]);
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       {(summary ?? getDefaultSummary(activeViz)) && (
-        <div className="pg-chart-summary flex flex-wrap items-center justify-between gap-2 rounded-[18px] border border-border/70 bg-white/85 px-3.5 py-2.5 shadow-sm">
+        <div className="pg-chart-summary flex flex-wrap items-center justify-between gap-2 rounded-[14px] border border-border/70 bg-white/85 px-3 py-2 shadow-sm">
           <div>
-            <p className="text-sm font-semibold leading-none" data-testid="chart-summary-headline">{(summary ?? getDefaultSummary(activeViz)).headline}</p>
-            <p className="mt-1 text-[13px] leading-5 text-muted-foreground" data-testid="chart-summary-supporting">{(summary ?? getDefaultSummary(activeViz)).supporting}</p>
+            <p className="text-[13px] font-semibold leading-none" data-testid="chart-summary-headline">{(summary ?? getDefaultSummary(activeViz)).headline}</p>
+            <p className="mt-1 text-[12px] leading-[1.125rem] text-muted-foreground" data-testid="chart-summary-supporting">{(summary ?? getDefaultSummary(activeViz)).supporting}</p>
           </div>
           {activeViz === "convergence" && (
             <HoverCard openDelay={120}>
@@ -379,7 +379,7 @@ function ChartCanvas({ activeViz, params, computed }: Omit<VizPanelProps, "onViz
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : (
-        <div className="relative h-[400px] rounded-[20px] border border-border bg-white/95">
+        <div className="relative h-[300px] rounded-[14px] border border-border bg-white/95 sm:h-[330px]">
           {loading && <Skeleton className="absolute inset-0" />}
           {activeViz === "convergence" && params.pricingModel !== "binomial" && params.pricingModel !== "monte_carlo" ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -399,21 +399,21 @@ export default function VizPanel({ activeViz, computed, params, isPending, onViz
 
   return (
     <Card className="pg-panel shadow-sm" data-testid="playground-viz-card">
-      <CardHeader className="gap-3 border-b border-border/70 p-4 pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <CardHeader className="gap-2.5 border-b border-border/70 p-3 pb-2.5">
+        <div className="flex flex-wrap items-start justify-between gap-2.5">
           <div>
-            <div className="mb-1.5 flex items-center gap-2">
-              <CardTitle className="text-base">Analysis Desk</CardTitle>
-              <Badge variant="secondary">{computed?.modelLabel ?? "Loading"}</Badge>
-              <Badge variant="outline">{activeViz === "surface3d" ? "3D" : activeViz === "diagnostics" ? "Diagnostics" : summary?.headline ?? "Chart"}</Badge>
+            <div className="mb-1 flex items-center gap-1.5">
+              <CardTitle className="text-sm">Analysis Desk</CardTitle>
+              <Badge variant="secondary" className="px-2 py-0.5 text-[10px]">{computed?.modelLabel ?? "Loading"}</Badge>
+              <Badge variant="outline" className="px-2 py-0.5 text-[10px]">{activeViz === "surface3d" ? "3D" : activeViz === "diagnostics" ? "Diagnostics" : summary?.headline ?? "Chart"}</Badge>
             </div>
-            <CardDescription>Switch views without resetting the current contract.</CardDescription>
+            <CardDescription className="text-xs leading-[1.125rem]">Switch views without resetting the contract.</CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <HoverCard openDelay={120}>
               <HoverCardTrigger asChild>
                 <div>
-                  <Badge variant="outline" className="cursor-default">
+                  <Badge variant="outline" className="cursor-default px-2 py-0.5 text-[10px]">
                     <Sparkles className="mr-1 h-3.5 w-3.5" />
                     {activeViz === "convergence" && params.pricingModel !== "binomial" && params.pricingModel !== "monte_carlo"
                       ? "Needs Binomial / MC"
@@ -429,7 +429,7 @@ export default function VizPanel({ activeViz, computed, params, isPending, onViz
               </HoverCardContent>
             </HoverCard>
             {isPending && (
-              <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/45 px-2.5 py-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/45 px-2 py-0.5 text-[11px] text-muted-foreground">
                 <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
                 Updating view
               </div>
@@ -438,7 +438,7 @@ export default function VizPanel({ activeViz, computed, params, isPending, onViz
         </div>
 
         {computed?.warnings?.length ? (
-          <div className="grid gap-2 lg:grid-cols-2">
+          <div className="grid gap-1.5 lg:grid-cols-2">
             {computed.warnings.slice(0, 4).map((warning) => (
               <Alert key={`${warning.code}-${warning.message}`} className={warningTone(warning.severity)}>
                 <AlertTitle>{warning.code.replaceAll("_", " ")}</AlertTitle>
@@ -449,9 +449,9 @@ export default function VizPanel({ activeViz, computed, params, isPending, onViz
         ) : null}
       </CardHeader>
 
-      <CardContent className="p-4 pt-3">
+      <CardContent className="p-3 pt-2.5">
         <Tabs value={activeViz} onValueChange={(value) => onVizChange(value as VizId)}>
-          <TabsList className="pg-tab-list-compact bg-muted/45">
+          <TabsList className="pg-tab-list-compact flex max-w-full overflow-x-auto bg-muted/45 flex-nowrap whitespace-nowrap">
             <TabsTrigger className="pg-tab-trigger-compact" value="price">Price</TabsTrigger>
             <TabsTrigger className="pg-tab-trigger-compact" value="greeks">Greeks</TabsTrigger>
             <TabsTrigger className="pg-tab-trigger-compact" value="volatility">Surface</TabsTrigger>
@@ -463,13 +463,13 @@ export default function VizPanel({ activeViz, computed, params, isPending, onViz
           </TabsList>
         </Tabs>
 
-        <div className="mt-4" data-testid={`viz-${activeViz}`}>
+        <div className="mt-3" data-testid={`viz-${activeViz}`}>
           {activeViz === "surface3d" ? (
-            <Suspense fallback={<Skeleton className="h-[400px] w-full rounded-[20px]" />}>
+            <Suspense fallback={<Skeleton className="h-[300px] w-full rounded-[14px] sm:h-[330px]" />}>
               <Surface3DPanel params={params} />
             </Suspense>
           ) : activeViz === "diagnostics" ? (
-            <Suspense fallback={<Skeleton className="h-[400px] w-full rounded-[20px]" />}>
+            <Suspense fallback={<Skeleton className="h-[300px] w-full rounded-[14px] sm:h-[330px]" />}>
               <DiagnosticsPanel comparison={computed?.comparison ?? null} />
             </Suspense>
           ) : (

@@ -23,7 +23,7 @@ export default function ModelPicker({ value, onChange }: ModelPickerProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="secondary" className="w-full justify-between" data-testid="playground-model-picker">
+        <Button variant="secondary" className="h-9 w-full justify-between rounded-[12px] px-3 text-[13px]" data-testid="playground-model-picker">
           <span className="truncate">{activeModel?.label ?? "Select model"}</span>
           <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </Button>

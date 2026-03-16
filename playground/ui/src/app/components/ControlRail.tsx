@@ -50,7 +50,7 @@ function FieldRow({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={`pg-${field.key}`} className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        <Label htmlFor={`pg-${field.key}`} className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
           {field.label}
         </Label>
         <span className="pg-metric-value text-[13px] text-foreground">
@@ -58,7 +58,7 @@ function FieldRow({
           {field.suffix ?? ""}
         </span>
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_84px] gap-2.5">
+      <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-2">
         <Slider
           id={`pg-${field.key}`}
           data-testid={`slider-${field.key}`}
@@ -71,7 +71,7 @@ function FieldRow({
         <Input
           data-testid={`input-${field.key}`}
           inputMode="decimal"
-          className="h-9"
+          className="h-9 rounded-[12px]"
           value={displayValue}
           onChange={(event) => {
             const nextValue = Number.parseFloat(event.target.value);
@@ -96,101 +96,104 @@ export default function ControlRail({
 
   return (
     <Card className="pg-side-panel shadow-sm" data-testid="playground-control-rail">
-      <CardHeader className="border-b border-border/70 p-4 pb-3">
+      <CardHeader className="border-b border-border/70 p-3 pb-2.5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <CardTitle className="text-sm">Scenario Rail</CardTitle>
-            <CardDescription>Contract and market inputs for rapid repricing.</CardDescription>
+            <CardDescription className="text-xs leading-[1.125rem]">Contract and market inputs.</CardDescription>
           </div>
           <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" onClick={onReset} aria-label="Reset Playground">
-            <RotateCcw className="h-4 w-4" />
+            <RotateCcw className="h-3.5 w-3.5" />
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="px-4 py-4">
-        <div className="space-y-4">
-          <div className="space-y-2.5">
+      <CardContent className="px-3 py-3">
+        <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Contract</p>
-                <p className="mt-1 text-[13px] leading-5 text-foreground">Switch stance without leaving the desk.</p>
+                <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">Contract</p>
+                <p className="mt-0.5 text-[12px] leading-[1.125rem] text-foreground">Switch stance and model quickly.</p>
               </div>
-              <Badge variant="secondary">{computed?.modelLabel ?? "Model"}</Badge>
+              <Badge variant="secondary" className="px-2 py-0.5 text-[10px]">{computed?.modelLabel ?? "Model"}</Badge>
             </div>
             <ToggleGroup type="single" value={params.optionType} onValueChange={(value) => value && onOptionTypeChange(value as "call" | "put")} className="grid grid-cols-2 gap-1.5">
-              <ToggleGroupItem value="call" className="h-10 w-full text-sm">Call</ToggleGroupItem>
-              <ToggleGroupItem value="put" className="h-10 w-full text-sm">Put</ToggleGroupItem>
+              <ToggleGroupItem value="call" className="h-9 w-full text-[13px]">Call</ToggleGroupItem>
+              <ToggleGroupItem value="put" className="h-9 w-full text-[13px]">Put</ToggleGroupItem>
             </ToggleGroup>
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Pricing model</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">Pricing model</Label>
               <ModelPicker value={params.pricingModel} onChange={onPricingModelChange} />
             </div>
           </div>
 
           <Separator />
 
-          <div className="space-y-3.5">
+          <div className="space-y-3">
             {primaryFields.map((field) => (
               <FieldRow key={field.key} field={field} params={params} onNumericParamChange={onNumericParamChange} />
             ))}
           </div>
 
-          <Collapsible open={showAdvancedMarket} onOpenChange={setShowAdvancedMarket} className="rounded-[18px] border border-border/80 bg-muted/35 p-3.5">
+          <Collapsible open={showAdvancedMarket} onOpenChange={setShowAdvancedMarket} className="rounded-[14px] border border-border/80 bg-muted/35 p-2.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold">Market Inputs</p>
-                <p className="text-[13px] leading-5 text-muted-foreground">Volatility, rates, and carry.</p>
+                <p className="text-[12px] leading-[1.125rem] text-muted-foreground">Volatility, rates, and carry.</p>
               </div>
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Toggle market inputs">
+                <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="Toggle market inputs">
                   {showAdvancedMarket ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </CollapsibleTrigger>
             </div>
-            <CollapsibleContent className="mt-3 space-y-3.5">
+            <CollapsibleContent className="mt-2 space-y-3">
               {advancedFields.map((field) => (
                 <FieldRow key={field.key} field={field} params={params} onNumericParamChange={onNumericParamChange} />
               ))}
             </CollapsibleContent>
           </Collapsible>
 
-          <Collapsible open={showDiagnostics} onOpenChange={setShowDiagnostics} className="rounded-[18px] border border-border/80 bg-white/80 p-3.5">
+          <Collapsible open={showDiagnostics} onOpenChange={setShowDiagnostics} className="rounded-[14px] border border-border/80 bg-white/80 p-2.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <GaugeCircle className="h-4 w-4 text-primary" />
                   Model & Diagnostics
                 </p>
-                <p className="text-[13px] leading-5 text-muted-foreground">Health and trust state for the engine.</p>
+                <p className="text-[12px] leading-[1.125rem] text-muted-foreground">Health and trust state.</p>
               </div>
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Toggle diagnostics">
+                <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="Toggle diagnostics">
                   {showDiagnostics ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </CollapsibleTrigger>
             </div>
-            <CollapsibleContent className="mt-3 space-y-2.5">
+            <CollapsibleContent className="mt-2 space-y-1.5">
               <HealthHoverCard
                 label="Domain"
                 status={computed?.health.domain ?? "warn"}
                 description="Domain flags whether the selected model is being used inside a trustworthy region."
+                compact
               />
               <HealthHoverCard
                 label="Stability"
                 status={computed?.health.stability ?? "warn"}
                 description="Stability measures how closely the active model tracks the cross-model reference stack."
+                compact
               />
               <HealthHoverCard
                 label="Overall"
                 status={computed?.health.overall ?? "warn"}
                 description="Overall combines domain validity and reference agreement into a single desk signal."
+                compact
               />
             </CollapsibleContent>
           </Collapsible>
 
-          <div className="rounded-[18px] border border-border/80 bg-muted/20 p-3.5">
-            <div className="mb-2.5 flex items-center gap-2">
-              <Sigma className="h-4 w-4 text-primary" />
+          <div className="rounded-[14px] border border-border/80 bg-muted/20 p-2.5">
+            <div className="mb-1.5 flex items-center gap-2">
+              <Sigma className="h-3.5 w-3.5 text-primary" />
               <p className="text-sm font-semibold">Math</p>
             </div>
             <DerivationsAccordion />

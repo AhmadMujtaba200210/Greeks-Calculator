@@ -21,7 +21,7 @@ export default function WorkspaceActions({
   onInsightTabChange,
 }: WorkspaceActionsProps) {
   return (
-    <Menubar className="h-9">
+    <Menubar className="h-8">
       <MenubarMenu>
         <MenubarTrigger>
           <Command className="h-4 w-4" />

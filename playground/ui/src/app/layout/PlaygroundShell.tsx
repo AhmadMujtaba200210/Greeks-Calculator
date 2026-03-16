@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { SlidersHorizontal } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
@@ -45,48 +47,60 @@ export default function PlaygroundShell({
 
   return (
     <div
-      className="pg-workspace p-2.5 sm:p-3.5 lg:p-4"
+      className="pg-workspace p-2 sm:p-3 lg:p-3.5"
       data-testid="playground-dashboard"
       data-layout-mode={viewportMode}
       data-density="compact"
     >
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {header}
 
         {viewportMode === "desktop-3col" ? (
-          <div className="pg-board rounded-[24px] border border-border/60">
-            <ResizablePanelGroup direction="horizontal" className="h-auto min-h-[980px]">
+          <div className="pg-board rounded-[20px] border border-border/60">
+            <ResizablePanelGroup direction="horizontal" className="h-auto min-h-[900px]">
               <ResizablePanel defaultSize={22} minSize={18}>
-                <div className="p-2.5">{controlPane}</div>
+                <div className="p-2">{controlPane}</div>
               </ResizablePanel>
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize={52} minSize={38}>
-                <div className="p-2.5 pr-1.5">{mainPane}</div>
+                <div className="p-2 pr-1.5">{mainPane}</div>
               </ResizablePanel>
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize={26} minSize={20}>
-                <div className="p-2.5 pl-1.5" data-testid="playground-right-pane">{insightPane}</div>
+                <div className="p-2 pl-1.5" data-testid="playground-right-pane">{insightPane}</div>
               </ResizablePanel>
             </ResizablePanelGroup>
           </div>
         ) : viewportMode === "desktop-2col" ? (
-          <div className="pg-board rounded-[24px] border border-border/60 p-2.5">
-            <div className="grid gap-3 xl:grid-cols-[304px_minmax(0,1fr)]">
+          <div className="pg-board rounded-[20px] border border-border/60 p-2">
+            <div className="grid gap-2.5 xl:grid-cols-[288px_minmax(0,1fr)]">
               <div>{controlPane}</div>
-              <div className="space-y-3" data-testid="playground-analysis-stack">
+              <div className="space-y-2.5" data-testid="playground-analysis-stack">
                 {mainPane}
                 <div data-testid="playground-below-chart-dock">{insightPane}</div>
               </div>
             </div>
           </div>
         ) : viewportMode === "stacked" ? (
-          <div className="space-y-3">
-            {controlPane}
+          <div className="space-y-2.5">
             {mainPane}
+            <Accordion type="single" collapsible defaultValue="" className="pg-panel overflow-hidden rounded-[14px] border border-border/70 bg-white/90 shadow-sm" data-testid="playground-stacked-inputs">
+              <AccordionItem value="inputs" className="border-b-0">
+                <AccordionTrigger className="px-3 py-3 text-left hover:no-underline">
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <SlidersHorizontal className="h-4 w-4 text-primary" />
+                    Inputs
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-3 pb-3 pt-0">
+                  {controlPane}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
             {insightPane}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {mainPane}
             {insightPane}
             <Sheet open={mobileControlsOpen} onOpenChange={onMobileControlsOpenChange}>

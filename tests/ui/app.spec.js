@@ -21,6 +21,9 @@ test('playground renders without hero and mounts the dashboard shell', async ({ 
   await expect(page.getByTestId('playground-dashboard')).toHaveAttribute('data-density', 'compact');
   await expect(page.getByTestId('playground-workspace-header')).toBeVisible();
   await expect(page.getByTestId('playground-control-rail')).toBeVisible();
+  await expect(page.getByTestId('playground-summary-hero-cell')).toBeVisible();
+  await expect(page.getByTestId('playground-summary-mini-group')).toBeVisible();
+  await expect(page.getByTestId('playground-greeks-strip')).toBeVisible();
   await expect(page.getByTestId('playground-viz-card')).toBeVisible();
   await expect(page.getByTestId('playground-insight-dock')).toBeVisible();
 });
@@ -34,6 +37,10 @@ test('playground page scrolls and uses desktop-2col on standard desktop', async 
   const layout = await page.evaluate(() => {
     const viz = document.querySelector('[data-testid="playground-viz-card"]');
     const dock = document.querySelector('[data-testid="playground-below-chart-dock"]');
+    const summary = document.querySelector('[data-testid="playground-summary-band"]');
+    const hero = document.querySelector('[data-testid="metric-fair-value"]');
+    const intrinsic = document.querySelector('[data-testid="metric-intrinsic"]');
+    const greekStrip = document.querySelector('[data-testid="playground-greeks-strip"]');
     return {
       bodyOverflowY: window.getComputedStyle(document.body).overflowY,
       mainOverflow: window.getComputedStyle(document.querySelector('.main-content')).overflow,
@@ -41,7 +48,10 @@ test('playground page scrolls and uses desktop-2col on standard desktop', async 
       viewportHeight: window.innerHeight,
       dockTop: dock?.getBoundingClientRect().top ?? 0,
       vizBottom: viz?.getBoundingClientRect().bottom ?? 0,
-      summaryHeight: document.querySelector('[data-testid="playground-summary-band"]')?.getBoundingClientRect().height ?? 0,
+      summaryHeight: summary?.getBoundingClientRect().height ?? 0,
+      heroHeight: hero?.getBoundingClientRect().height ?? 0,
+      miniHeight: intrinsic?.getBoundingClientRect().height ?? 0,
+      greekStripHeight: greekStrip?.getBoundingClientRect().height ?? 0,
       vizWidth: viz?.getBoundingClientRect().width ?? 0,
       horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1
     };
@@ -51,12 +61,44 @@ test('playground page scrolls and uses desktop-2col on standard desktop', async 
   expect(layout.mainOverflow).toBe('visible');
   expect(layout.docHeight).toBeGreaterThan(layout.viewportHeight);
   expect(layout.dockTop).toBeGreaterThan(layout.vizBottom);
-  expect(layout.summaryHeight).toBeLessThan(420);
+  expect(layout.summaryHeight).toBeLessThan(300);
+  expect(layout.heroHeight).toBeLessThan(190);
+  expect(layout.heroHeight - layout.miniHeight).toBeLessThan(45);
+  expect(layout.greekStripHeight).toBeLessThan(150);
   expect(layout.vizWidth).toBeGreaterThan(760);
   expect(layout.horizontalOverflow).toBe(false);
 
   await page.getByTestId('playground-insight-dock').scrollIntoViewIfNeeded();
   await expect(page.getByTestId('playground-insight-dock')).toBeVisible();
+});
+
+test('playground stacked mode keeps metrics ahead of inputs', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto('/');
+
+  await expect(page.getByTestId('playground-dashboard')).toHaveAttribute('data-layout-mode', 'stacked');
+  await expect(page.getByTestId('playground-stacked-inputs')).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const summary = document.querySelector('[data-testid="playground-summary-band"]');
+    const viz = document.querySelector('[data-testid="playground-viz-card"]');
+    const inputs = document.querySelector('[data-testid="playground-stacked-inputs"]');
+    const dock = document.querySelector('[data-testid="playground-insight-dock"]');
+
+    return {
+      summaryTop: summary?.getBoundingClientRect().top ?? 0,
+      vizTop: viz?.getBoundingClientRect().top ?? 0,
+      vizBottom: viz?.getBoundingClientRect().bottom ?? 0,
+      inputsTop: inputs?.getBoundingClientRect().top ?? 0,
+      dockTop: dock?.getBoundingClientRect().top ?? 0,
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1
+    };
+  });
+
+  expect(layout.summaryTop).toBeLessThan(layout.vizTop);
+  expect(layout.vizBottom).toBeLessThan(layout.inputsTop);
+  expect(layout.inputsTop).toBeLessThan(layout.dockTop);
+  expect(layout.horizontalOverflow).toBe(false);
 });
 
 test('playground uses desktop-3col on ultra-wide screens', async ({ page }) => {
@@ -163,16 +205,19 @@ test('playground uses a controls sheet on mobile without horizontal overflow', a
 
   const layout = await page.evaluate(() => {
     const trigger = document.querySelector('[data-testid="playground-controls-sheet-trigger"]');
+    const summary = document.querySelector('[data-testid="playground-summary-band"]');
     const viz = document.querySelector('[data-testid="playground-viz-card"]');
 
     return {
       horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      summaryBottom: summary?.getBoundingClientRect().bottom ?? 0,
       triggerTop: trigger?.getBoundingClientRect().top ?? 0,
       vizTop: viz?.getBoundingClientRect().top ?? 0
     };
   });
 
   expect(layout.horizontalOverflow).toBe(false);
+  expect(layout.summaryBottom).toBeLessThan(layout.vizTop);
   expect(layout.triggerTop).toBeLessThan(layout.vizTop);
 
   await page.getByTestId('playground-controls-sheet-trigger').click();
