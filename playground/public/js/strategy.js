@@ -2265,11 +2265,14 @@ export function initStrategyPlaybook() {
 
     const buttons = container.querySelectorAll('.scenario-btn');
 
-    buttons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            setActivePlaybookScenario(btn.dataset.scenario);
+    if (container.dataset.playbookInitialized !== 'true') {
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                setActivePlaybookScenario(btn.dataset.scenario);
+            });
         });
-    });
+        container.dataset.playbookInitialized = 'true';
+    }
 
     setActivePlaybookScenario('bullish');
 }
@@ -2351,10 +2354,13 @@ export function initStrategyPresets() {
         presetSelect.appendChild(optgroup);
     });
 
-    loadBtn.addEventListener('click', () => {
-        if (!presetSelect.value) return;
-        openStrategyPreset(presetSelect.value);
-    });
+    if (loadBtn.dataset.presetInitialized !== 'true') {
+        loadBtn.addEventListener('click', () => {
+            if (!presetSelect.value) return;
+            openStrategyPreset(presetSelect.value);
+        });
+        loadBtn.dataset.presetInitialized = 'true';
+    }
 }
 
 function getPositionPortfolioAum() {
@@ -3152,6 +3158,11 @@ export function initTradeThesisPanel() {
     const panel = document.getElementById('tradeThesisPanel');
     if (!panel) return;
 
+    if (panel.dataset.initialized === 'true') {
+        refreshTradeThesisPanel();
+        return;
+    }
+
     const catalystInput = document.getElementById('thesisCatalystInput');
     const aumInput = document.getElementById('thesisAumInput');
     const riskSlider = document.getElementById('thesisRiskPct');
@@ -3194,6 +3205,7 @@ export function initTradeThesisPanel() {
         renderTradeThesisRisk();
     });
 
+    panel.dataset.initialized = 'true';
     window.refreshTradeThesisPanel = refreshTradeThesisPanel;
     window.refreshTradeThesisRisk = renderTradeThesisRisk;
 

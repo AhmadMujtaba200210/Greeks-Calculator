@@ -1,0 +1,253 @@
+@tailwind utilities;
+
+#playground-app-root {
+  --pg-background: 40 24% 97%;
+  --pg-foreground: 222 47% 11%;
+  --pg-card: 0 0% 100%;
+  --pg-card-foreground: 222 47% 11%;
+  --pg-primary: 221 83% 53%;
+  --pg-primary-foreground: 210 40% 98%;
+  --pg-secondary: 210 20% 96%;
+  --pg-secondary-foreground: 222 47% 11%;
+  --pg-muted: 210 22% 96%;
+  --pg-muted-foreground: 215 16% 47%;
+  --pg-accent: 214 32% 91%;
+  --pg-accent-foreground: 222 47% 11%;
+  --pg-destructive: 0 72% 51%;
+  --pg-destructive-foreground: 0 0% 98%;
+  --pg-border: 214 26% 84%;
+  --pg-input: 214 26% 88%;
+  --pg-ring: 221 83% 53%;
+  --pg-radius: 1rem;
+  --pg-panel-radius: 26px;
+  --pg-board-radius: 30px;
+  --pg-shell-radius: 24px;
+  --pg-inner-radius: 20px;
+  --pg-gap: 1rem;
+  --pg-section-gap: 1.25rem;
+  --pg-panel-pad: 1rem;
+  --pg-panel-pad-tight: 0.875rem;
+  --pg-shadow-panel:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 12px 28px rgba(15, 23, 42, 0.08);
+  --pg-shadow-hero:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 16px 34px rgba(15, 23, 42, 0.1);
+  --pg-shadow-board: 0 28px 60px rgba(2, 6, 23, 0.22);
+  color: hsl(var(--pg-foreground));
+  font-family: Manrope, Inter, system-ui, sans-serif;
+}
+
+#playground-app-root *,
+#playground-app-root *::before,
+#playground-app-root *::after {
+  box-sizing: border-box;
+}
+
+#playground-app-root button,
+#playground-app-root input,
+#playground-app-root select,
+#playground-app-root table {
+  font: inherit;
+}
+
+#playground-app-root .pg-workspace {
+  position: relative;
+}
+
+#playground-app-root .pg-workspace[data-density="compact"] {
+  --pg-panel-radius: 18px;
+  --pg-board-radius: 24px;
+  --pg-shell-radius: 20px;
+  --pg-inner-radius: 14px;
+  --pg-gap: 12px;
+  --pg-section-gap: 14px;
+  --pg-panel-pad: 16px;
+  --pg-panel-pad-tight: 12px;
+  --pg-shadow-panel:
+    inset 0 1px 0 rgba(255, 255, 255, 0.68),
+    0 8px 22px rgba(15, 23, 42, 0.06);
+  --pg-shadow-hero:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 12px 28px rgba(15, 23, 42, 0.08);
+  --pg-shadow-board: 0 20px 48px rgba(2, 6, 23, 0.18);
+}
+
+#playground-app-root .pg-workspace[data-layout-mode="desktop-2col"] {
+  padding-inline: 0.75rem;
+}
+
+#playground-app-root .pg-workspace::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.1), transparent 24%);
+  opacity: 0.9;
+}
+
+#playground-app-root .pg-workspace > * {
+  position: relative;
+  z-index: 1;
+}
+
+#playground-app-root .pg-shell-strip {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--pg-shell-radius);
+  padding: var(--pg-panel-pad) calc(var(--pg-panel-pad) + 2px);
+  background:
+    linear-gradient(135deg, rgba(11, 17, 29, 0.92), rgba(12, 17, 25, 0.82)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 14px 32px rgba(2, 6, 23, 0.24);
+  color: #f8fafc;
+}
+
+#playground-app-root .pg-shell-strip [aria-label="Breadcrumb"] {
+  color: rgba(226, 232, 240, 0.72);
+}
+
+#playground-app-root .pg-shell-strip [aria-current="page"] {
+  color: #f8fafc;
+}
+
+#playground-app-root .pg-board {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 248, 252, 0.98)),
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 30%),
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 24%);
+  box-shadow: var(--pg-shadow-board);
+}
+
+#playground-app-root .pg-board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.25), transparent 65%);
+  pointer-events: none;
+}
+
+#playground-app-root .pg-side-panel,
+#playground-app-root .pg-panel,
+#playground-app-root .pg-dock-panel {
+  border-radius: var(--pg-panel-radius);
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--pg-shadow-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+#playground-app-root .pg-hero-panel {
+  border-radius: var(--pg-panel-radius);
+  border: 1px solid rgba(203, 213, 225, 0.76);
+  background:
+    linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.98)),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 30%);
+  box-shadow: var(--pg-shadow-hero);
+}
+
+#playground-app-root .pg-chart-summary {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.92)),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.05), transparent 35%);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+}
+
+#playground-app-root .pg-stat-strip {
+  border-radius: var(--pg-inner-radius);
+  border: 1px solid rgba(203, 213, 225, 0.82);
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.75rem;
+}
+
+#playground-app-root .pg-stat-cell {
+  min-width: 0;
+}
+
+#playground-app-root .pg-tab-list-compact {
+  gap: 0.375rem;
+  border-radius: 16px;
+  padding: 0.25rem;
+}
+
+#playground-app-root .pg-tab-trigger-compact {
+  min-width: 0;
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+#playground-app-root [data-layout-mode="desktop-2col"] .pg-board,
+#playground-app-root [data-layout-mode="desktop-3col"] .pg-board {
+  overflow: hidden;
+}
+
+#playground-app-root [data-layout-mode="desktop-2col"] [data-testid="playground-analysis-stack"] {
+  min-width: 0;
+}
+
+#playground-app-root [data-layout-mode="desktop-2col"] [data-testid="playground-below-chart-dock"] {
+  min-width: 0;
+}
+
+#playground-app-root [data-layout-mode="desktop-3col"] [data-testid="playground-right-pane"] {
+  min-width: 0;
+}
+
+#playground-app-root .pg-metric-value {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: -0.045em;
+}
+
+#playground-app-root .pg-derivations .derivation-section,
+#playground-app-root .pg-derivations .deriv-panel {
+  background: #ffffff;
+  border-color: rgba(203, 213, 225, 0.8);
+  color: #0f172a;
+}
+
+#playground-app-root .pg-derivations .deriv-panel strong,
+#playground-app-root .pg-derivations .derivation-section h4 {
+  color: #0f172a;
+}
+
+#playground-app-root .pg-derivations .deriv-panel code,
+#playground-app-root .pg-derivations .deriv-panel pre {
+  color: #1e293b;
+}
+
+@media (max-width: 1279px) {
+  #playground-app-root .pg-workspace {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  #playground-app-root .pg-shell-strip,
+  #playground-app-root .pg-side-panel,
+  #playground-app-root .pg-panel,
+  #playground-app-root .pg-dock-panel,
+  #playground-app-root .pg-hero-panel,
+  #playground-app-root .pg-board {
+    border-radius: 22px;
+  }
+
+  #playground-app-root .pg-tab-list-compact {
+    gap: 0.25rem;
+  }
+
+  #playground-app-root .pg-tab-trigger-compact {
+    padding-inline: 0.625rem;
+  }
+}

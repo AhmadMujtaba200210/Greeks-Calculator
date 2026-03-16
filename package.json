@@ -5,8 +5,13 @@
     "@playwright/test": "^1.52.0"
   },
   "scripts": {
-    "test:ui": "playwright test",
-    "test:ui:headed": "playwright test --headed",
+    "start": "npm run build:playground-ui && python3 playground/server.py",
+    "serve": "python3 playground/server.py",
+    "dev:playground-ui": "npm --prefix playground/ui run watch",
+    "build:playground-ui": "npm --prefix playground/ui run build",
+    "build": "npm run build:playground-ui",
+    "test:ui": "npm run build:playground-ui && playwright test",
+    "test:ui:headed": "npm run build:playground-ui && playwright test --headed",
     "test:math": "node tests/math/calculator.test.cjs",
     "test": "npm run test:math && npm run test:ui"
   }

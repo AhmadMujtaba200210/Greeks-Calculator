@@ -8,6 +8,8 @@
     <link rel="icon" type="image/svg+xml" href="assets/logos/logo-favicon.svg">
     <link rel="apple-touch-icon" href="assets/logos/logo-mark.svg">
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/revamp.css">
+    <link rel="stylesheet" href="playground-ui/playground-app.css">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -20,15 +22,25 @@
         <nav class="navbar">
             <div class="nav-brand">
                 <img src="assets/logos/logo-mark.svg" alt="Options Greeks logo" class="brand-mark">
-                <h1>Options Greeks Playground</h1>
+                <div class="brand-copy">
+                    <span class="brand-kicker">Quant Workspace</span>
+                    <h1>Options Greeks</h1>
+                    <p>Price, inspect, and structure in one surface.</p>
+                </div>
             </div>
-            <div class="nav-links">
-                <button class="nav-btn active" data-section="playground">Playground</button>
-                <button class="nav-btn" data-section="builder">Builder</button>
-                <button class="nav-btn" data-section="learn">Learn</button>
-                <button class="nav-btn" data-section="practice">Practice</button>
-                <button class="nav-btn" data-section="challenges">Challenges</button>
-                <button class="nav-btn" data-section="theory">Theory Guide</button>
+            <div class="nav-utility">
+                <div class="nav-status">
+                    <span class="top-badge">WASM Pricing</span>
+                    <span class="top-badge top-badge-muted">Builder + Curriculum</span>
+                </div>
+                <div class="nav-links">
+                    <button class="nav-btn active" data-section="playground">Playground</button>
+                    <button class="nav-btn" data-section="builder">Builder</button>
+                    <button class="nav-btn" data-section="learn">Learn</button>
+                    <button class="nav-btn" data-section="practice">Practice</button>
+                    <button class="nav-btn" data-section="challenges">Challenges</button>
+                    <button class="nav-btn" data-section="theory">Theory Guide</button>
+                </div>
             </div>
         </nav>
 
@@ -36,211 +48,19 @@
         <main class="main-content">
             <!-- Playground Section -->
             <section id="playground" class="section active">
-                <div class="playground-layout">
-                    <!-- Left Panel: Controls -->
-                    <div class="control-panel">
-                        <h2>Option Parameters</h2>
-
-                        <div class="control-group">
-                            <label for="optionType">Option Type</label>
-                            <select id="optionType">
-                                <option value="call">Call</option>
-                                <option value="put">Put</option>
-                            </select>
-                        </div>
-
-                        <div class="control-group">
-                            <label for="pricingModel">Pricing Model <span id="modelCitationIcon"></span></label>
-                            <select id="pricingModel">
-                                <option value="black_scholes">Black-Scholes (Analytical)</option>
-                                <option value="binomial">Binomial Tree (CRR)</option>
-                                <option value="monte_carlo">Monte Carlo (GBM)</option>
-                                <option value="ai_surrogate">AI Surrogate (Neural Net)</option>
-                            </select>
-                        </div>
-
-                        <div class="control-group">
-                            <label for="spot">Spot Price (S): <span id="spotValue">100</span></label>
-                            <input type="range" id="spot" min="1" max="1000" value="100" step="0.5">
-                        </div>
-
-                        <div class="control-group">
-                            <label for="strike">Strike Price (K): <span id="strikeValue">100</span></label>
-                            <input type="range" id="strike" min="1" max="1000" value="100" step="0.5">
-                        </div>
-
-                        <div class="control-group">
-                            <label for="maturity">Time to Maturity (T): <span id="maturityValue">1.0</span>
-                                years</label>
-                            <input type="range" id="maturity" min="0.01" max="10" value="1" step="0.01">
-                        </div>
-
-                        <div class="control-group">
-                            <label for="volatility">Volatility (σ): <span id="volatilityValue">25</span>%</label>
-                            <input type="range" id="volatility" min="1" max="500" value="25" step="1">
-                        </div>
-
-                        <div class="control-group">
-                            <label for="rate">Risk-Free Rate (r): <span id="rateValue">5.0</span>%</label>
-                            <input type="range" id="rate" min="0" max="50" value="5" step="0.1">
-                        </div>
-
-                        <div class="control-group">
-                            <label for="dividend">Dividend Yield (q): <span id="dividendValue">0.0</span>%</label>
-                            <input type="range" id="dividend" min="0" max="50" value="0" step="0.1">
-                        </div>
-
-                        <button class="reset-btn" id="resetBtn">Reset to Defaults</button>
-                    </div>
-
-                    <!-- Center Panel: Results -->
-                    <div class="results-panel">
-                        <div id="warningsBanner"></div>
-                        <h2 style="display: flex; align-items: center; justify-content: space-between;">
-                            Option Valuation & Greeks
-                            <span id="titleCitationIcon"></span>
-                        </h2>
-
-                        <div class="results-grid">
-                            <div class="result-card price-card">
-                                <div class="result-label">Option Price</div>
-                                <div class="result-value" id="priceResult">$0.00</div>
-                                <div id="aiBadge" style="display: none; margin-top: 5px;"></div>
-                                <div class="result-desc">Fair value of the option</div>
-                            </div>
-
-                            <div class="result-card">
-                                <div class="info-icon" aria-label="Delta Information" title="What is Delta?">
-                                    ⓘ
-                                    <div class="tooltip-text">
-                                        <strong>Delta (Δ)</strong><br>
-                                        Measures an option's sensitivity to the underlying asset's price ($1 move).
-                                        Helps estimate probability of ITM and hedge directional risk.
-                                    </div>
-                                </div>
-                                <div class="result-label">DELTA (Δ)</div>
-                                <div class="result-value" id="deltaResult">0.0000</div>
-                                <div class="result-desc">Price sensitivity to spot</div>
-                            </div>
-
-                            <div class="result-card">
-                                <div class="info-icon" aria-label="Gamma Information" title="What is Gamma?">
-                                    ⓘ
-                                    <div class="tooltip-text">
-                                        <strong>Gamma (Γ)</strong><br>
-                                        Rate of change of Delta for a $1 move in stock. Indicates position stability.
-                                        High Gamma means explosive P&L swings.
-                                    </div>
-                                </div>
-                                <div class="result-label">GAMMA (Γ)</div>
-                                <div class="result-value" id="gammaResult">0.0000</div>
-                                <div class="result-desc">Rate of change of delta</div>
-                            </div>
-
-                            <div class="result-card">
-                                <div class="info-icon" aria-label="Vega Information" title="What is Vega?">
-                                    ⓘ
-                                    <div class="tooltip-text">
-                                        <strong>Vega (ν)</strong><br>
-                                        Sensitivity to Implied Volatility (IV). Change in option price for a 1% change
-                                        in IV. Critical for earnings plays and volatility traders.
-                                    </div>
-                                </div>
-                                <div class="result-label">VEGA (ν)</div>
-                                <div class="result-value" id="vegaResult">0.0000</div>
-                                <div class="result-desc">Sensitivity to volatility</div>
-                            </div>
-
-                            <div class="result-card">
-                                <div class="info-icon" aria-label="Theta Information" title="What is Theta?">
-                                    ⓘ
-                                    <div class="tooltip-text">
-                                        <strong>Theta (Θ)</strong><br>
-                                        Time decay per day. Dollar amount lost daily as expiration approaches ('time
-                                        burn'). Sellers collect theta; buyers pay it.
-                                    </div>
-                                </div>
-                                <div class="result-label">THETA (Θ)</div>
-                                <div class="result-value" id="thetaResult">0.0000</div>
-                                <div class="result-desc">Time decay per day</div>
-                            </div>
-
-                            <div class="result-card">
-                                <div class="info-icon" aria-label="Rho Information" title="What is Rho?">
-                                    ⓘ
-                                    <div class="tooltip-text">
-                                        <strong>Rho (ρ)</strong><br>
-                                        Sensitivity to interest rates (1% change). Primarily impacts LEAPS and long-term
-                                        cost of carry.
-                                    </div>
-                                </div>
-                                <div class="result-label">RHO (ρ)</div>
-                                <div class="result-value" id="rhoResult">0.0000</div>
-                                <div class="result-desc">Interest rate sensitivity</div>
-                            </div>
-                        </div>
-
-                        <!-- Mathematical Derivations Toggle Container -->
-                        <div id="derivationsContainer" style="margin-top: 5px; margin-bottom: 20px;"></div>
-
-                        <!-- Visualization Tabs -->
-                        <div class="viz-tabs">
-                            <button class="viz-tab active" data-viz="price">Price vs Spot</button>
-                            <button class="viz-tab" data-viz="greeks">Greeks vs Spot</button>
-                            <button class="viz-tab" data-viz="volatility">Vol Surface</button>
-                            <button class="viz-tab" data-viz="time">Time Decay</button>
-                            <button class="viz-tab compare-tab" data-viz="comparison">Compare</button>
-                            <button class="viz-tab convergence-tab" data-viz="convergence">Convergence</button>
-                            <button class="viz-tab surface-tab" data-viz="surface3d">3D Surface</button>
-                            <button class="viz-tab" data-viz="validation">Health Check</button>
-                        </div>
-
-                        <div class="chart-container">
-                            <canvas id="mainChart"></canvas>
-                            <div id="plotlyChart" style="display: none; width: 100%; height: 100%;"></div>
-                            <div id="validationPanel"
-                                style="display: none; width: 100%; height: 100%; overflow-y: auto; padding: 10px;">
-                                <button id="runHealthCheckBtn" class="reset-btn" style="margin-bottom: 15px;">Run Health
-                                    Check</button>
-                                <div id="healthCheckDashboard"></div>
-                            </div>
-                        </div>
-                        <div id="mcQualityPanel" style="display: none; margin-top: 15px;"></div>
-                    </div>
-
-                    <!-- Right Panel: Insights -->
-                    <div class="insights-panel">
-                        <h2>💡 Insights</h2>
-                        <div id="insights" class="insights-content">
-                            <p>Adjust the parameters to see how Greeks change!</p>
-                        </div>
-
-                        <h3>Moneyness</h3>
-                        <div class="moneyness-indicator">
-                            <div id="moneynessBar" class="moneyness-bar"></div>
-                            <div class="moneyness-labels">
-                                <span>OTM</span>
-                                <span>ATM</span>
-                                <span>ITM</span>
-                            </div>
-                        </div>
-
-
-
-                        <h3>Quick Facts</h3>
-                        <div id="quickFacts" class="quick-facts"></div>
-
-                        <h3>🤖 Trader's Advice</h3>
-                        <div id="traderAdvice" class="advice-panel">
-                            <!-- Advice items will be injected here -->
-                        </div>
-                    </div>
-                </div>
+                <div id="playground-app-root"></div>
             </section>
 
             <!-- Learn Section -->
             <section id="learn" class="section">
-                <div class="learn-layout">
+                <div class="section-shell">
+                    <header class="section-intro">
+                        <span class="section-badge">Curriculum</span>
+                        <h2>Learn the stack behind pricing, volatility, and multi-leg risk.</h2>
+                        <p>Move from first principles into applied strategy construction without leaving the platform.</p>
+                    </header>
+
+                    <div class="learn-layout">
                     <aside class="course-sidebar">
                         <h2>Course Modules</h2>
                         <div class="module-list">
@@ -385,6 +205,7 @@
                         </div>
                     </div>
                 </div>
+                </div>
             </section>
 
             <!-- Practice Section -->
@@ -392,6 +213,7 @@
                 <div class="practice-layout practice-hub">
                     <div class="practice-hero">
                         <div class="practice-hero-copy">
+                            <span class="section-badge">Practice Lab</span>
                             <h2>Practice Lab</h2>
                             <p class="subtitle">Run focused drills to build execution-quality intuition across Greeks,
                                 volatility, strategy, and risk.</p>
@@ -534,119 +356,129 @@
 
             <!-- Theory Guide Section -->
             <section id="theory" class="section">
-                <div class="theory-layout">
-                    <h2>Academic Theory & Models Guide</h2>
-                    <p class="subtitle">Understand the mathematics and assumptions behind the pricing engines.</p>
+                <div class="section-shell">
+                    <div class="theory-layout">
+                        <header class="section-intro compact">
+                            <span class="section-badge">Model Notes</span>
+                            <h2>Academic theory and pricing model guide.</h2>
+                            <p>Understand the mathematics, assumptions, and practical limits behind each engine.</p>
+                        </header>
 
-                    <div class="content-grid theory-grid">
-                        <article class="content-card">
-                            <h3>Black-Scholes Model</h3>
-                            <p>The foundational continuous-time model developed by Fischer Black, Myron Scholes, and
-                                Robert Merton (1973).</p>
-                            <ul>
-                                <li><strong>Assumptions:</strong> Log-normal distribution of stock prices, constant
-                                    risk-free rate, constant volatility, no transaction costs, continuous trading.</li>
-                                <li><strong>Best for:</strong> European options with known parameters. Fast, analytical
-                                    exact solution.</li>
-                                <li><strong>Limitation:</strong> Cannot accurately price American options before
-                                    expiration or handle discrete dividends easily.</li>
-                            </ul>
-                        </article>
+                        <div class="content-grid theory-grid">
+                            <article class="content-card">
+                                <h3>Black-Scholes Model</h3>
+                                <p>The foundational continuous-time model developed by Fischer Black, Myron Scholes, and
+                                    Robert Merton (1973).</p>
+                                <ul>
+                                    <li><strong>Assumptions:</strong> Log-normal distribution of stock prices, constant
+                                        risk-free rate, constant volatility, no transaction costs, continuous trading.</li>
+                                    <li><strong>Best for:</strong> European options with known parameters. Fast, analytical
+                                        exact solution.</li>
+                                    <li><strong>Limitation:</strong> Cannot accurately price American options before
+                                        expiration or handle discrete dividends easily.</li>
+                                </ul>
+                            </article>
 
-                        <article class="content-card">
-                            <h3>Binomial Tree (CRR Model)</h3>
-                            <p>A discrete-time model developed by Cox, Ross, and Rubinstein (1979).</p>
-                            <ul>
-                                <li><strong>Mechanism:</strong> Builds a recombining tree of possible future stock
-                                    prices (Up or Down movements) out to expiration, then works backward to find today's
-                                    price.</li>
-                                <li><strong>Best for:</strong> American options, as early exercise can be evaluated at
-                                    every tree node.</li>
-                                <li><strong>Convergence:</strong> As the number of steps approaches infinity, the
-                                    Binomial price converges to the Black-Scholes price.</li>
-                            </ul>
-                        </article>
+                            <article class="content-card">
+                                <h3>Binomial Tree (CRR Model)</h3>
+                                <p>A discrete-time model developed by Cox, Ross, and Rubinstein (1979).</p>
+                                <ul>
+                                    <li><strong>Mechanism:</strong> Builds a recombining tree of possible future stock
+                                        prices (Up or Down movements) out to expiration, then works backward to find today's
+                                        price.</li>
+                                    <li><strong>Best for:</strong> American options, as early exercise can be evaluated at
+                                        every tree node.</li>
+                                    <li><strong>Convergence:</strong> As the number of steps approaches infinity, the
+                                        Binomial price converges to the Black-Scholes price.</li>
+                                </ul>
+                            </article>
 
-                        <article class="content-card">
-                            <h3>Monte Carlo Simulation</h3>
-                            <p>A stochastic method that simulates thousands of possible future price paths.</p>
-                            <ul>
-                                <li><strong>Mechanism:</strong> Uses Geometric Brownian Motion (GBM) to randomly walk
-                                    the stock price forward. The option payoff is averaged across all paths and
-                                    discounted to the present.</li>
-                                <li><strong>Variance Reduction:</strong> This application uses <em>Antithetic
-                                        Variates</em>, computing paths in pairs (positive shock and negative shock) to
-                                    reduce standard error without doubling computation time.</li>
-                                <li><strong>Best for:</strong> Highly complex, path-dependent exotic options (like
-                                    Asians or Barriers).</li>
-                            </ul>
-                        </article>
+                            <article class="content-card">
+                                <h3>Monte Carlo Simulation</h3>
+                                <p>A stochastic method that simulates thousands of possible future price paths.</p>
+                                <ul>
+                                    <li><strong>Mechanism:</strong> Uses Geometric Brownian Motion (GBM) to randomly walk
+                                        the stock price forward. The option payoff is averaged across all paths and
+                                        discounted to the present.</li>
+                                    <li><strong>Variance Reduction:</strong> This application uses <em>Antithetic
+                                            Variates</em>, computing paths in pairs (positive shock and negative shock) to
+                                        reduce standard error without doubling computation time.</li>
+                                    <li><strong>Best for:</strong> Highly complex, path-dependent exotic options (like
+                                        Asians or Barriers).</li>
+                                </ul>
+                            </article>
 
-                        <article class="content-card">
-                            <h3>The Greeks</h3>
-                            <p>First-order and second-order derivatives of the pricing formula.</p>
-                            <ul>
-                                <li><strong>Delta (Δ):</strong> First derivative w.r.t Spot Price. Represents hedge
-                                    ratio.</li>
-                                <li><strong>Gamma (Γ):</strong> Second derivative w.r.t Spot Price. Measures convexity
-                                    and delta stability.</li>
-                                <li><strong>Theta (Θ):</strong> First derivative w.r.t Time. Represents daily time
-                                    decay. Always negative for long options.</li>
-                                <li><strong>Vega (ν):</strong> First derivative w.r.t Volatility. Highest when
-                                    At-The-Money.</li>
-                                <li><strong>Rho (ρ):</strong> First derivative w.r.t Risk-Free Rate. Generally least
-                                    impactful for short-term retail trading, but critical for long-dated LEAPS.</li>
-                            </ul>
-                        </article>
+                            <article class="content-card">
+                                <h3>The Greeks</h3>
+                                <p>First-order and second-order derivatives of the pricing formula.</p>
+                                <ul>
+                                    <li><strong>Delta (Δ):</strong> First derivative w.r.t Spot Price. Represents hedge
+                                        ratio.</li>
+                                    <li><strong>Gamma (Γ):</strong> Second derivative w.r.t Spot Price. Measures convexity
+                                        and delta stability.</li>
+                                    <li><strong>Theta (Θ):</strong> First derivative w.r.t Time. Represents daily time
+                                        decay. Always negative for long options.</li>
+                                    <li><strong>Vega (ν):</strong> First derivative w.r.t Volatility. Highest when
+                                        At-The-Money.</li>
+                                    <li><strong>Rho (ρ):</strong> First derivative w.r.t Risk-Free Rate. Generally least
+                                        impactful for short-term retail trading, but critical for long-dated LEAPS.</li>
+                                </ul>
+                            </article>
+                        </div>
                     </div>
                 </div>
             </section>
 
             <!-- Challenges Section -->
             <section id="challenges" class="section">
-                <div class="challenges-layout">
-                    <h2>Trading Challenges</h2>
-                    <p class="subtitle">Test your skills with real-world scenarios</p>
+                <div class="section-shell">
+                    <div class="challenges-layout">
+                        <header class="section-intro compact">
+                            <span class="section-badge">Execution Drills</span>
+                            <h2>Trading challenges built around real-world pressure.</h2>
+                            <p>Apply the models, translate the Greeks into action, and practice making structured calls.</p>
+                        </header>
 
-                    <div class="challenge-list">
-                        <div class="challenge-item">
-                            <div class="challenge-header">
-                                <h3>Challenge 1: The Perfect Hedge</h3>
-                                <span class="difficulty easy">Easy</span>
+                        <div class="challenge-list">
+                            <div class="challenge-item">
+                                <div class="challenge-header">
+                                    <h3>Challenge 1: The Perfect Hedge</h3>
+                                    <span class="difficulty easy">Easy</span>
+                                </div>
+                                <p>You have a portfolio of 100 call options. Calculate the delta and determine how many
+                                    shares you need to buy/sell to achieve delta neutrality.</p>
+                                <button class="challenge-btn" data-challenge="hedging-sim">Start Challenge</button>
                             </div>
-                            <p>You have a portfolio of 100 call options. Calculate the delta and determine how many
-                                shares you need to buy/sell to achieve delta neutrality.</p>
-                            <button class="challenge-btn" data-challenge="hedging-sim">Start Challenge</button>
-                        </div>
 
-                        <div class="challenge-item">
-                            <div class="challenge-header">
-                                <h3>Challenge 2: Volatility Spike</h3>
-                                <span class="difficulty medium">Medium</span>
+                            <div class="challenge-item">
+                                <div class="challenge-header">
+                                    <h3>Challenge 2: Volatility Spike</h3>
+                                    <span class="difficulty medium">Medium</span>
+                                </div>
+                                <p>The market expects a major announcement. Implied volatility jumps from 20% to 40%.
+                                    Calculate the P&L on your option positions.</p>
+                                <button class="challenge-btn" data-challenge="scenario-analysis">Start Challenge</button>
                             </div>
-                            <p>The market expects a major announcement. Implied volatility jumps from 20% to 40%.
-                                Calculate the P&L on your option positions.</p>
-                            <button class="challenge-btn" data-challenge="scenario-analysis">Start Challenge</button>
-                        </div>
 
-                        <div class="challenge-item">
-                            <div class="challenge-header">
-                                <h3>Challenge 3: Gamma Scalping</h3>
-                                <span class="difficulty hard">Hard</span>
+                            <div class="challenge-item">
+                                <div class="challenge-header">
+                                    <h3>Challenge 3: Gamma Scalping</h3>
+                                    <span class="difficulty hard">Hard</span>
+                                </div>
+                                <p>Execute a gamma scalping strategy over 5 days. Rebalance your delta hedge as the
+                                    underlying moves and maximize your P&L.</p>
+                                <button class="challenge-btn" data-challenge="hedging-sim">Start Challenge</button>
                             </div>
-                            <p>Execute a gamma scalping strategy over 5 days. Rebalance your delta hedge as the
-                                underlying moves and maximize your P&L.</p>
-                            <button class="challenge-btn" data-challenge="hedging-sim">Start Challenge</button>
-                        </div>
 
-                        <div class="challenge-item">
-                            <div class="challenge-header">
-                                <h3>Challenge 4: Earnings Trade</h3>
-                                <span class="difficulty hard">Hard</span>
+                            <div class="challenge-item">
+                                <div class="challenge-header">
+                                    <h3>Challenge 4: Earnings Trade</h3>
+                                    <span class="difficulty hard">Hard</span>
+                                </div>
+                                <p>A stock is trading at $100 with earnings in 3 days. Design a strategy to profit from the
+                                    volatility crush after earnings.</p>
+                                <button class="challenge-btn" data-challenge="scenario-analysis">Start Challenge</button>
                             </div>
-                            <p>A stock is trading at $100 with earnings in 3 days. Design a strategy to profit from the
-                                volatility crush after earnings.</p>
-                            <button class="challenge-btn" data-challenge="scenario-analysis">Start Challenge</button>
                         </div>
                     </div>
                 </div>
@@ -655,10 +487,15 @@
             <section id="builder" class="section builder-section">
                 <div class="builder-header">
                     <div class="builder-title-group">
-                        <h2 class="terminal-title">Strategy Builder</h2>
-                        <span class="terminal-badge">LIVE</span>
+                        <span class="section-badge">Strategy Desk</span>
+                        <div>
+                            <h2 class="terminal-title">Strategy Builder</h2>
+                            <p class="builder-subtitle">Assemble spreads, stress the payoff curve, and compare outcome
+                                snapshots without leaving the workspace.</p>
+                        </div>
                     </div>
                     <div class="header-actions">
+                        <span class="terminal-badge">LIVE</span>
                         <select id="presetSelect" class="preset-select">
                             <option value="">Presets…</option>
                         </select>
@@ -1696,6 +1533,7 @@
         <script src="js/lessons.js"></script>
         <script src="js/exercises.js"></script>
         <script type="module" src="js/strategy.js"></script>
+        <script type="module" src="playground-ui/playground-app.js"></script>
         <script type="module" src="js/app.js"></script>
         <div id="chartjs-tooltip"></div>
 </body>

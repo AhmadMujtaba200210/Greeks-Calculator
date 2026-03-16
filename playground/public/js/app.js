@@ -29,60 +29,106 @@ import { computeConvergenceDiagnostics, renderConvergenceChart, renderMCQualityP
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        await init();
-        state.wasmLoaded = true;
-        console.log('🚀 WASM Backend Initialized');
-    } catch (e) {
-        console.error('Failed to load WASM backend:', e);
+    const reactPlaygroundMounted = Boolean(document.getElementById('playground-app-root'));
+
+    if (!reactPlaygroundMounted) {
+        try {
+            await init();
+            state.wasmLoaded = true;
+            console.log('🚀 WASM Backend Initialized');
+        } catch (e) {
+            console.error('Failed to load WASM backend:', e);
+        }
     }
 
-    initializeControls();
     initializeNavigation();
-    initializeVisualization();
-    updateCalculations();
+
+    if (!reactPlaygroundMounted) {
+        initializeControls();
+        initializeVisualization();
+        updateCalculations();
+    }
+
+    const safeInit = (label, fn) => {
+        try {
+            fn();
+        } catch (error) {
+            console.error(`Failed to initialize ${label}:`, error);
+        }
+    };
 
     // Initialize Strategy Builder
     const addLegBtn = document.getElementById('addLegBtn');
     if (addLegBtn) {
-        initStrategyContextBar();
-        initScenarioSandbox();
-        initStrategyChartControls();
-        initPositionManagement();
-        initStrategyComparison();
-        initStrategyPlaybook();
-        initTradeThesisPanel();
+        safeInit('strategy context bar', initStrategyContextBar);
+        safeInit('scenario sandbox', initScenarioSandbox);
+        safeInit('strategy chart controls', initStrategyChartControls);
+        safeInit('position management', initPositionManagement);
+        safeInit('strategy comparison', initStrategyComparison);
+        safeInit('strategy playbook', initStrategyPlaybook);
+        safeInit('trade thesis panel', initTradeThesisPanel);
         addLegBtn.addEventListener('click', () => addLeg());
-        // Defaults
-        addLeg({ type: 'call', action: 'buy', strike: 100 });
-        initStrategyGuide();
-        initStrategyPresets();
+        safeInit('default strategy leg', () => addLeg({ type: 'call', action: 'buy', strike: 100 }));
+        safeInit('strategy guide', initStrategyGuide);
+        safeInit('strategy presets', initStrategyPresets);
+
+        window.requestAnimationFrame(() => {
+            const presetSelect = document.getElementById('presetSelect');
+            const hasLegCards = document.querySelectorAll('#legsContainer .leg-card').length > 0;
+            const hasPresetOptions = presetSelect && presetSelect.options.length > 1;
+            const hasPlaybookCards = document.querySelectorAll('#strategyPlaybookPane .playbook-strategy-card').length > 0;
+
+            if (!hasLegCards) {
+                safeInit('fallback default strategy leg', () => addLeg({ type: 'call', action: 'buy', strike: 100 }));
+            }
+
+            if (!hasPresetOptions) {
+                safeInit('fallback strategy presets', initStrategyPresets);
+            }
+
+            if (!hasPlaybookCards) {
+                safeInit('fallback strategy playbook', initStrategyPlaybook);
+            }
+
+            safeInit('fallback trade thesis panel', initTradeThesisPanel);
+        });
     }
 
-    // Module Initializations
-    const derivCont = document.getElementById('derivationsContainer');
-    if (derivCont) renderDerivationPanels(derivCont);
+    if (!reactPlaygroundMounted) {
+        // Bloomberg Terminal: Derivations Toggle
+        const toggleDeriv = document.getElementById('toggleDerivations');
+        const derivCont = document.getElementById('derivationsContainer');
+        if (toggleDeriv && derivCont) {
+            renderDerivationPanels(derivCont);
+            toggleDeriv.addEventListener('click', (e) => {
+                e.preventDefault();
+                const isHidden = derivCont.style.display === 'none';
+                derivCont.style.display = isHidden ? 'block' : 'none';
+                toggleDeriv.textContent = isHidden ? 'HIDE MATHEMATICAL DERIVATIONS ▲' : 'SHOW MATHEMATICAL DERIVATIONS ▼';
+            });
+        }
 
-    renderCitationIcon(document.getElementById('modelCitationIcon'), state.pricingModel);
-    renderCitationIcon(document.getElementById('titleCitationIcon'), state.pricingModel);
+        renderCitationIcon(state.pricingModel, document.getElementById('modelCitationIcon'));
+        renderCitationIcon(state.pricingModel, document.getElementById('titleCitationIcon'));
 
-    const healthCheckBtn = document.getElementById('runHealthCheckBtn');
-    if (healthCheckBtn) {
-        healthCheckBtn.addEventListener('click', async () => {
-            const dashboard = document.getElementById('healthCheckDashboard');
-            dashboard.innerHTML = "<div class='info-message' style='padding:15px;text-align:center;'>Loading benchmark data...</div>";
-            try {
-                // Fetch from the root depending on hosting, try /benchmarks.json or locally
-                let response = await fetch('../data/benchmark.json').catch(() => fetch('data/benchmark.json')).catch(() => fetch('/benchmarks.json'));
-                if (!response || !response.ok) throw new Error("Could not load benchmarks.json");
-                const benchmarkData = await response.json();
-                const results = runHealthCheck(benchmarkData);
-                renderHealthCheckDashboard(results, dashboard);
-            } catch (err) {
-                console.error("Health check error", err);
-                dashboard.innerHTML = `<div style='color:#ef4444;padding:15px;'>Health check failed to execute. Ensure benchmark.json is accessible. Error: ${err.message}</div>`;
-            }
-        });
+        const healthCheckBtn = document.getElementById('runHealthCheckBtn');
+        if (healthCheckBtn) {
+            healthCheckBtn.addEventListener('click', async () => {
+                const dashboard = document.getElementById('healthCheckDashboard');
+                dashboard.innerHTML = "<div class='info-message' style='padding:15px;text-align:center;'>Loading benchmark data...</div>";
+                try {
+                    // Fetch from the root depending on hosting, try /benchmarks.json or locally
+                    let response = await fetch('../data/benchmark.json').catch(() => fetch('data/benchmark.json')).catch(() => fetch('/benchmarks.json'));
+                    if (!response || !response.ok) throw new Error("Could not load benchmarks.json");
+                    const benchmarkData = await response.json();
+                    const results = runHealthCheck(benchmarkData);
+                    renderHealthCheckDashboard(results, dashboard);
+                } catch (err) {
+                    console.error("Health check error", err);
+                    dashboard.innerHTML = `<div style='color:#ef4444;padding:15px;'>Health check failed to execute. Ensure benchmark.json is accessible. Error: ${err.message}</div>`;
+                }
+            });
+        }
     }
 });
 
@@ -97,8 +143,8 @@ function initializeControls() {
     // Pricing Model
     document.getElementById('pricingModel').addEventListener('change', (e) => {
         state.pricingModel = e.target.value;
-        renderCitationIcon(document.getElementById('modelCitationIcon'), state.pricingModel);
-        renderCitationIcon(document.getElementById('titleCitationIcon'), state.pricingModel);
+        renderCitationIcon(state.pricingModel, document.getElementById('modelCitationIcon'));
+        renderCitationIcon(state.pricingModel, document.getElementById('titleCitationIcon'));
         updateCalculations();
     });
 
@@ -185,6 +231,7 @@ function initializeNavigation() {
 
         activeBtns.forEach(btn => btn.classList.add('active'));
         activeSection.classList.add('active');
+        document.body.dataset.activeSection = targetSection;
         document.body.classList.toggle('builder-active', targetSection === 'builder');
 
         localStorage.setItem('activeSection', targetSection);
@@ -294,6 +341,34 @@ function updateCalculations() {
     document.getElementById('thetaResult').textContent = greeks.theta.toFixed(4);
     document.getElementById('rhoResult').textContent = greeks.rho.toFixed(4);
 
+    // BEYOND GREEKS: Price breakdown
+    let intrinsicValue = 0;
+    if (isCall) {
+        intrinsicValue = Math.max(0, spot - strike);
+    } else {
+        intrinsicValue = Math.max(0, strike - spot);
+    }
+    const extrinsicValue = greeks.price - intrinsicValue;
+    const moneynessPct = (spot / strike) * 100;
+
+    document.getElementById('intrinsicValue').textContent = `$${intrinsicValue.toFixed(2)}`;
+    document.getElementById('timeValue').textContent = `$${extrinsicValue.toFixed(2)}`;
+    document.getElementById('moneynessPct').textContent = `${moneynessPct.toFixed(1)}%`;
+
+    const modelLabelElement = document.getElementById('modelLabel');
+    if (modelLabelElement) {
+        const modelNames = {
+            'black_scholes': 'Black-Scholes',
+            'binomial': 'Binomial (CRR)',
+            'monte_carlo': 'Monte Carlo',
+            'ai_surrogate': 'AI Surrogate'
+        };
+        modelLabelElement.textContent = modelNames[pricingModel] || pricingModel;
+    }
+
+    // CROSS-MODEL VALIDATION TABLE
+    updateValidationTable(priceParams);
+
     // Update insights
     updateInsights(greeks);
 
@@ -304,10 +379,62 @@ function updateCalculations() {
     updateChart();
 }
 
+function updateValidationTable(params) {
+    const tableBody = document.getElementById('validationTableBody');
+    if (!tableBody) return;
+
+    const comparison = runCrossModelComparison(params);
+    const reference = comparison?.reference;
+
+    if (!reference) {
+        tableBody.innerHTML = "<tr><td colspan='3' style='padding: 8px; color: var(--accent-red);'>Validation unavailable</td></tr>";
+        return;
+    }
+
+    let html = '';
+    html += `<tr>
+        <td style="padding: 2px; color: var(--text-secondary);">BS-Analytical</td>
+        <td style="padding: 2px; font-family: var(--font-mono);">$${reference.price.toFixed(2)}</td>
+        <td style="padding: 2px; color: var(--text-muted);">---</td>
+    </tr>`;
+
+    comparison.models.forEach((modelBlock) => {
+        const priceError = modelBlock?.errors?.price;
+        const relativeErrorPct = Number.isFinite(priceError?.relative) ? priceError.relative * 100 : NaN;
+        const color = !Number.isFinite(relativeErrorPct)
+            ? 'var(--text-muted)'
+            : Math.abs(relativeErrorPct) > 2
+                ? 'var(--accent-red)'
+                : 'var(--text-primary)';
+
+        html += `<tr>
+            <td style="padding: 2px; color: var(--text-secondary);">${modelBlock.name}</td>
+            <td style="padding: 2px; font-family: var(--font-mono); color: ${color};">$${modelBlock.result.price.toFixed(2)}</td>
+            <td style="padding: 2px; font-family: var(--font-mono); font-size: 8px; color: ${color};">${Number.isFinite(relativeErrorPct) ? relativeErrorPct.toFixed(2) : '--'}%</td>
+        </tr>`;
+    });
+
+    tableBody.innerHTML = html;
+
+    const chipHealth = document.getElementById('chipHealth');
+    if (chipHealth) {
+        const avgErr = comparison.models.length
+            ? comparison.models.reduce((acc, modelBlock) => {
+                const relative = modelBlock?.errors?.price?.relative;
+                return acc + (Number.isFinite(relative) ? Math.abs(relative * 100) : 0);
+            }, 0) / comparison.models.length
+            : 0;
+
+        chipHealth.className = 'v-chip ' + (avgErr < 1 ? 'pass' : avgErr < 5 ? 'warn' : 'fail');
+    }
+}
+
 // Update insights panel
 function updateInsights(greeks) {
     const { spot, strike, maturity, volatility, optionType } = state;
     const moneyness = spot / strike;
+    const insightsContainer = document.getElementById('insights');
+    const quickFactsContainer = document.getElementById('quickFacts');
 
     let insights = '<div class="insight-item">';
 
@@ -338,9 +465,7 @@ function updateInsights(greeks) {
     }
 
     insights += '</div>';
-    document.getElementById('insights').innerHTML = insights;
 
-    // Update quick facts
     const intrinsicValue = optionType === 'call'
         ? Math.max(0, spot - strike)
         : Math.max(0, strike - spot);
@@ -352,7 +477,14 @@ function updateInsights(greeks) {
         <p><strong>Moneyness:</strong> ${(moneyness * 100).toFixed(1)}%</p>
         <p><strong>Days to Expiry:</strong> ${Math.round(maturity * 365)}</p>
     `;
-    document.getElementById('quickFacts').innerHTML = facts;
+
+    if (insightsContainer) {
+        insightsContainer.innerHTML = insights;
+    }
+
+    if (quickFactsContainer) {
+        quickFactsContainer.innerHTML = insightsContainer ? facts : `${insights}${facts}`;
+    }
 
     // Update Advice
     updateAdvice(greeks);
@@ -363,6 +495,7 @@ function updateAdvice(greeks) {
 
     const advice = AdviceGenerator.generate(state, greeks);
     const container = document.getElementById('traderAdvice');
+    if (!container) return;
 
     container.className = `advice-panel advice-${advice.type}`;
     container.innerHTML = `

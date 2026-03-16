@@ -10,6 +10,179 @@ test('navigation persists on refresh', async ({ page }) => {
   await expect(page.locator('#learn')).toHaveClass(/active/);
 });
 
+test('playground renders without hero and mounts the dashboard shell', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.locator('body')).toHaveAttribute('data-active-section', 'playground');
+  await expect(page.locator('#playground')).toHaveClass(/active/);
+  await expect(page.locator('.workspace-hero')).toHaveCount(0);
+  await expect(page.locator('#playground-app-root')).toBeVisible();
+  await expect(page.getByTestId('playground-dashboard')).toBeVisible();
+  await expect(page.getByTestId('playground-dashboard')).toHaveAttribute('data-density', 'compact');
+  await expect(page.getByTestId('playground-workspace-header')).toBeVisible();
+  await expect(page.getByTestId('playground-control-rail')).toBeVisible();
+  await expect(page.getByTestId('playground-viz-card')).toBeVisible();
+  await expect(page.getByTestId('playground-insight-dock')).toBeVisible();
+});
+
+test('playground page scrolls and uses desktop-2col on standard desktop', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+
+  await expect(page.getByTestId('playground-dashboard')).toHaveAttribute('data-layout-mode', 'desktop-2col');
+
+  const layout = await page.evaluate(() => {
+    const viz = document.querySelector('[data-testid="playground-viz-card"]');
+    const dock = document.querySelector('[data-testid="playground-below-chart-dock"]');
+    return {
+      bodyOverflowY: window.getComputedStyle(document.body).overflowY,
+      mainOverflow: window.getComputedStyle(document.querySelector('.main-content')).overflow,
+      docHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+      dockTop: dock?.getBoundingClientRect().top ?? 0,
+      vizBottom: viz?.getBoundingClientRect().bottom ?? 0,
+      summaryHeight: document.querySelector('[data-testid="playground-summary-band"]')?.getBoundingClientRect().height ?? 0,
+      vizWidth: viz?.getBoundingClientRect().width ?? 0,
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1
+    };
+  });
+
+  expect(layout.bodyOverflowY).not.toBe('hidden');
+  expect(layout.mainOverflow).toBe('visible');
+  expect(layout.docHeight).toBeGreaterThan(layout.viewportHeight);
+  expect(layout.dockTop).toBeGreaterThan(layout.vizBottom);
+  expect(layout.summaryHeight).toBeLessThan(420);
+  expect(layout.vizWidth).toBeGreaterThan(760);
+  expect(layout.horizontalOverflow).toBe(false);
+
+  await page.getByTestId('playground-insight-dock').scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('playground-insight-dock')).toBeVisible();
+});
+
+test('playground uses desktop-3col on ultra-wide screens', async ({ page }) => {
+  await page.setViewportSize({ width: 1728, height: 1117 });
+  await page.goto('/');
+
+  await expect(page.getByTestId('playground-dashboard')).toHaveAttribute('data-layout-mode', 'desktop-3col');
+  await expect(page.getByTestId('playground-right-pane')).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const control = document.querySelector('[data-testid="playground-control-rail"]');
+    const viz = document.querySelector('[data-testid="playground-viz-card"]');
+    const dock = document.querySelector('[data-testid="playground-right-pane"]');
+    return {
+      controlLeft: control?.getBoundingClientRect().left ?? 0,
+      vizLeft: viz?.getBoundingClientRect().left ?? 0,
+      dockLeft: dock?.getBoundingClientRect().left ?? 0
+    };
+  });
+
+  expect(layout.controlLeft).toBeLessThan(layout.vizLeft);
+  expect(layout.vizLeft).toBeLessThan(layout.dockLeft);
+});
+
+test('playground shell mode is isolated to the active section', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('body')).toHaveAttribute('data-active-section', 'playground');
+
+  await page.click('.nav-btn[data-section="learn"]');
+  await expect(page.locator('body')).toHaveAttribute('data-active-section', 'learn');
+  await expect(page.locator('#playground')).not.toHaveClass(/active/);
+
+  await page.click('.nav-btn[data-section="playground"]');
+  await expect(page.locator('body')).toHaveAttribute('data-active-section', 'playground');
+  await expect(page.getByTestId('playground-workspace-header')).toBeVisible();
+});
+
+test('playground presets and controls update pricing metrics', async ({ page }) => {
+  await page.goto('/');
+
+  const fairValue = page.getByTestId('metric-fair-value');
+  const vega = page.getByTestId('metric-vega');
+
+  const fairBefore = await fairValue.textContent();
+  const vegaBefore = await vega.textContent();
+
+  await page.getByTestId('playground-preset-menu').click();
+  await page.getByText('High Vol').click();
+  await expect(page.getByTestId('input-volatility')).toHaveValue('60');
+  await page.getByTestId('input-spot').fill('120');
+  await expect.poll(async () => await fairValue.textContent()).not.toBe(fairBefore);
+
+  await page.getByTestId('input-volatility').fill('40');
+  await expect.poll(async () => await vega.textContent()).not.toBe(vegaBefore);
+});
+
+test('playground visualization tabs switch correctly', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByRole('tab', { name: 'Greeks' }).click();
+  await expect(page.getByTestId('chart-summary-headline')).toHaveText('Greek Response');
+
+  await page.getByRole('tab', { name: 'Surface' }).click();
+  await expect(page.getByTestId('chart-summary-headline')).toHaveText('Volatility Surface Slice');
+
+  await page.getByRole('tab', { name: 'Time' }).click();
+  await expect(page.getByTestId('chart-summary-headline')).toHaveText('Time Decay');
+
+  await page.getByRole('tab', { name: 'Cross-Model' }).click();
+  await expect(page.getByTestId('chart-summary-headline')).toHaveText('Cross-Model View');
+
+  await page.getByRole('tab', { name: 'Convergence' }).click();
+  await expect(page.getByTestId('chart-summary-headline')).toHaveText('Convergence View');
+
+  await page.getByRole('tab', { name: '3D' }).click();
+  await expect(page.getByTestId('playground-surface3d')).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Diagnostics' }).click();
+  await expect(page.getByTestId('playground-diagnostics')).toBeVisible();
+});
+
+test('playground model picker and insight dock work', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByTestId('playground-model-picker').click();
+  await page.locator('[cmdk-item]').filter({ hasText: 'Monte Carlo' }).first().click();
+  await expect(page.getByTestId('playground-workspace-header')).toContainText('Monte Carlo');
+
+  await page.getByRole('tab', { name: 'Validation' }).click();
+  await expect(page.getByTestId('playground-validation-card')).toBeVisible();
+  const validationRows = await page.locator('[data-testid="playground-validation-card"] tbody tr').count();
+  expect(validationRows).toBeGreaterThan(1);
+
+  await page.getByRole('tab', { name: 'Reference' }).click();
+  await expect(page.getByTestId('playground-references-card')).toContainText('Monte Carlo');
+
+  await page.getByRole('tab', { name: 'Math' }).click();
+  await expect(page.getByTestId('playground-insight-dock')).toContainText('Mathematical Derivations');
+});
+
+test('playground uses a controls sheet on mobile without horizontal overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+
+  const layout = await page.evaluate(() => {
+    const trigger = document.querySelector('[data-testid="playground-controls-sheet-trigger"]');
+    const viz = document.querySelector('[data-testid="playground-viz-card"]');
+
+    return {
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      triggerTop: trigger?.getBoundingClientRect().top ?? 0,
+      vizTop: viz?.getBoundingClientRect().top ?? 0
+    };
+  });
+
+  expect(layout.horizontalOverflow).toBe(false);
+  expect(layout.triggerTop).toBeLessThan(layout.vizTop);
+
+  await page.getByTestId('playground-controls-sheet-trigger').click();
+  await expect(page.getByTestId('playground-control-rail')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('tab', { name: 'Reference' }).click();
+  await expect(page.getByTestId('playground-references-card')).toBeVisible();
+});
+
 test('builder stays hidden outside its tab and uses the full desktop width', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');

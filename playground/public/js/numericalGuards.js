@@ -226,134 +226,75 @@ export function guardedPrice(params, pricingFn) {
 export function renderWarnings(warnings, containerEl) {
     if (!containerEl) return;
 
-    // Clear existing
-    containerEl.innerHTML = '';
+    // We keep existing toasts and just add new ones, or clear if no warnings?
+    // Bloomberg style: toasts stack and auto-dismiss.
 
     if (!warnings || warnings.length === 0) {
-        containerEl.style.display = 'none';
         return;
     }
 
-    containerEl.style.display = 'block';
-
-    const colors = {
-        info: { bg: 'rgba(59, 130, 246, 0.1)', border: '#3B82F6', icon: 'ℹ️' },
-        warning: { bg: 'rgba(245, 158, 11, 0.1)', border: '#F59E0B', icon: '⚠️' },
-        critical: { bg: 'rgba(239, 68, 68, 0.1)', border: '#EF4444', icon: '🚨' }
+    const severityMap = {
+        info: { color: 'var(--accent-blue)', icon: 'ℹ️' },
+        warning: { color: 'var(--accent-amber)', icon: '⚠️' },
+        critical: { color: 'var(--accent-red)', icon: '🚨' }
     };
 
     warnings.forEach(warning => {
-        const style = colors[warning.severity] || colors.info;
+        const config = severityMap[warning.severity] || severityMap.info;
 
-        const banner = document.createElement('div');
-        banner.style.backgroundColor = style.bg;
-        banner.style.borderLeft = `4px solid ${style.border}`;
-        banner.style.padding = '12px 16px';
-        banner.style.marginBottom = '8px';
-        banner.style.borderRadius = '4px';
-        banner.style.display = 'flex';
-        banner.style.flexDirection = 'column';
-        banner.style.gap = '8px';
-        banner.style.color = '#f8fafc';
-        banner.style.fontFamily = 'Outfit, sans-serif';
-        banner.style.fontSize = '0.9rem';
-        banner.style.position = 'relative';
-        banner.style.animation = 'slideDown 0.3s ease-out forwards';
+        const toast = document.createElement('div');
+        toast.className = 'bloomberg-toast';
+        toast.style.background = 'var(--bg-panel)';
+        toast.style.borderLeft = `3px solid ${config.color}`;
+        toast.style.color = 'var(--text-primary)';
+        toast.style.padding = '8px 12px';
+        toast.style.marginBottom = '6px';
+        toast.style.fontSize = '11px';
+        toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
+        toast.style.display = 'flex';
+        toast.style.alignItems = 'center';
+        toast.style.gap = '8px';
+        toast.style.pointerEvents = 'auto';
+        toast.style.animation = 'toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+        toast.style.maxWidth = '300px';
 
-        const topRow = document.createElement('div');
-        topRow.style.display = 'flex';
-        topRow.style.alignItems = 'center';
-        topRow.style.gap = '8px';
+        toast.innerHTML = `
+            <span style="font-size: 14px;">${config.icon}</span>
+            <div style="flex: 1;">
+                <div style="font-weight: 700; text-transform: uppercase; font-size: 9px; color: ${config.color};">${warning.severity}</div>
+                <div>${warning.message}</div>
+            </div>
+            <button style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px;">&times;</button>
+        `;
 
-        const iconSpan = document.createElement('span');
-        iconSpan.textContent = style.icon;
-
-        const msgSpan = document.createElement('span');
-        msgSpan.textContent = warning.message;
-        msgSpan.style.flexGrow = '1';
-
-        // Technical detail toggle button
-        if (warning.technical) {
-            const techBtn = document.createElement('button');
-            techBtn.textContent = 'Details';
-            techBtn.style.background = 'none';
-            techBtn.style.border = `1px solid ${style.border}`;
-            techBtn.style.color = style.border;
-            techBtn.style.padding = '2px 8px';
-            techBtn.style.fontSize = '0.75rem';
-            techBtn.style.borderRadius = '4px';
-            techBtn.style.cursor = 'pointer';
-
-            const techDiv = document.createElement('div');
-            techDiv.textContent = warning.technical;
-            techDiv.style.display = 'none';
-            techDiv.style.color = '#94a3b8';
-            techDiv.style.fontFamily = 'JetBrains Mono, monospace';
-            techDiv.style.fontSize = '0.8rem';
-            techDiv.style.backgroundColor = 'rgba(0,0,0,0.2)';
-            techDiv.style.padding = '8px';
-            techDiv.style.borderRadius = '4px';
-            techDiv.style.marginTop = '4px';
-
-            techBtn.onclick = () => {
-                const isHidden = techDiv.style.display === 'none';
-                techDiv.style.display = isHidden ? 'block' : 'none';
-                techBtn.textContent = isHidden ? 'Hide' : 'Details';
-                techBtn.style.background = isHidden ? style.border : 'none';
-                techBtn.style.color = isHidden ? '#fff' : style.border;
-            };
-
-            topRow.appendChild(msgSpan);
-            topRow.appendChild(techBtn);
-            banner.appendChild(topRow);
-            banner.appendChild(techDiv);
-        } else {
-            topRow.appendChild(msgSpan);
-            banner.appendChild(topRow);
-        }
-
-        // Dismiss button
-        const closeBtn = document.createElement('button');
-        closeBtn.innerHTML = '&times;';
-        closeBtn.style.position = 'absolute';
-        closeBtn.style.right = '8px';
-        closeBtn.style.top = '8px';
-        closeBtn.style.background = 'none';
-        closeBtn.style.border = 'none';
-        closeBtn.style.color = '#94a3b8';
-        closeBtn.style.fontSize = '1.2rem';
-        closeBtn.style.cursor = 'pointer';
-        closeBtn.style.padding = '0';
-        closeBtn.style.lineHeight = '1';
-
+        const closeBtn = toast.querySelector('button');
         closeBtn.onclick = () => {
-            banner.style.opacity = '0';
-            setTimeout(() => banner.remove(), 200);
-
-            if (containerEl.children.length - 1 === 0) {
-                setTimeout(() => { if (containerEl.children.length === 0) containerEl.style.display = 'none'; }, 200);
-            }
+            toast.style.animation = 'toastOut 0.2s ease-in forwards';
+            setTimeout(() => toast.remove(), 200);
         };
 
-        iconSpan.style.marginRight = '8px';
-        banner.appendChild(closeBtn);
-        banner.replaceChild(topRow, banner.firstChild);
-        topRow.insertBefore(iconSpan, topRow.firstChild);
-        containerEl.appendChild(banner);
-    });
+        // Auto-dismiss after 5s
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.style.animation = 'toastOut 0.2s ease-in forwards';
+                setTimeout(() => toast.remove(), 200);
+            }
+        }, 5000);
 
-    // Add required CSS animation if not present globally
-    if (!document.getElementById('guarded-price-styles')) {
-        const style = document.createElement('style');
-        style.id = 'guarded-price-styles';
-        style.textContent = `
+        containerEl.appendChild(toast);
+    });
+}
+// Add required CSS animation if not present globally
+if (!document.getElementById('guarded-price-styles')) {
+    const style = document.createElement('style');
+    style.id = 'guarded-price-styles';
+    style.textContent = `
             @keyframes slideDown {
                 from { opacity: 0; transform: translateY(-10px); }
                 to { opacity: 1; transform: translateY(0); }
             }
         `;
-        document.head.appendChild(style);
-    }
+    document.head.appendChild(style);
 }
 
 /**

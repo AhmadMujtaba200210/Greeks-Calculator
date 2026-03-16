@@ -5,6 +5,8 @@ function loadCalculator() {
   const code = fs.readFileSync('playground/public/js/calculator.js', 'utf8') +
     '\n;globalThis.BlackScholesCalculator = BlackScholesCalculator;';
   const sandbox = { Math };
+  sandbox.window = sandbox;
+  sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox, { filename: 'calculator.js' });
   return new sandbox.BlackScholesCalculator();

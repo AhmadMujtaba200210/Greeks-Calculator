@@ -1,113 +1,153 @@
-# High-Performance Options Greeks Calculator & Integrated Playground
+# Greeks Calculator
 
-**A professional-grade options analysis suite featuring a sub-microsecond Rust pricing engine, an AI surrogate model, and an advanced interactive strategy builder.**
+Greeks Calculator is an options analytics workspace built around a Rust pricing engine, a browser-delivered WASM runtime, and a redesigned Playground UI implemented as a React + Tailwind + shadcn island inside the existing static app shell.
 
----
+## What Is In The App
 
-## 🚀 Quick Start: Run the Suite
+- Playground: interactive option pricing, Greeks, charts, validation, diagnostics, and references.
+- Builder: multi-leg strategy construction, scenario analysis, presets, thesis workflow, and comparison views.
+- Learn, Practice, Challenges, and Theory: educational and workflow modules that still run on the legacy static shell.
+- Rust core: pricing, Greeks, volatility, and benchmarkable numerical routines in `src/`.
 
-Experience the **Integrated Playground** powered by high-performance WebAssembly.
+## Stack
 
-### 1. Prerequisites
-- **Python 3.x** (for hosting the web environment)
+- Rust core library in `src/`
+- WASM bundle served from `playground/public/pkg/`
+- Static app shell in `playground/public/`
+- React Playground source in `playground/ui/`
+- Playwright UI tests in `tests/ui/`
+- Math smoke tests in `tests/math/`
 
-### 2. Launch the Application
-Open your terminal and run:
+## Requirements
+
+- Node.js 18+ and npm
+- Python 3
+- Rust toolchain if you need to work on the core engine or rebuild WASM
+
+## Quick Start
+
+Install the Playground UI dependencies once:
 
 ```bash
-cd playground
-python3 server.py
+npm install --prefix playground/ui
 ```
 
-### 3. Access in Browser
-The app will automatically launch. If not, visit:  
-👉 **[http://localhost:8085](http://localhost:8085)**
-
-> **Note:** The playground now leverages the **Rust Engine via WebAssembly (WASM)**, providing near-native pricing speeds for Monte Carlo and Binomial models directly in your browser.
-
----
-
-## 🌟 Key Features
-
-### 🏢 Strategy Builder (Live Terminal)
-Construct and Stress-Test complex multi-leg portfolios.
-- **Multi-Leg Interface**: Build Iron Condors, Butterflies, and Custom Spreads with ease.
-- **Scenario Sandbox**: A "Time Machine" for your trades. Adjust Spot, IV, and Time to see future P&L.
-- **Trade Thesis Wizard**: A structured workflow ensuring every trade has a catalyst and objective.
-- **Probability Overlays**: Visualized expected outcomes based on log-normal price distributions.
-
-### 🎮 Interactive Playground
-A sophisticated environment for real-time Greeks analysis.
-- **Quad-Model Engine**: Seamlessly switch between Black-Scholes, Binomial Tree, Monte Carlo, and **AI Surrogate (Neural Net)** models.
-- **Visualizations**: 7+ dynamic charts including 3D Volatility Surfaces and Model Convergence.
-- **Trader's Advice**: Real-time risk alerts for "Gamma Risk", "Theta Cliffs", and "Vega Exposure".
-
-### 🦀 High-Performance Rust Backend
-The core library, optimized for extreme low latency.
-- **Speed**: ~190 nanoseconds per analytical calculation (5.2M options/sec).
-- **Precision**: Uses **Automatic Differentiation (AD)** for exact Greeks—no finite difference errors.
-- **Advanced Quant**: Implements SVI (Stochastic Volatility Inspired) surface parameterization.
-- **Liquidity Lab**: Educational models to estimate slippage and execution quality.
-
----
-
-## 🛠️ Rust Library Usage (Backend)
-
-Located in the `src/` directory.
+Start the integrated app from the repository root:
 
 ```bash
-# Build the project
+npm start
+```
+
+Open [http://localhost:8085](http://localhost:8085).
+
+`npm start` builds the React Playground into `playground/public/playground-ui/` and then serves the full app through `playground/server.py`.
+
+## Common Commands
+
+Run the app without rebuilding the Playground bundle:
+
+```bash
+npm run serve
+```
+
+Build the Playground UI manually:
+
+```bash
+npm run build:playground-ui
+```
+
+Watch and rebuild the Playground UI while you edit React files:
+
+```bash
+npm run dev:playground-ui
+```
+
+In another terminal, serve the app:
+
+```bash
+npm run serve
+```
+
+Run the UI test suite:
+
+```bash
+npm test
+```
+
+Run only the browser regression suite:
+
+```bash
+npm run test:ui
+```
+
+Run only the math smoke tests:
+
+```bash
+npm run test:math
+```
+
+## Rust Commands
+
+Build the Rust core:
+
+```bash
 cargo build --release
+```
 
-# Run comprehensive benchmarks
+Run Rust tests:
+
+```bash
+cargo test
+```
+
+Run benchmarks:
+
+```bash
 cargo bench
+```
 
-# Run interactive demo
+Run the example binary:
+
+```bash
 cargo run --release --example main
 ```
 
----
+## Architecture Notes
 
-## 🔢 Mathematical Architecture
+- The app is still served as static files from `playground/public/`.
+- The redesigned Playground is not rendered by legacy DOM code anymore. It mounts into `#playground-app-root` from the built React bundle in `playground/public/playground-ui/`.
+- Builder and the other product sections remain on the legacy HTML/CSS/JS stack.
+- The React Playground consumes the existing pricing and guard logic through shared adapter modules rather than reimplementing the math.
 
-### 1. Pricing Hierarchy
-- **Analytical**: Black-Scholes for European exact solutions.
-- **Discrete**: 500-step Binomial Tree (CRR) for American early exercise.
-- **Stochastic**: 50,000-path Monte Carlo for complex paths, utilizing **Antithetic Variates**.
-- **AI Surrogate**: Multi-Layer Perceptron (MLP) trained to approximate surfaces at zero computational cost.
+## Project Layout
 
-### 2. The Greeks & AD
-We utilize **Forward-Mode Automatic Differentiation** using Dual Numbers ($x + x'\epsilon$) to compute sensitivities exactly.
-- **Delta (Δ)**: Price sensitivity.
-- **Gamma (Γ)**: Curvature/Convexity.
-- **Vega (ν)**: Volatility sensitivity.
-- **Theta (Θ)**: Time decay.
-- **Rho (ρ)**: Rate sensitivity.
-
----
-
-## 📂 Project Structure
-
-```bash
+```text
 .
-├── playground/          # 🌐 Integrated Web Application
-│   ├── public/          # 🎨 UI & Frontend Assets
-│   │   ├── pkg/         # 🦀 Compiled WASM Backend
+├── playground/
+│   ├── public/
+│   │   ├── index.html
 │   │   ├── js/
-│   │   │   ├── app.js       # Main Orchestrator
-│   │   │   ├── strategy.js  # Builder & Scenario Engine
-│   │   │   ├── advice.js    # Risk Logic
-│   │   │   └── ai_model.js  # Neural Net Surrogate
-│   ├── server.py        # Python Launch Script
-├── src/                 # 🦀 Rust Core Engine (Native Library)
-│   ├── ad/              # Automatic Differentiation Core
-│   ├── pricing/         # Numerical & Analytical Models
-│   └── volatility/      # SVI Surface Fitting
-└── examples/            # Native Benchmarks & Demos
+│   │   ├── pkg/
+│   │   └── playground-ui/
+│   ├── server.py
+│   └── ui/
+│       ├── src/app/
+│       ├── src/components/ui/
+│       └── src/lib/
+├── src/
+├── tests/
+│   ├── math/
+│   └── ui/
+├── benches/
+└── examples/
 ```
 
----
+## Notes For Contributors
 
-## 📜 License
+- If you change files under `playground/ui/src/`, rebuild the Playground bundle before using the integrated app unless you are running the watch script.
+- If you change Rust pricing code or WASM bindings, the browser bundle under `playground/public/pkg/` may also need to be regenerated.
+- The top-level navigation and non-Playground sections still depend on the legacy files under `playground/public/js/`.
 
-MIT License - Open for personal and commercial use.
+## License
+
+MIT
