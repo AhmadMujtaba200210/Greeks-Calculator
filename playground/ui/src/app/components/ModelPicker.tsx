@@ -6,10 +6,9 @@ import { cn } from "@/lib/utils";
 import type { PricingModelId } from "@/lib/types";
 
 const modelOptions: Array<{ value: PricingModelId; label: string; description: string }> = [
-  { value: "black_scholes", label: "Black-Scholes", description: "Fast analytical baseline." },
-  { value: "binomial", label: "Binomial (CRR)", description: "Discrete early-exercise approximation." },
-  { value: "monte_carlo", label: "Monte Carlo", description: "Path-based pricing and convergence checks." },
-  { value: "ai_surrogate", label: "AI Surrogate", description: "Fast approximation with domain checks." },
+  { value: "black_scholes", label: "Black-Scholes", description: "Analytical European vanilla reference." },
+  { value: "binomial", label: "Binomial (Leisen-Reimer)", description: "Lattice approximation with smoother convergence." },
+  { value: "monte_carlo", label: "Monte Carlo", description: "Simulation estimate with confidence intervals." },
 ];
 
 type ModelPickerProps = {

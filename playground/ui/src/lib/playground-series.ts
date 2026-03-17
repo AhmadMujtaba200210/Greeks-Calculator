@@ -1,5 +1,5 @@
 import type { PlaygroundParams } from "@/lib/types";
-import { priceOption } from "@/lib/pricing-engine";
+import { getSurfaceGrid, getSurfaceSlice, priceOption } from "@/lib/pricing-engine";
 
 type ChartDataset = {
   type?: string;
@@ -115,23 +115,14 @@ export async function buildGreeksSeries(params: PlaygroundParams) {
   };
 }
 
-export function buildVolatilitySeries(params: PlaygroundParams) {
-  const strikes: string[] = [];
-  const vols: number[] = [];
-
-  for (let strike = params.strike * 0.7; strike <= params.strike * 1.3; strike += params.strike * 0.05) {
-    const moneyness = Math.log(strike / params.strike);
-    const vol = params.volatility + 0.1 * Math.abs(moneyness) + 0.05 * moneyness;
-    strikes.push(strike.toFixed(0));
-    vols.push(vol * 100);
-  }
-
+export async function buildVolatilitySeries(params: PlaygroundParams) {
+  const slice = await getSurfaceSlice(params);
   return {
-    labels: strikes,
+    labels: slice.strikes.map((strike) => strike.toFixed(0)),
     datasets: [
       {
-        label: "Implied Volatility (%)",
-        data: vols,
+        label: slice.label,
+        data: slice.vols,
         borderColor: chartPalette.amber,
         backgroundColor: chartPalette.amberSoft,
         borderWidth: 2,
@@ -226,34 +217,5 @@ export function buildComparisonSeries(comparison: any) {
 }
 
 export async function buildSurfaceGrid(params: PlaygroundParams) {
-  const points = 24;
-  const spotMin = params.strike * 0.5;
-  const spotMax = params.strike * 1.5;
-  const timeMin = 0.01;
-  const timeMax = 2.0;
-  const x: number[] = [];
-  const y: number[] = [];
-  const z: number[][] = [];
-
-  const spotStep = (spotMax - spotMin) / (points - 1);
-  const timeStep = (timeMax - timeMin) / (points - 1);
-
-  for (let spotIndex = 0; spotIndex < points; spotIndex += 1) {
-    x.push(Number((spotMin + spotIndex * spotStep).toFixed(3)));
-  }
-
-  for (let timeIndex = 0; timeIndex < points; timeIndex += 1) {
-    const maturity = Number((timeMin + timeIndex * timeStep).toFixed(4));
-    y.push(maturity);
-    const row: number[] = [];
-
-    for (const spot of x) {
-      const execution = await priceOption({ ...params, spot, maturity }, "chart");
-      row.push(execution.result.price);
-    }
-
-    z.push(row);
-  }
-
-  return { x, y, z };
+  return getSurfaceGrid(params);
 }

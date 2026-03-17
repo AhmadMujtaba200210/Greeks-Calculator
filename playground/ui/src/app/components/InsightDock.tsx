@@ -68,7 +68,7 @@ export default function InsightDock({ computed, activeTab, onTabChange }: Insigh
                       <Sparkles className="h-4 w-4 text-primary" />
                       Trader&apos;s Advice
                     </p>
-                    <p className="text-[12px] leading-[1.125rem] text-muted-foreground">Desk interpretation of the contract.</p>
+                    <p className="text-[12px] leading-[1.125rem] text-muted-foreground">Trader-facing read of the current assumptions.</p>
                   </div>
                   {computed.advice && <Badge variant={computed.advice.type === "success" ? "success" : computed.advice.type === "danger" ? "destructive" : computed.advice.type === "warning" ? "warning" : "secondary"}>{computed.advice.title}</Badge>}
                 </div>
@@ -78,24 +78,6 @@ export default function InsightDock({ computed, activeTab, onTabChange }: Insigh
                 </div>
               </div>
 
-              {computed.surrogateSummary && (
-                <div className="rounded-[14px] border border-border bg-white p-2.5 shadow-sm">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Bot className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold">AI Surrogate Domain Check</p>
-                  </div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <Badge variant={computed.surrogateSummary.recommendation === "trustworthy" ? "success" : computed.surrogateSummary.recommendation === "caution" ? "warning" : "destructive"}>
-                      {computed.surrogateSummary.recommendation}
-                    </Badge>
-                    <span className="pg-metric-value text-sm text-muted-foreground">
-                      {(computed.surrogateSummary.confidence * 100).toFixed(0)}% confidence
-                    </span>
-                  </div>
-                  <p className="text-[12px] leading-[1.125rem] text-muted-foreground">{computed.surrogateSummary.message}</p>
-                </div>
-              )}
-
               <div className="rounded-[14px] border border-border bg-white p-2.5 shadow-sm" data-testid="playground-quickfacts-card">
                 <div className="mb-2.5 flex items-center justify-between gap-3">
                   <div>
@@ -103,7 +85,7 @@ export default function InsightDock({ computed, activeTab, onTabChange }: Insigh
                       <TimerReset className="h-4 w-4 text-primary" />
                       Quick Facts
                     </p>
-                    <p className="text-[12px] leading-[1.125rem] text-muted-foreground">Compact context for the contract.</p>
+                    <p className="text-[12px] leading-[1.125rem] text-muted-foreground">Assumptions, carry, and model method at a glance.</p>
                   </div>
                   <span className="pg-metric-value text-[13px]">{computed.moneynessPct.toFixed(1)}%</span>
                 </div>
@@ -120,7 +102,7 @@ export default function InsightDock({ computed, activeTab, onTabChange }: Insigh
                       <span>ITM</span>
                     </div>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     {computed.quickFacts.map((fact) => (
                       <div key={fact.label} className="rounded-[12px] border border-border bg-slate-50/70 p-2">
                         <p className="mb-1 text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{fact.label}</p>
@@ -161,6 +143,14 @@ export default function InsightDock({ computed, activeTab, onTabChange }: Insigh
                   <ChartSpline className="h-4 w-4 text-primary" />
                   <p className="text-sm font-semibold">Validation Table</p>
                 </div>
+                {computed.referenceComparison && (
+                  <div className="mb-2 rounded-[12px] border border-border bg-slate-50/80 p-2 text-[12px] text-muted-foreground">
+                    Active model vs {computed.referenceComparison.reference_model}:{" "}
+                    <span className="pg-metric-value text-[12px] text-foreground">
+                      {computed.referenceComparison.price_error_pct?.toFixed(2) ?? "--"}% price error
+                    </span>
+                  </div>
+                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -196,10 +186,37 @@ export default function InsightDock({ computed, activeTab, onTabChange }: Insigh
                   <BookOpenText className="h-4 w-4 text-primary" />
                   References
                 </p>
-                <p className="text-[12px] leading-[1.125rem] text-muted-foreground">Methodology and implementation context for the active engine.</p>
+                <p className="text-[12px] leading-[1.125rem] text-muted-foreground">Methodology, implementation notes, and experimental research context.</p>
               </div>
-              <ScrollArea className="h-[280px] p-2.5">
+              <ScrollArea className="h-[320px] p-2.5">
                 <div className="space-y-2.5 pr-2">
+                  {computed.surrogateLab && (
+                    <div className="rounded-[12px] border border-amber-200 bg-amber-50/80 p-2.5" data-testid="playground-surrogate-lab">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Bot className="h-4 w-4 text-amber-700" />
+                        <p className="text-sm font-semibold text-amber-900">Experimental Surrogate Lab</p>
+                      </div>
+                      <p className="text-[12px] leading-[1.125rem] text-amber-900/80">{computed.surrogateLab.message}</p>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-[10px] border border-amber-200 bg-white/80 p-2">
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-amber-900/70">Current price error</p>
+                          <p className="pg-metric-value text-sm text-amber-950">{computed.surrogateLab.currentPriceErrorPct?.toFixed(2) ?? "--"}%</p>
+                        </div>
+                        <div className="rounded-[10px] border border-amber-200 bg-white/80 p-2">
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-amber-900/70">Mean abs error</p>
+                          <p className="pg-metric-value text-sm text-amber-950">{computed.surrogateLab.meanAbsPriceErrorPct.toFixed(2)}%</p>
+                        </div>
+                        <div className="rounded-[10px] border border-amber-200 bg-white/80 p-2">
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-amber-900/70">Max abs error</p>
+                          <p className="pg-metric-value text-sm text-amber-950">{computed.surrogateLab.maxAbsPriceErrorPct.toFixed(2)}%</p>
+                        </div>
+                        <div className="rounded-[10px] border border-amber-200 bg-white/80 p-2">
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-amber-900/70">Scenario samples</p>
+                          <p className="pg-metric-value text-sm text-amber-950">{computed.surrogateLab.sampleCount}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {computed.citations.map((citation, index) => (
                     <div key={citation.key} className="rounded-[12px] border border-border bg-slate-50/70 p-2">
                       <div className="mb-1 flex items-center gap-2">

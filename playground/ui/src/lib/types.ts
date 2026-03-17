@@ -54,6 +54,45 @@ export type GreeksResult = {
   rho: number;
 };
 
+export type GreekUnits = {
+  price: string;
+  delta: string;
+  gamma: string;
+  vega: string;
+  theta: string;
+  rho: string;
+};
+
+export type ModelDiagnostics = {
+  standard_error: number | null;
+  ci95: [number, number] | null;
+  benchmark_status: HealthState;
+};
+
+export type EngineMetadata = {
+  model: string;
+  method: string;
+  exercise_style: string;
+  assumption_set: string;
+  steps: number | null;
+  paths: number | null;
+  estimator: string | null;
+  latency_ms: number;
+};
+
+export type MetricError = {
+  absolute: number;
+  relative: number;
+  status: HealthState;
+};
+
+export type ReferenceComparison = {
+  reference_model: string;
+  price_error_pct: number | null;
+  greek_errors: Record<string, MetricError>;
+  status: HealthState;
+};
+
 export type GuardWarning = {
   severity: "info" | "warning" | "critical";
   code: string;
@@ -88,30 +127,77 @@ export type CitationEntry = {
   implementationNote?: string;
 };
 
-export type SurrogateSummary = {
-  recommendation: "trustworthy" | "caution" | "unreliable";
-  confidence: number;
+export type SurrogateLabSummary = {
+  currentPriceErrorPct: number | null;
+  currentDeltaErrorPct: number | null;
+  meanAbsPriceErrorPct: number;
+  maxAbsPriceErrorPct: number;
+  sampleCount: number;
   message: string;
 };
 
 export type ComparisonModelBlock = {
   name: string;
   result: GreeksResult;
-  errors?: {
-    price?: {
-      relative?: number;
-    };
-  };
-  overallStatus?: "pass" | "warning" | "fail";
+  errors: Record<string, MetricError>;
+  overallStatus: HealthState;
+  diagnostics: ModelDiagnostics;
+  engineMetadata: EngineMetadata;
 };
 
+export type ComparisonReference = GreeksResult & { model: string };
+
 export type ComparisonPayload = {
-  reference: (GreeksResult & { model?: string }) | null;
+  reference: ComparisonReference | null;
   models: ComparisonModelBlock[];
-  convergence?: {
-    binomial?: Array<{ steps: number; price: number }>;
-    monteCarlo?: Array<{ paths: number; price: number; standardError?: number }>;
-  };
+};
+
+export type BinomialConvergencePoint = {
+  steps: number;
+  crr_price: number;
+  leisen_reimer_price: number;
+  crr_error: number;
+  leisen_reimer_error: number;
+};
+
+export type MonteCarloConvergencePoint = {
+  paths: number;
+  mean_price: number;
+  estimated_se: number;
+  ci95: [number, number];
+  abs_error: number;
+};
+
+export type ConvergencePayload = {
+  model: string;
+  reference_price: number;
+  binomial: BinomialConvergencePoint[];
+  monte_carlo: MonteCarloConvergencePoint[];
+};
+
+export type SurfaceSlicePayload = {
+  label: string;
+  strikes: number[];
+  vols: number[];
+  is_arbitrage_free: boolean;
+};
+
+export type SurfaceGridPayload = {
+  label: string;
+  x: number[];
+  y: number[];
+  z: number[][];
+  is_arbitrage_free: boolean;
+};
+
+export type BenchmarkReport = {
+  total_cases: number;
+  results: Array<{
+    case_id: string;
+    description: string;
+    models: Record<string, "pass" | "warning" | "fail">;
+  }>;
+  summary: Record<string, { pass: number; warning: number; fail: number }>;
 };
 
 export type PlaygroundComputed = {
@@ -126,6 +212,10 @@ export type PlaygroundComputed = {
   moneynessPct: number;
   modelLabel: string;
   warnings: GuardWarning[];
+  units: GreekUnits;
+  diagnostics: ModelDiagnostics;
+  engineMetadata: EngineMetadata;
+  referenceComparison: ReferenceComparison | null;
   validationRows: ValidationRow[];
   health: {
     domain: HealthState;
@@ -136,12 +226,17 @@ export type PlaygroundComputed = {
   advice: AdviceCard | null;
   citations: CitationEntry[];
   comparison: ComparisonPayload | null;
-  surrogateSummary: SurrogateSummary | null;
+  surrogateLab: SurrogateLabSummary | null;
 };
 
 export type PricingExecution = {
   result: GreeksResult;
   warnings: GuardWarning[];
+  units: GreekUnits;
+  diagnostics: ModelDiagnostics;
+  engineMetadata: EngineMetadata;
+  referenceComparison: ReferenceComparison | null;
+  comparison: ComparisonPayload | null;
   wasmReady: boolean;
-  surrogateSummary: SurrogateSummary | null;
+  surrogateLab: SurrogateLabSummary | null;
 };

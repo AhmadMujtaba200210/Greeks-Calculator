@@ -43,7 +43,7 @@ export default function Surface3DPanel({ params }: Surface3DPanelProps) {
               colorscale: "Blues",
               showscale: true,
               hovertemplate:
-                "Spot %{x:.2f}<br>Maturity %{y:.2f}y<br>Price %{z:.4f}<extra></extra>",
+                "Spot %{x:.2f}<br>Maturity %{y:.2f}y<br>IV %{z:.2f}%<extra></extra>",
             },
           ],
           {
@@ -53,7 +53,7 @@ export default function Surface3DPanel({ params }: Surface3DPanelProps) {
             scene: {
               xaxis: { title: "Spot", color: "#334155", gridcolor: "#e2e8f0" },
               yaxis: { title: "Maturity", color: "#334155", gridcolor: "#e2e8f0" },
-              zaxis: { title: "Price", color: "#334155", gridcolor: "#e2e8f0" },
+              zaxis: { title: "Implied Vol (%)", color: "#334155", gridcolor: "#e2e8f0" },
               camera: { eye: { x: 1.45, y: 1.4, z: 1.1 } },
             },
           },

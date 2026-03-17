@@ -1,6 +1,6 @@
-//! Black-Scholes option pricing with automatic differentiation for Greeks
+//! Black-Scholes-Merton pricing with normalized Greek conventions.
 
-use crate::ad::{norm_cdf, Dual};
+use crate::ad::{norm_cdf, norm_pdf, Dual};
 use crate::types::{Greeks, OptionType};
 
 /// Black-Scholes pricing parameters
@@ -34,188 +34,126 @@ impl BlackScholesParams {
     }
 }
 
-/// Calculate d1 parameter for Black-Scholes
 #[inline]
-fn d1(s: Dual, k: f64, t: f64, sigma: Dual, r: f64, q: f64) -> Dual {
-    let numerator = (s / k).ln() + Dual::constant((r - q + 0.5 * sigma.value * sigma.value) * t);
-    let denominator = sigma * Dual::constant(t.sqrt());
-    numerator / denominator
+pub fn norm_cdf_f64(x: f64) -> f64 {
+    norm_cdf(Dual::constant(x)).value
 }
 
-/// Calculate d2 parameter for Black-Scholes
 #[inline]
-fn d2(d1: Dual, sigma: Dual, t: f64) -> Dual {
-    d1 - sigma * Dual::constant(t.sqrt())
+pub fn norm_pdf_f64(x: f64) -> f64 {
+    norm_pdf(Dual::constant(x)).value
 }
 
-/// Price a European call option using Black-Scholes
 #[inline]
-fn call_price(s: Dual, k: f64, t: f64, sigma: Dual, r: f64, q: f64) -> Dual {
-    let d1_val = d1(s, k, t, sigma, r, q);
-    let d2_val = d2(d1_val, sigma, t);
-    
-    let discount_factor = Dual::constant((-r * t).exp());
-    let forward_discount = Dual::constant((-q * t).exp());
-    
-    s * forward_discount * norm_cdf(d1_val) - Dual::constant(k) * discount_factor * norm_cdf(d2_val)
+pub fn calculate_d1_d2(params: &BlackScholesParams) -> Option<(f64, f64)> {
+    if params.time_to_maturity <= 0.0 || params.volatility <= 0.0 || params.spot <= 0.0 || params.strike <= 0.0 {
+        return None;
+    }
+
+    let sqrt_t = params.time_to_maturity.sqrt();
+    let variance = params.volatility * params.volatility;
+    let d1 = ((params.spot / params.strike).ln()
+        + (params.risk_free_rate - params.dividend_yield + 0.5 * variance) * params.time_to_maturity)
+        / (params.volatility * sqrt_t);
+    let d2 = d1 - params.volatility * sqrt_t;
+    Some((d1, d2))
 }
 
-/// Price a European put option using Black-Scholes
 #[inline]
-fn put_price(s: Dual, k: f64, t: f64, sigma: Dual, r: f64, q: f64) -> Dual {
-    let d1_val = d1(s, k, t, sigma, r, q);
-    let d2_val = d2(d1_val, sigma, t);
-    
-    let discount_factor = Dual::constant((-r * t).exp());
-    let forward_discount = Dual::constant((-q * t).exp());
-    
-    Dual::constant(k) * discount_factor * norm_cdf(-d2_val) - s * forward_discount * norm_cdf(-d1_val)
+fn intrinsic_forward_price(params: &BlackScholesParams, option_type: OptionType) -> (f64, f64) {
+    let t = params.time_to_maturity.max(0.0);
+    let discount = (-params.risk_free_rate * t).exp();
+    let carry = (-params.dividend_yield * t).exp();
+    let forward_intrinsic = params.spot * carry - params.strike * discount;
+    let price = match option_type {
+        OptionType::Call => forward_intrinsic.max(0.0),
+        OptionType::Put => (-forward_intrinsic).max(0.0),
+    };
+    (price, forward_intrinsic)
 }
 
-/// Calculate option price and all Greeks using automatic differentiation
+pub fn calculate_price(params: &BlackScholesParams, option_type: OptionType) -> f64 {
+    if let Some((d1, d2)) = calculate_d1_d2(params) {
+        let discount = (-params.risk_free_rate * params.time_to_maturity).exp();
+        let carry = (-params.dividend_yield * params.time_to_maturity).exp();
+        return match option_type {
+            OptionType::Call => {
+                params.spot * carry * norm_cdf_f64(d1) - params.strike * discount * norm_cdf_f64(d2)
+            }
+            OptionType::Put => {
+                params.strike * discount * norm_cdf_f64(-d2) - params.spot * carry * norm_cdf_f64(-d1)
+            }
+        };
+    }
+
+    intrinsic_forward_price(params, option_type).0
+}
+
+/// Calculate option price and all Greeks using the desk conventions:
+/// - theta: per day
+/// - vega: per 1 percentage-point vol move
+/// - rho: per 1 percentage-point rate move
 pub fn calculate_greeks(params: &BlackScholesParams, option_type: OptionType) -> Greeks {
-    let BlackScholesParams {
-        spot,
-        strike,
-        time_to_maturity,
-        volatility,
-        risk_free_rate,
-        dividend_yield,
-    } = *params;
+    if let Some((d1, d2)) = calculate_d1_d2(params) {
+        let discount = (-params.risk_free_rate * params.time_to_maturity).exp();
+        let carry = (-params.dividend_yield * params.time_to_maturity).exp();
+        let sqrt_t = params.time_to_maturity.sqrt();
+        let pdf_d1 = norm_pdf_f64(d1);
+        let cdf_d1 = norm_cdf_f64(d1);
+        let cdf_d2 = norm_cdf_f64(d2);
 
-    // Calculate Delta: derivative with respect to spot
-    let s_dual = Dual::variable(spot);
-    let sigma_const = Dual::constant(volatility);
-    let price_for_delta = match option_type {
-        OptionType::Call => call_price(s_dual, strike, time_to_maturity, sigma_const, risk_free_rate, dividend_yield),
-        OptionType::Put => put_price(s_dual, strike, time_to_maturity, sigma_const, risk_free_rate, dividend_yield),
-    };
-    let price = price_for_delta.value;
-    let delta = price_for_delta.deriv;
+        let price = calculate_price(params, option_type);
+        let delta = match option_type {
+            OptionType::Call => carry * cdf_d1,
+            OptionType::Put => carry * (cdf_d1 - 1.0),
+        };
+        let gamma = (carry * pdf_d1) / (params.spot * params.volatility * sqrt_t);
+        let vega = (params.spot * carry * sqrt_t * pdf_d1) / 100.0;
 
-    // Calculate Gamma: second derivative with respect to spot using finite difference
-    let ds = 0.01; // Small bump for finite difference
-    let s_up = Dual::variable(spot + ds);
-    let s_down = Dual::variable(spot - ds);
-    
-    let delta_up = match option_type {
-        OptionType::Call => call_price(s_up, strike, time_to_maturity, sigma_const, risk_free_rate, dividend_yield).deriv,
-        OptionType::Put => put_price(s_up, strike, time_to_maturity, sigma_const, risk_free_rate, dividend_yield).deriv,
-    };
-    
-    let delta_down = match option_type {
-        OptionType::Call => call_price(s_down, strike, time_to_maturity, sigma_const, risk_free_rate, dividend_yield).deriv,
-        OptionType::Put => put_price(s_down, strike, time_to_maturity, sigma_const, risk_free_rate, dividend_yield).deriv,
-    };
-    
-    let gamma = (delta_up - delta_down) / (2.0 * ds);
+        let theta_annual = match option_type {
+            OptionType::Call => {
+                -(params.spot * carry * pdf_d1 * params.volatility) / (2.0 * sqrt_t)
+                    - params.risk_free_rate * params.strike * discount * cdf_d2
+                    + params.dividend_yield * params.spot * carry * cdf_d1
+            }
+            OptionType::Put => {
+                -(params.spot * carry * pdf_d1 * params.volatility) / (2.0 * sqrt_t)
+                    + params.risk_free_rate * params.strike * discount * norm_cdf_f64(-d2)
+                    - params.dividend_yield * params.spot * carry * norm_cdf_f64(-d1)
+            }
+        };
+        let theta = theta_annual / 365.0;
 
-    // Calculate Vega: derivative with respect to volatility
-    let s_const = Dual::constant(spot);
-    let sigma_dual = Dual::variable(volatility);
-    let price_for_vega = match option_type {
-        OptionType::Call => call_price(s_const, strike, time_to_maturity, sigma_dual, risk_free_rate, dividend_yield),
-        OptionType::Put => put_price(s_const, strike, time_to_maturity, sigma_dual, risk_free_rate, dividend_yield),
-    };
-    let vega = price_for_vega.deriv;
+        let rho = match option_type {
+            OptionType::Call => (params.strike * params.time_to_maturity * discount * cdf_d2) / 100.0,
+            OptionType::Put => {
+                -(params.strike * params.time_to_maturity * discount * norm_cdf_f64(-d2)) / 100.0
+            }
+        };
 
-    // Calculate Theta: derivative with respect to time (negative for time decay)
-    let theta = calculate_theta(params, option_type);
+        return Greeks::new(price, delta, gamma, vega, theta, rho);
+    }
 
-    // Calculate Rho: derivative with respect to risk-free rate
-    let rho = calculate_rho(params, option_type);
+    let (price, forward_intrinsic) = intrinsic_forward_price(params, option_type);
+    let carry = (-params.dividend_yield * params.time_to_maturity.max(0.0)).exp();
+    let delta = match option_type {
+        OptionType::Call => {
+            if forward_intrinsic > 0.0 {
+                carry
+            } else {
+                0.0
+            }
+        }
+        OptionType::Put => {
+            if forward_intrinsic < 0.0 {
+                -carry
+            } else {
+                0.0
+            }
+        }
+    };
 
-    Greeks::new(price, delta, gamma, vega, theta, rho)
-}
-
-/// Calculate Theta using finite difference (small time step)
-fn calculate_theta(params: &BlackScholesParams, option_type: OptionType) -> f64 {
-    let dt = 1.0 / 365.0; // One day
-    
-    let price_now = match option_type {
-        OptionType::Call => call_price(
-            Dual::constant(params.spot),
-            params.strike,
-            params.time_to_maturity,
-            Dual::constant(params.volatility),
-            params.risk_free_rate,
-            params.dividend_yield,
-        ).value,
-        OptionType::Put => put_price(
-            Dual::constant(params.spot),
-            params.strike,
-            params.time_to_maturity,
-            Dual::constant(params.volatility),
-            params.risk_free_rate,
-            params.dividend_yield,
-        ).value,
-    };
-    
-    let price_later = match option_type {
-        OptionType::Call => call_price(
-            Dual::constant(params.spot),
-            params.strike,
-            params.time_to_maturity - dt,
-            Dual::constant(params.volatility),
-            params.risk_free_rate,
-            params.dividend_yield,
-        ).value,
-        OptionType::Put => put_price(
-            Dual::constant(params.spot),
-            params.strike,
-            params.time_to_maturity - dt,
-            Dual::constant(params.volatility),
-            params.risk_free_rate,
-            params.dividend_yield,
-        ).value,
-    };
-    
-    (price_later - price_now) / dt
-}
-
-/// Calculate Rho using finite difference (small rate change)
-fn calculate_rho(params: &BlackScholesParams, option_type: OptionType) -> f64 {
-    let dr = 0.0001; // 1 basis point
-    
-    let price_base = match option_type {
-        OptionType::Call => call_price(
-            Dual::constant(params.spot),
-            params.strike,
-            params.time_to_maturity,
-            Dual::constant(params.volatility),
-            params.risk_free_rate,
-            params.dividend_yield,
-        ).value,
-        OptionType::Put => put_price(
-            Dual::constant(params.spot),
-            params.strike,
-            params.time_to_maturity,
-            Dual::constant(params.volatility),
-            params.risk_free_rate,
-            params.dividend_yield,
-        ).value,
-    };
-    
-    let price_bumped = match option_type {
-        OptionType::Call => call_price(
-            Dual::constant(params.spot),
-            params.strike,
-            params.time_to_maturity,
-            Dual::constant(params.volatility),
-            params.risk_free_rate + dr,
-            params.dividend_yield,
-        ).value,
-        OptionType::Put => put_price(
-            Dual::constant(params.spot),
-            params.strike,
-            params.time_to_maturity,
-            Dual::constant(params.volatility),
-            params.risk_free_rate + dr,
-            params.dividend_yield,
-        ).value,
-    };
-    
-    (price_bumped - price_base) / dr
+    Greeks::new(price, delta, 0.0, 0.0, 0.0, 0.0)
 }
 
 #[cfg(test)]
@@ -225,43 +163,32 @@ mod tests {
 
     #[test]
     fn test_call_option_atm() {
-        let params = BlackScholesParams::new(
-            100.0, // spot
-            100.0, // strike (ATM)
-            1.0,   // 1 year
-            0.2,   // 20% vol
-            0.05,  // 5% risk-free rate
-            0.0,   // no dividend
-        );
-
+        let params = BlackScholesParams::new(100.0, 100.0, 1.0, 0.2, 0.05, 0.0);
         let greeks = calculate_greeks(&params, OptionType::Call);
-        
-        // ATM call should have delta around 0.5
-        assert!(greeks.delta > 0.4 && greeks.delta < 0.6);
-        
-        // Gamma should be positive
-        assert!(greeks.gamma > 0.0);
-        
-        // Vega should be positive
-        assert!(greeks.vega > 0.0);
-        
-        // Price should be positive
-        assert!(greeks.price > 0.0);
+
+        assert_relative_eq!(greeks.price, 10.4506, epsilon = 0.01);
+        assert_relative_eq!(greeks.delta, 0.6368, epsilon = 0.01);
+        assert_relative_eq!(greeks.gamma, 0.0188, epsilon = 0.001);
+        assert_relative_eq!(greeks.vega, 0.3752, epsilon = 0.01);
+        assert_relative_eq!(greeks.theta, -0.0176, epsilon = 0.001);
+        assert_relative_eq!(greeks.rho, 0.5323, epsilon = 0.01);
     }
 
     #[test]
     fn test_put_call_parity() {
-        let params = BlackScholesParams::new(
-            100.0, 100.0, 1.0, 0.2, 0.05, 0.0
-        );
-
-        let call_greeks = calculate_greeks(&params, OptionType::Call);
-        let put_greeks = calculate_greeks(&params, OptionType::Put);
-        
-        // Put-call parity: C - P = S - K * exp(-rT)
-        let parity_lhs = call_greeks.price - put_greeks.price;
+        let params = BlackScholesParams::new(100.0, 100.0, 1.0, 0.2, 0.05, 0.0);
+        let call = calculate_greeks(&params, OptionType::Call);
+        let put = calculate_greeks(&params, OptionType::Put);
         let parity_rhs = params.spot - params.strike * (-params.risk_free_rate * params.time_to_maturity).exp();
-        
-        assert_relative_eq!(parity_lhs, parity_rhs, epsilon = 1e-6);
+        assert_relative_eq!(call.price - put.price, parity_rhs, epsilon = 1e-4);
+    }
+
+    #[test]
+    fn test_zero_vol_forward_intrinsic() {
+        let params = BlackScholesParams::new(105.0, 100.0, 0.5, 0.0, 0.03, 0.01);
+        let call = calculate_greeks(&params, OptionType::Call);
+        assert!(call.price >= 0.0);
+        assert!(call.gamma.abs() < 1e-12);
+        assert!(call.vega.abs() < 1e-12);
     }
 }

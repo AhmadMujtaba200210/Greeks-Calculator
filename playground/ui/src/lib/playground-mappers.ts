@@ -1,5 +1,4 @@
 import { CITATIONS } from "../../../public/js/citations.js";
-import { runCrossModelComparison } from "../../../public/js/validation.js";
 import type {
   AdviceCard,
   CitationEntry,
@@ -11,9 +10,10 @@ import type {
   PlaygroundParams,
   PricingExecution,
   PricingModelId,
+  ReferenceComparison,
   ValidationRow,
 } from "@/lib/types";
-import { getModelLabel, toEngineParams } from "@/lib/pricing-engine";
+import { getModelLabel } from "@/lib/pricing-engine";
 
 function toStatusValue(status: HealthState) {
   return status === "fail" ? 2 : status === "warn" ? 1 : 0;
@@ -34,9 +34,9 @@ function statusFromError(errorPct: number | null): HealthState {
 function getComparisonName(model: PricingModelId) {
   const names: Record<PricingModelId, string> = {
     black_scholes: "Black-Scholes",
-    binomial: "Binomial Tree",
+    binomial: "Binomial",
     monte_carlo: "Monte Carlo",
-    ai_surrogate: "AI Surrogate",
+    ai_surrogate: "AI Surrogate Lab",
   };
   return names[model];
 }
@@ -113,8 +113,8 @@ function buildAdvice(params: PlaygroundParams, greeks: GreeksResult): AdviceCard
 function buildCitations(pricingModel: PricingModelId): CitationEntry[] {
   const keysByModel: Record<PricingModelId, string[]> = {
     black_scholes: ["black_scholes", "greeks_analytical"],
-    binomial: ["binomial_crr", "greeks_finite_diff"],
-    monte_carlo: ["monte_carlo_gbm", "greeks_finite_diff"],
+    binomial: ["binomial_lr", "binomial_crr", "greeks_finite_diff"],
+    monte_carlo: ["monte_carlo_gbm", "monte_carlo_control_variate", "greeks_finite_diff"],
     ai_surrogate: ["ai_surrogate", "greeks_finite_diff"],
   };
 
@@ -156,7 +156,7 @@ export function buildValidationRows(comparison: ComparisonPayload | null): Valid
       model: model.name,
       price: model.result.price,
       errorPct,
-      status: statusFromError(errorPct),
+      status: model.overallStatus,
     });
   });
 
@@ -168,12 +168,10 @@ function getSelectedComparisonStatus(
   comparison: ComparisonPayload | null,
 ): HealthState {
   if (pricingModel === "black_scholes") return "pass";
+  if (pricingModel === "ai_surrogate") return "warn";
   const block = comparison?.models.find((entry) => entry.name.includes(getComparisonName(pricingModel)));
   if (!block) return "warn";
-  const errorPct = Number.isFinite(block.errors?.price?.relative)
-    ? (block.errors?.price?.relative ?? 0) * 100
-    : null;
-  return statusFromError(errorPct);
+  return block.overallStatus;
 }
 
 function getWarningStatus(warnings: GuardWarning[]): HealthState {
@@ -183,21 +181,13 @@ function getWarningStatus(warnings: GuardWarning[]): HealthState {
 }
 
 function getDomainStatus(params: PlaygroundParams, execution: PricingExecution, warnings: GuardWarning[]) {
-  if (params.pricingModel === "ai_surrogate" && execution.surrogateSummary) {
-    if (execution.surrogateSummary.recommendation === "unreliable") return "fail";
-    if (execution.surrogateSummary.recommendation === "caution") return "warn";
-    return "pass";
-  }
+  if (params.pricingModel === "ai_surrogate") return "warn";
   return getWarningStatus(warnings);
 }
 
-function normalizeComparison(comparison: any): ComparisonPayload | null {
-  if (!comparison) return null;
-  return {
-    reference: comparison.reference ?? null,
-    models: comparison.models ?? [],
-    convergence: comparison.convergence ?? undefined,
-  };
+function getReferenceStatus(referenceComparison: ReferenceComparison | null): HealthState {
+  if (!referenceComparison) return "pass";
+  return referenceComparison.status;
 }
 
 export function buildPlaygroundComputed(
@@ -211,10 +201,12 @@ export function buildPlaygroundComputed(
       : Math.max(0, params.strike - params.spot);
   const timeValue = result.price - intrinsicValue;
   const moneynessPct = (params.spot / params.strike) * 100;
-  const comparison = normalizeComparison(runCrossModelComparison(toEngineParams(params)));
+  const comparison = execution.comparison ?? null;
   const validationRows = buildValidationRows(comparison);
   const domain = getDomainStatus(params, execution, execution.warnings);
-  const stability = getSelectedComparisonStatus(params.pricingModel, comparison);
+  const stability = params.pricingModel === "black_scholes"
+    ? getReferenceStatus(execution.referenceComparison)
+    : getSelectedComparisonStatus(params.pricingModel, comparison);
   const overall = maxStatus(domain, stability);
   const daysToExpiry = Math.round(params.maturity * 365);
   const moneynessLabel =
@@ -227,6 +219,10 @@ export function buildPlaygroundComputed(
     moneynessPct,
     modelLabel: getModelLabel(params.pricingModel),
     warnings: execution.warnings,
+    units: execution.units,
+    diagnostics: execution.diagnostics,
+    engineMetadata: execution.engineMetadata,
+    referenceComparison: execution.referenceComparison,
     validationRows,
     health: {
       domain,
@@ -238,10 +234,12 @@ export function buildPlaygroundComputed(
       { label: "Moneyness", value: moneynessLabel },
       { label: "Volatility", value: `${(params.volatility * 100).toFixed(1)}%` },
       { label: "Carry", value: `${((params.rate - params.dividend) * 100).toFixed(2)}%` },
+      { label: "Method", value: execution.engineMetadata.method },
+      { label: "Scope", value: execution.engineMetadata.assumption_set.replace("European vanilla ", "") },
     ],
     advice: buildAdvice(params, result),
     citations: buildCitations(params.pricingModel),
     comparison,
-    surrogateSummary: execution.surrogateSummary,
+    surrogateLab: execution.surrogateLab,
   };
 }

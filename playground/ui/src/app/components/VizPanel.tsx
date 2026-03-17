@@ -13,9 +13,8 @@ import {
   buildTimeDecaySeries,
   buildVolatilitySeries,
 } from "@/lib/playground-series";
-import { toEngineParams } from "@/lib/pricing-engine";
-import type { PlaygroundComputed, PlaygroundParams, VizId } from "@/lib/types";
-import { computeConvergenceDiagnostics } from "../../../../public/js/mcDiagnostics.js";
+import { getConvergenceDiagnostics } from "@/lib/pricing-engine";
+import type { ConvergencePayload, PlaygroundComputed, PlaygroundParams, VizId } from "@/lib/types";
 
 const Surface3DPanel = lazy(() => import("@/app/components/Surface3DPanel"));
 const DiagnosticsPanel = lazy(() => import("@/app/components/DiagnosticsPanel"));
@@ -41,7 +40,7 @@ function getDefaultSummary(activeViz: VizId): ChartSummary | null {
     return { headline: "Greek Response", supporting: "Delta, Gamma, and Vega stay visible together." };
   }
   if (activeViz === "volatility") {
-    return { headline: "Volatility Surface Slice", supporting: "Quick smile proxy across strikes." };
+    return { headline: "Scenario Surface Slice", supporting: "Rust-generated SVI slice across strikes." };
   }
   if (activeViz === "time") {
     return { headline: "Time Decay", supporting: "Observe premium compression as expiry approaches." };
@@ -50,7 +49,7 @@ function getDefaultSummary(activeViz: VizId): ChartSummary | null {
     return { headline: "Cross-Model View", supporting: "Compare relative pricing outputs side by side." };
   }
   if (activeViz === "convergence") {
-    return { headline: "Convergence View", supporting: "Switch to Binomial or Monte Carlo to inspect convergence." };
+    return { headline: "Convergence View", supporting: "Inspect lattice or simulation stability against Black-Scholes." };
   }
   if (activeViz === "diagnostics") {
     return { headline: "Diagnostics Console", supporting: "Inspect reference agreement, benchmark health, and engine trust context." };
@@ -129,16 +128,16 @@ function buildChartOptions(series: any, mode: "line" | "bar", isLogScale = false
   };
 }
 
-function buildConvergenceChart(diagnostics: any, model: PlaygroundParams["pricingModel"]) {
+function buildConvergenceChart(diagnostics: ConvergencePayload, model: PlaygroundParams["pricingModel"]) {
   if (model === "binomial") {
     return {
       type: "line" as const,
       data: {
-        labels: diagnostics.binomial.map((entry: any) => entry.steps),
+        labels: diagnostics.binomial.map((entry) => entry.steps),
         datasets: [
           {
             label: "BS Reference",
-            data: diagnostics.binomial.map(() => diagnostics.bsPrice),
+            data: diagnostics.binomial.map(() => diagnostics.reference_price),
             borderColor: "#2563eb",
             borderDash: [6, 4],
             borderWidth: 2,
@@ -146,8 +145,18 @@ function buildConvergenceChart(diagnostics: any, model: PlaygroundParams["pricin
             fill: false,
           },
           {
-            label: "Binomial Price",
-            data: diagnostics.binomial.map((entry: any) => entry.price),
+            label: "CRR",
+            data: diagnostics.binomial.map((entry) => entry.crr_price),
+            borderColor: "#94a3b8",
+            backgroundColor: "rgba(148,163,184,0.12)",
+            borderWidth: 2,
+            pointRadius: 3,
+            fill: false,
+            tension: 0.2,
+          },
+          {
+            label: "Leisen-Reimer",
+            data: diagnostics.binomial.map((entry) => entry.leisen_reimer_price),
             borderColor: "#10b981",
             backgroundColor: "rgba(16,185,129,0.12)",
             borderWidth: 2,
@@ -166,7 +175,7 @@ function buildConvergenceChart(diagnostics: any, model: PlaygroundParams["pricin
       ),
       summary: {
         headline: "Binomial Convergence",
-        supporting: `Last price ${diagnostics.binomial.at(-1)?.price?.toFixed(4) ?? "--"} vs BS ${diagnostics.bsPrice.toFixed(4)}`,
+        supporting: `LR ${diagnostics.binomial.at(-1)?.leisen_reimer_price?.toFixed(4) ?? "--"} vs BS ${diagnostics.reference_price.toFixed(4)}`,
       } satisfies ChartSummary,
     };
   }
@@ -177,7 +186,7 @@ function buildConvergenceChart(diagnostics: any, model: PlaygroundParams["pricin
       datasets: [
         {
           label: "BS Reference",
-          data: diagnostics.monteCarlo.map((entry: any) => ({ x: entry.paths, y: diagnostics.bsPrice })),
+          data: diagnostics.monte_carlo.map((entry) => ({ x: entry.paths, y: diagnostics.reference_price })),
           borderColor: "#2563eb",
           borderDash: [6, 4],
           borderWidth: 2,
@@ -187,7 +196,7 @@ function buildConvergenceChart(diagnostics: any, model: PlaygroundParams["pricin
         },
         {
           label: "MC Mean Price",
-          data: diagnostics.monteCarlo.map((entry: any) => ({ x: entry.paths, y: entry.meanPrice })),
+          data: diagnostics.monte_carlo.map((entry) => ({ x: entry.paths, y: entry.mean_price })),
           borderColor: "#d97706",
           backgroundColor: "rgba(217,119,6,0.12)",
           borderWidth: 2,
@@ -224,7 +233,7 @@ function buildConvergenceChart(diagnostics: any, model: PlaygroundParams["pricin
     },
     summary: {
       headline: "Monte Carlo Precision",
-      supporting: `Estimated SE ${diagnostics.monteCarlo.at(-1)?.estimatedSE?.toFixed(4) ?? "--"} at ${diagnostics.monteCarlo.at(-1)?.paths?.toLocaleString() ?? "--"} paths`,
+      supporting: `Estimated SE ${diagnostics.monte_carlo.at(-1)?.estimated_se?.toFixed(4) ?? "--"} at ${diagnostics.monte_carlo.at(-1)?.paths?.toLocaleString() ?? "--"} paths`,
     } satisfies ChartSummary,
   };
 }
@@ -275,13 +284,13 @@ function ChartCanvas({ activeViz, params, computed }: Omit<VizPanelProps, "onViz
         }
 
         if (activeViz === "volatility") {
-          const series = buildVolatilitySeries(params);
+          const series = await buildVolatilitySeries(params);
           config = {
             type: "line",
             data: { labels: series.labels, datasets: series.datasets },
             options: buildChartOptions(series, "line"),
           };
-          setSummary({ headline: "Volatility Surface Slice", supporting: "Quick smile proxy across strikes." });
+          setSummary({ headline: "Scenario Surface Slice", supporting: "Rust-generated SVI slice across strikes." });
         }
 
         if (activeViz === "time") {
@@ -314,7 +323,7 @@ function ChartCanvas({ activeViz, params, computed }: Omit<VizPanelProps, "onViz
             return;
           }
 
-          const diagnostics = await computeConvergenceDiagnostics(toEngineParams(params));
+          const diagnostics = await getConvergenceDiagnostics(params, params.pricingModel);
           config = buildConvergenceChart(diagnostics, params.pricingModel);
           setSummary(config.summary);
         }
@@ -406,8 +415,11 @@ export default function VizPanel({ activeViz, computed, params, isPending, onViz
               <CardTitle className="text-sm">Analysis Desk</CardTitle>
               <Badge variant="secondary" className="px-2 py-0.5 text-[10px]">{computed?.modelLabel ?? "Loading"}</Badge>
               <Badge variant="outline" className="px-2 py-0.5 text-[10px]">{activeViz === "surface3d" ? "3D" : activeViz === "diagnostics" ? "Diagnostics" : summary?.headline ?? "Chart"}</Badge>
+              {computed?.engineMetadata?.method && (
+                <Badge variant="outline" className="px-2 py-0.5 text-[10px]">{computed.engineMetadata.method}</Badge>
+              )}
             </div>
-            <CardDescription className="text-xs leading-[1.125rem]">Switch views without resetting the contract.</CardDescription>
+            <CardDescription className="text-xs leading-[1.125rem]">Rust-backed views without resetting the contract.</CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <HoverCard openDelay={120}>
@@ -447,6 +459,32 @@ export default function VizPanel({ activeViz, computed, params, isPending, onViz
             ))}
           </div>
         ) : null}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="outline" className="px-2 py-0.5 text-[10px]">
+            {computed?.engineMetadata.assumption_set ?? "European vanilla under stated assumptions"}
+          </Badge>
+          {computed?.diagnostics?.ci95 && (
+            <Badge variant="secondary" className="px-2 py-0.5 text-[10px]">
+              95% CI {computed.diagnostics.ci95[0].toFixed(2)} to {computed.diagnostics.ci95[1].toFixed(2)}
+            </Badge>
+          )}
+          <Badge
+            variant={
+              computed?.diagnostics.benchmark_status === "pass"
+                ? "success"
+                : computed?.diagnostics.benchmark_status === "warn"
+                  ? "warning"
+                  : "destructive"
+            }
+            className="px-2 py-0.5 text-[10px]"
+          >
+            {computed?.diagnostics.benchmark_status === "pass"
+              ? "Benchmarked"
+              : computed?.diagnostics.benchmark_status === "warn"
+                ? "Use Caution"
+                : "Review Needed"}
+          </Badge>
+        </div>
       </CardHeader>
 
       <CardContent className="p-3 pt-2.5">

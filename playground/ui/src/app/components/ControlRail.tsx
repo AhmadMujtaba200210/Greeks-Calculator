@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, GaugeCircle, RotateCcw, Sigma } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,10 @@ const advancedFields = [
   { key: "dividend", label: "Dividend", min: 0, max: 50, step: 0.1, scale: 100, digits: 1, suffix: "%" },
 ] as const;
 
+function formatEditableValue(value: number) {
+  return Number(value.toFixed(6)).toString();
+}
+
 function FieldRow({
   field,
   params,
@@ -46,6 +50,28 @@ function FieldRow({
 }) {
   const rawValue = params[field.key];
   const displayValue = rawValue * field.scale;
+  const [draftValue, setDraftValue] = useState(() => formatEditableValue(displayValue));
+
+  useEffect(() => {
+    setDraftValue(formatEditableValue(displayValue));
+  }, [displayValue]);
+
+  function commitInputValue(nextRawValue: string) {
+    if (
+      nextRawValue === "" ||
+      nextRawValue === "-" ||
+      nextRawValue === "." ||
+      nextRawValue === "-." ||
+      nextRawValue.endsWith(".")
+    ) {
+      return;
+    }
+
+    const nextValue = Number(nextRawValue);
+    if (Number.isFinite(nextValue)) {
+      onNumericParamChange(field.key, nextValue / field.scale);
+    }
+  }
 
   return (
     <div className="space-y-1.5">
@@ -66,16 +92,36 @@ function FieldRow({
           min={field.min}
           max={field.max}
           step={field.step}
-          onValueChange={([nextValue]) => onNumericParamChange(field.key, nextValue / field.scale)}
+          onValueChange={([nextValue]) => {
+            setDraftValue(formatEditableValue(nextValue));
+            onNumericParamChange(field.key, nextValue / field.scale);
+          }}
         />
         <Input
           data-testid={`input-${field.key}`}
           inputMode="decimal"
           className="h-9 rounded-[12px]"
-          value={displayValue}
+          value={draftValue}
           onChange={(event) => {
-            const nextValue = Number.parseFloat(event.target.value);
-            if (Number.isFinite(nextValue)) onNumericParamChange(field.key, nextValue / field.scale);
+            const nextRawValue = event.target.value;
+            if (!/^-?\d*\.?\d*$/.test(nextRawValue)) return;
+            setDraftValue(nextRawValue);
+            commitInputValue(nextRawValue);
+          }}
+          onBlur={() => {
+            if (draftValue.trim() === "") {
+              setDraftValue(formatEditableValue(displayValue));
+              return;
+            }
+
+            const nextValue = Number(draftValue);
+            if (Number.isFinite(nextValue)) {
+              onNumericParamChange(field.key, nextValue / field.scale);
+              setDraftValue(formatEditableValue(nextValue));
+              return;
+            }
+
+            setDraftValue(formatEditableValue(displayValue));
           }}
         />
       </div>

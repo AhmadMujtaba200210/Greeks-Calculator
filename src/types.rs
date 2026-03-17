@@ -1,14 +1,16 @@
 //! Common types used throughout the library
 
+use serde::{Deserialize, Serialize};
+
 /// Option type (Call or Put)
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptionType {
     Call,
     Put,
 }
 
 /// Market data for a single option
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct OptionData {
     pub strike: f64,
     pub time_to_maturity: f64,
@@ -17,7 +19,7 @@ pub struct OptionData {
 }
 
 /// Greeks for an option
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct Greeks {
     /// Option price
     pub price: f64,

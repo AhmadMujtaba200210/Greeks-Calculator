@@ -151,6 +151,11 @@ test('playground presets and controls update pricing metrics', async ({ page }) 
   await page.getByTestId('input-spot').fill('120');
   await expect.poll(async () => await fairValue.textContent()).not.toBe(fairBefore);
 
+  await page.getByTestId('input-volatility').fill('252.88');
+  await expect(page.getByTestId('input-volatility')).toHaveValue('252.88');
+  await page.getByTestId('input-rate').fill('3.75');
+  await expect(page.getByTestId('input-rate')).toHaveValue('3.75');
+
   await page.getByTestId('input-volatility').fill('40');
   await expect.poll(async () => await vega.textContent()).not.toBe(vegaBefore);
 });
@@ -162,7 +167,7 @@ test('playground visualization tabs switch correctly', async ({ page }) => {
   await expect(page.getByTestId('chart-summary-headline')).toHaveText('Greek Response');
 
   await page.getByRole('tab', { name: 'Surface' }).click();
-  await expect(page.getByTestId('chart-summary-headline')).toHaveText('Volatility Surface Slice');
+  await expect(page.getByTestId('chart-summary-headline')).toHaveText('Scenario Surface Slice');
 
   await page.getByRole('tab', { name: 'Time' }).click();
   await expect(page.getByTestId('chart-summary-headline')).toHaveText('Time Decay');
@@ -184,6 +189,7 @@ test('playground model picker and insight dock work', async ({ page }) => {
   await page.goto('/');
 
   await page.getByTestId('playground-model-picker').click();
+  await expect(page.locator('[cmdk-item]').filter({ hasText: 'AI Surrogate' })).toHaveCount(0);
   await page.locator('[cmdk-item]').filter({ hasText: 'Monte Carlo' }).first().click();
   await expect(page.getByTestId('playground-workspace-header')).toContainText('Monte Carlo');
 
@@ -194,6 +200,7 @@ test('playground model picker and insight dock work', async ({ page }) => {
 
   await page.getByRole('tab', { name: 'Reference' }).click();
   await expect(page.getByTestId('playground-references-card')).toContainText('Monte Carlo');
+  await expect(page.getByTestId('playground-surrogate-lab')).toBeVisible();
 
   await page.getByRole('tab', { name: 'Math' }).click();
   await expect(page.getByTestId('playground-insight-dock')).toContainText('Mathematical Derivations');

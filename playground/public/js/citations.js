@@ -19,12 +19,26 @@ export const CITATIONS = {
         textbook: "Hull, Ch. 13.",
         implementationNote: "u = exp(σ√Δt), d = 1/u, p = (exp((r-q)Δt) - d)/(u - d). 500 steps default."
     },
+    binomial_lr: {
+        method: "Leisen-Reimer Binomial Tree",
+        primary: "Leisen, D. & Reimer, M. (1996). 'Binomial Models for Option Valuation - Examining and Improving Convergence.' Applied Mathematical Finance, 3(4), 319-346.",
+        secondary: "Uses Peizer-Pratt inversion to smooth lattice convergence for European vanilla contracts.",
+        textbook: "Hull, Ch. 13 (binomial lattices), with Leisen-Reimer as the convergence upgrade.",
+        implementationNote: "Desk default uses an odd-step Leisen-Reimer lattice; CRR remains a comparison method in convergence diagnostics."
+    },
     monte_carlo_gbm: {
         method: "Monte Carlo Simulation (Geometric Brownian Motion)",
         primary: "Boyle, P.P. (1977). 'Options: A Monte Carlo Approach.' Journal of Financial Economics, 4(3), 323-338.",
         varianceReduction: "Uses Antithetic Variates: Hammersley, J.M. & Handscomb, D.C. (1964). Monte Carlo Methods.",
         textbook: "Glasserman, P. (2003). Monte Carlo Methods in Financial Engineering. Springer, Ch. 4.",
         implementationNote: "50,000 paths default. Antithetic variates for variance reduction."
+    },
+    monte_carlo_control_variate: {
+        method: "Monte Carlo with Control Variates",
+        primary: "Broadie, M. & Glasserman, P. (1996). 'Estimating Security Price Derivatives Using Simulation.' Management Science, 42(2), 269-285.",
+        secondary: "Uses antithetic variates and a discounted terminal-stock control variate to reduce estimator variance under GBM.",
+        textbook: "Glasserman, P. (2003). Monte Carlo Methods in Financial Engineering. Springer, Ch. 4-7.",
+        implementationNote: "Trader-facing output includes standard error and a 95% confidence interval, so the desk can display simulation uncertainty directly."
     },
     greeks_analytical: {
         method: "Analytical Greeks (Closed-Form Partial Derivatives)",
@@ -48,7 +62,7 @@ export const CITATIONS = {
         method: "SVI (Stochastic Volatility Inspired) Parameterization",
         primary: "Gatheral, J. (2004). 'A Parsimonious Arbitrage-Free Implied Volatility Parameterization.' Presentation at Global Derivatives & Risk Management.",
         textbook: "Gatheral, J. (2006). The Volatility Surface: A Practitioner's Guide. Wiley, Ch. 3.",
-        implementationNote: "w(k) = a + b(ρ(k-m) + √((k-m)² + σ²)). Arbitrage-free constraints validated."
+        implementationNote: "w(k) = a + b(ρ(k-m) + √((k-m)² + σ²)). The Playground shows scenario SVI slices/surfaces generated in Rust until full calibration is added."
     },
     ai_surrogate: {
         method: "Neural Network Surrogate (Multi-Layer Perceptron)",
