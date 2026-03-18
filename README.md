@@ -12,6 +12,20 @@ Greeks Calculator is an options analytics workspace with a Rust pricing core, a 
 - The AI surrogate is not a main pricer anymore. It is exposed as an experimental research view only.
 - Surface, convergence, benchmark, and comparison views are now Rust-backed.
 
+## Screenshots
+
+### Playground
+
+![Playground overview](docs/screenshots/playground-overview.png)
+
+### Diagnostics
+
+![Playground diagnostics](docs/screenshots/playground-diagnostics.png)
+
+### Strategy Builder
+
+![Builder overview](docs/screenshots/builder-overview.png)
+
 ## Pricing Conventions
 
 The Playground uses one explicit set of Greek units across the desk:
@@ -170,6 +184,11 @@ npm run test:ui
 - If you change files under [`playground/ui/src/`](/Users/mujtaba/Library/CloudStorage/OneDrive-NortheasternUniversity/vibe_coding/Greeks%20Calculator/playground/ui/src), rebuild the Playground bundle before manual testing unless the watch script is running.
 - If you change files under [`src/`](/Users/mujtaba/Library/CloudStorage/OneDrive-NortheasternUniversity/vibe_coding/Greeks%20Calculator/src), rebuild the WASM package before checking the browser app.
 - [`playground/public/js/app.js`](/Users/mujtaba/Library/CloudStorage/OneDrive-NortheasternUniversity/vibe_coding/Greeks%20Calculator/playground/public/js/app.js) still owns navigation and non-Playground bootstrapping.
+- Refresh README screenshots with:
+
+```bash
+npx playwright test tools/capture-readme-screenshots.spec.js --config=playwright.screenshots.config.js
+```
 
 ## License
 
